@@ -225,8 +225,9 @@ def committed_demand_for_variant(variant):
     * An order has **no CANCELLED status** -- withdrawing one deletes it and the
       lines cascade away -- so "not cancelled and not deleted" means simply
       "still here". DISPATCHED orders count too: dispatching ships the packed
-      portion, and a partial dispatch (``allow_partial``) leaves the rest owed,
-      which is still a claim on the cloth.
+      portion, and dispatching only some of an order's sealed bundles
+      (``PARTIALLY_DISPATCHED``) leaves the rest owed, which is still a claim on
+      the cloth.
     """
     from apps.orders.models import OrderItem
 

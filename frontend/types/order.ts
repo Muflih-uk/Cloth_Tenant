@@ -96,7 +96,6 @@ export interface Order {
   preferred_transport_name?: string;
   transport_company: number | null;
   transport_company_name?: string;
-  lr_number: string;
   dispatched_at: string | null;
   notes?: string;
   /** Set only on PATCH responses when an edit is in flight. */

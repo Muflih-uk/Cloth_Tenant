@@ -321,7 +321,6 @@ export default function InvoicePage() {
                             created_at={invoice.created_at}
                             items={invoice.items}
                             totals={invoice.totals}
-                            lr_number={invoice.lr_number}
                             invoiceRef={invoiceRef}
                         />
                     </div>

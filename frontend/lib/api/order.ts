@@ -52,7 +52,6 @@ export interface InvoiceResponse {
   items: OrderResponse["items"];
   totals: OrderTotals;
   gst_rate: number;
-  lr_number: string;
   notes?: string;
 }
 

@@ -137,7 +137,6 @@ export default function Page() {
                   Number(transport.value) == data?.transport_company,
               )?.label ?? ""
             }
-            lrNumber={data?.lr_number ?? ""}
             notes={data?.notes ?? ""}
           />
         )}

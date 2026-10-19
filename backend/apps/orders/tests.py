@@ -437,6 +437,29 @@ class InvoiceTests(OrderTestBase):
         resp = self.invoice(user=self.admin)
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
 
+    def test_lr_number_is_no_longer_on_the_surface(self):
+        # A lorry receipt belongs to a load, not an order. The field used to be
+        # written only by the whole-order dispatch that bundle dispatch replaced,
+        # so both the invoice and the order payload now leave it out entirely
+        # rather than echoing a value nothing can set.
+        self.auth(self.admin)
+        self.assertNotIn("lr_number", self.invoice().data)
+
+        detail = self.client.get(f"/api/orders/{self.order.pk}/")
+        self.assertEqual(detail.status_code, status.HTTP_200_OK)
+        self.assertNotIn("lr_number", detail.data)
+
+    def test_patching_lr_number_does_nothing(self):
+        self.auth(self.admin)
+        resp = self.client.patch(
+            f"/api/orders/{self.order.pk}/",
+            {"lr_number": "LR-42"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.lr_number, "")
+
 
 
 

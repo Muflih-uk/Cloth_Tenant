@@ -547,7 +547,7 @@ unpinned → (1, 0,               -sold[cid],  first_order, cid)  # biggest buye
 | `OrderItemViewSet` | 1133-1232 | CRUD | IsAuthenticated | `create()` **always 405** |
 | `MergeOrderItemsView` | 951-1069 | POST | IsAgentOrAdmin | Transactional collapse of duplicate lines |
 
-`OrderViewSet` actions: `dispatch_order` (618-715), `cancel_edit` (717-736), `my_viewed_ids` (738-744), `mark_viewed` (746-754), `order_ids` (756-767), `get_archived` (769-792).
+`OrderViewSet` actions: `cancel_edit`, `my_viewed_ids`, `mark_viewed`, `order_ids`, `get_archived`. There is **no** whole-order `dispatch_order` action - dispatch moved to `PackingBundleViewSet.dispatch` (`bundle_views.py`), one sealed bundle at a time.
 
 **Module helpers:**
 | Helper | Lines | Purpose |
@@ -733,7 +733,9 @@ variant serializers reject it).
 
 #### `apps.orders` — 8 models
 
-**`Order`** — `ordering: ["-created_at"]`. Status: `DRAFT → PENDING → EDITING → PENDING → PACKED → DISPATCHED`
+**`Order`** — `ordering: ["-created_at"]`. Status: `DRAFT → PENDING → EDITING → PENDING → PACKED → PARTIALLY_DISPATCHED → DISPATCHED`
+
+Dispatch is per sealed bundle, so `DISPATCHED` is no longer a single decision point: it is *derived* after each bundle dispatch by `sync_order_after_dispatch` — `DISPATCHED` when every occupied non-cancelled bundle has been dispatched and the order is fully packed, `PARTIALLY_DISPATCHED` while any sealed bundle is still waiting. `PARTIALLY_DISPATCHED` stays in both `OPEN_STATUSES` sets, so a partly-shipped order can keep being packed.
 
 | Field | Type | Notes |
 |---|---|---|
@@ -747,8 +749,8 @@ variant serializers reject it).
 | `price_overridden_by` / `_at` | FK / DateTime | audit |
 | `expected_delivery_date` | DateField | null |
 | `preferred_transport` / `transport_company` | FK → Transport | two distinct relations |
-| `lr_number` | CharField(50) | lorry receipt |
-| `shortfall_reason` | CharField(200) | set when shipping short |
+| `lr_number` | CharField(50) | ★ legacy column, **not on the API surface** — a lorry receipt belongs to a load, not an order. Only the removed whole-order dispatch ever wrote it, so both serializers now leave it out; the column is kept so existing data is not destroyed. |
+| `shortfall_reason` | CharField(200) | set when shipping short (read-only, and likewise only reachable via whole-order dispatch) |
 | `edit_snapshot` | **JSONField(default=list)** | ★ line-by-line copy for edit rollback |
 | `editing_started_at` | DateTime | null |
 | `notes` | CharField(200) | null |
@@ -964,7 +966,7 @@ return 405, and the roll root would shadow the fabric list.
 | POST | `/{id}/start-edit/` | **IsAgent** | snapshot → EDITING |
 | POST | `/{id}/save-edit/` | **IsAgent** | EDITING→PENDING |
 | POST | `/{id}/set-price/` | IsAgentOrAdmin | `{final_total, reason?}` |
-| POST | `/{id}/dispatch/` | IsAuthenticated | `{allow_partial?, shortfall_reason?, transport_company?, lr_number?}` |
+| ~~POST~~ | ~~`/{id}/dispatch/`~~ | — | **Removed.** Whole-order dispatch no longer exists; a regression test pins the 404. |
 | POST | `/{id}/cancel-edit/` | IsAuthenticated | rollback to snapshot |
 | GET | `/order-ids/` | IsAuthenticated | `[{id, status}]` (admin: excludes DRAFT) |
 | GET | `/my-viewed-ids/` | IsAuthenticated | `number[]` |
@@ -974,7 +976,7 @@ return 405, and the roll root would shadow the fabric list.
 
 **`set-price` rules** (docstring `:384-395`): DRAFT only, for everyone · agent may only **discount**, capped at *live line arithmetic* (recomputed, not read from the stored column, `:432-435`) · admin may set any amount · reason optional · every change audited.
 
-**`dispatch` rules**: status must be PENDING or PACKED · if any line is short and `allow_partial` is falsy → 400 with `unallocated_lines[]` + `hint` · if short, `shortfall_reason` is mandatory · **no stock movement** (cloth already left the roll; the unallocated remainder never left).
+**`dispatch` rules** — now per bundle, on `PackingBundleViewSet.dispatch` (`/{order_id}/bundles/{pk}/dispatch/`): the bundle must exist, belong to the order, and be `SEALED` and not yet dispatched · **`transport_company` is optional and order-level** — the *first* dispatch picks it, later dispatches inherit it and a mismatched value is rejected rather than silently overwriting the load · the order's own status is re-derived by `sync_order_after_dispatch` after every dispatch, so shipping some boxes and not others is a normal state, not an error · **no stock movement** (cloth already left the roll when it was packed; dispatch only records that the bundle left).
 
 ### 6.7 Packing — `/api/orders/packing-rounds/` (all **IsAdmin**)
 
@@ -1006,7 +1008,7 @@ roll instead of only quoting a total.
 | GET | `/` | IsAdmin | `{order_summary:{draft,pending,editing,packed,dispatched}, agents:[{agent,customers,pending_orders}]}` |
 | GET | `/analytics/?from=&to=` | IsAdmin | `{kpis, trend, top_customers, top_agents, top_fabrics, time_metrics}` |
 
-Analytics excludes DRAFT from all totals/trends/top-lists (WIP must not distort the numbers) but keeps `kpis.draft` for the status donut. Revenue uses `Coalesce("final_total", "computed_total")` so an admin's override counts. `time_metrics` (avg/median dispatch hours, % within 24 h) is computed in **Python with an N+1 query per dispatched order** (`views.py:~180-190`).
+Analytics excludes DRAFT from all totals/trends/top-lists (WIP must not distort the numbers) but keeps `kpis.draft` for the status donut. `kpis` also reports `partially_dispatched`, since under bundle dispatch a partly-shipped order is a real state that a single `dispatched` count would hide. Revenue uses `Coalesce("final_total", "computed_total")` so an admin's override counts. `time_metrics` (avg/median dispatch hours, % within 24 h) is computed in **Python with an N+1 query per dispatched order** (`views.py:~180-190`).
 
 ### 6.9 Admins, Business, Transports, Notification
 
@@ -1337,7 +1339,7 @@ Regression-locked by `tests/lib/apiMultipart.test.ts` (72) and `tests/lib/fabric
 
 **Hand-written — the actual signal:** `allocation.py` (the intellectual centre), `stock.py`, `pricing.py`, `packing_views.py`, `PackingRound`/`Allocation`, `_build_snapshot`/`_restore_snapshot`/`_may_touch`/`_reap_stale_drafts`, `items/services.py`, `items/signals.py`, `AgentItemTransferView`/`AgentItemCopyView`, `dashboard/views.py`, `notification/`, and on the frontend `PackingBoard.tsx`, `packingSplit.ts`, `priceOverride.ts`, `PriceOverrideDialog.tsx`, `draftOrder.ts`, `inventorySummary.ts`, `roundMetres`, `form-utils.ts`, `updateItem.ts`, `toast.ts`, `bulk-import/page.tsx` (855), `InvoicePdf.tsx`, `QRPageContent.tsx`, `ItemAssignment.tsx`, and all 12 files in `components/ui/custom/` (hand-rolled, none from shadcn).
 
-**Strongest originality signal: the test suite** — ~9,000 lines encoding *business invariants*, not framework coverage: `test_placing_does_not_move_stock`, `test_oversubscribed_order_is_placed_with_a_warning`, `test_dispatch_blocked_while_unallocated`, `test_deleting_a_packed_order_returns_its_cloth`, `test_generic_patch_cannot_reach_the_total`, `test_posting_the_order_total_clears_an_override`.
+**Strongest originality signal: the test suite** — ~9,000 lines encoding *business invariants*, not framework coverage: `test_placing_does_not_move_stock`, `test_oversubscribed_order_is_placed_with_a_warning`, `test_dispatching_one_bundle_leaves_the_order_partially_dispatched`, `test_deleting_a_packed_order_returns_its_cloth`, `test_generic_patch_cannot_reach_the_total`, `test_posting_the_order_total_clears_an_override`.
 
 **Net:** the custom work is essentially commits `1b270f8` + `55a916e` + `efa6644` — ~12,000 insertions in a 36-hour window by one developer.
 

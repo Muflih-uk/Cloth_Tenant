@@ -325,7 +325,36 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = "__all__"
+        # Spelled out rather than "__all__" so `lr_number` can be left off. It was
+        # only ever written by the whole-order dispatch that bundle dispatch
+        # replaced, and a lorry receipt belongs to a load rather than to an order,
+        # so advertising a field nothing reads or sets helps nobody.
+        fields = [
+            "id",
+            "customer",
+            "customer_details",
+            "agent",
+            "agent_details",
+            "created_by",
+            "status",
+            "items",
+            "totals",
+            "is_price_overridden",
+            "computed_total",
+            "final_total",
+            "price_override_reason",
+            "price_overridden_by",
+            "price_overridden_at",
+            "expected_delivery_date",
+            "preferred_transport",
+            "transport_company",
+            "shortfall_reason",
+            "edit_snapshot",
+            "editing_started_at",
+            "notes",
+            "created_at",
+            "dispatched_at",
+        ]
         # Money and lifecycle are server-owned. The total is reachable only via
         # SetOrderPriceView, which caps an agent at the line arithmetic, allows
         # the change on drafts only, and writes an audit entry. Leaving these
@@ -434,6 +463,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
+        # No `lr_number`: dispatch is done a sealed bundle at a time, and a lorry
+        # receipt belongs to the load rather than to the order. Nothing in the API
+        # sets it or reads it any more, so it is left out of the surface entirely
+        # rather than advertised as something callers may send.
         fields = [
             "id",
             "customer",
@@ -444,7 +477,6 @@ class InvoiceSerializer(serializers.ModelSerializer):
             "items",
             "totals",
             "gst_rate",
-            "lr_number",
             "notes",
         ]
 

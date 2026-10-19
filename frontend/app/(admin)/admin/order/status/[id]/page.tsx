@@ -184,7 +184,6 @@ className="border-red-200 text-red-500 hover:bg-red-500 hover:text-white transit
                   Number(transport.value) == data?.transport_company,
               )?.label ?? ""
             }
-            lrNumber={data?.lr_number ?? ""}
             notes={data?.notes ?? ""}
           />
         )}

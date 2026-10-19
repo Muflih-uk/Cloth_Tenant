@@ -15,8 +15,6 @@ export interface AdminRequest {
   email: string;
   password: string;
   display_name?: string;
-  business?: Business | null;
-  brand_id?: number | null;
 }
 
 export interface AdminUpdateRequest {

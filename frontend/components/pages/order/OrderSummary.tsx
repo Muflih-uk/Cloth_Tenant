@@ -10,7 +10,6 @@ interface OrderSummaryProps {
   preferredTransport?: string;
   expectedDeliveryDate?: string;
   dispatchTransport?: string;
-  lrNumber?: string;
   notes?: string;
 }
 
@@ -18,13 +17,11 @@ function DeliverySummary({
   expectedDeliveryDate,
   preferredTransport,
   dispatchTransport,
-  lrNumber,
   notes,
 }: {
   expectedDeliveryDate?: string;
   preferredTransport?: string;
   dispatchTransport?: string;
-  lrNumber?: string;
   notes?: string;
 }) {
   return (
@@ -58,41 +55,16 @@ function DeliverySummary({
           </h3>
         </div>
       )}
-      {/* Dispatch Card */}
-      {(dispatchTransport || lrNumber) && (
-        <div className="w-full rounded-2xl border border-primary/20 bg-primary/5 p-4 flex flex-col gap-4">
-          {dispatchTransport && (
-            <p className="text-[14px] text-gray-500 font-medium">
-              Transported by{" "}
-              <span className="text-[14px] font-semibold text-gray-800">
-                {dispatchTransport}
-              </span>
-            </p>
-          )}
-
-          {dispatchTransport && lrNumber && (
-            <div className="h-px bg-primary/10 w-full" />
-          )}
-
-          {lrNumber && (
-            <button
-              type="button"
-              onClick={() => navigator.clipboard.writeText(lrNumber)}
-              className="w-full rounded-xl bg-white border border-primary/15 px-4 py-4 flex flex-col items-center gap-1 transition-all hover:bg-primary/10 hover:border-primary/30 active:scale-[0.98] shadow-sm"
-            >
-              <p className="text-[10px] text-primary uppercase font-bold tracking-[0.2em]">
-                LR Number
-              </p>
-              <h3 className="text-2xl font-extrabold tracking-wide text-gray-900 break-all leading-tight">
-                {lrNumber}
-              </h3>
-              <p className="text-[10px] text-gray-400 font-medium flex items-center gap-1 mt-1">
-                Tap to copy
-              </p>
-            </button>
-          )}
+      {dispatchTransport && (
+        <div className="w-full rounded-2xl border border-primary/20 bg-primary/5 p-4">
+          <p className="text-[14px] text-gray-500 font-medium">
+            Transported by{" "}
+            <span className="text-[14px] font-semibold text-gray-800">
+              {dispatchTransport}
+            </span>
+          </p>
         </div>
-      )}{" "}
+      )}
     </div>
   );
 }
@@ -105,7 +77,6 @@ export default function OrderSummary({
   preferredTransport,
   expectedDeliveryDate,
   dispatchTransport,
-  lrNumber,
   notes,
 }: OrderSummaryProps) {
   return (
@@ -159,7 +130,6 @@ export default function OrderSummary({
         expectedDeliveryDate={expectedDeliveryDate}
         preferredTransport={preferredTransport}
         dispatchTransport={dispatchTransport}
-        lrNumber={lrNumber}
         notes={notes}
       />
     </div>

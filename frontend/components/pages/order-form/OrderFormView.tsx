@@ -10,16 +10,9 @@ import { formatMeters, toMeters } from "@/types/item";
 interface OrderFormProps
   extends Pick<
     InvoiceResponse,
-    | "id"
-    | "customer"
-    | "agent"
-    | "brand"
-    | "created_at"
-    | "items"
-    | "totals"
-    | "lr_number"
+    "id" | "customer" | "agent" | "brand" | "created_at" | "items" | "totals"
   > {
-    invoiceRef?: RefObject<HTMLDivElement | null>;
+  invoiceRef?: RefObject<HTMLDivElement | null>;
 }
 
 const INK = "#0f1f3d";
@@ -54,7 +47,6 @@ export default function OrderForm({
     items,
     totals,
     invoiceRef,
-    lr_number,
 }: OrderFormProps) {
     // The API sends the effective total with any override and GST already
     // folded in, so the payable figure is used verbatim.
@@ -130,11 +122,7 @@ export default function OrderForm({
                             {formatTime(created_at)}
                         </span>
                     </p>
-                    {lr_number && (
-                        <p>
-                            LR No : <span className="font-bold">{lr_number}</span>
-                        </p>
-                    )}
+                    
                 </div>
             </div>
 
