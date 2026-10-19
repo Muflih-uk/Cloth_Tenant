@@ -946,6 +946,9 @@ describe("PackingBundlePanel dispatching a bundle", () => {
 
     await waitFor(() => expect(listBundles).toHaveBeenCalled());
     expect(dispatchButtons()).toHaveLength(2);
+    expect(dispatchButtons()[0].parentElement?.className).toContain(
+      "grid-cols-2",
+    );
   });
 
   it("offers nothing on a bundle that has already gone out", async () => {

@@ -698,12 +698,12 @@ export default function PackingBundlePanel({
                         : "Dispatched"}
                     </span>
                   )}
-                  <span className="ml-auto flex items-center gap-1.5">
+                  <span className="grid w-full grid-cols-2 gap-1.5 sm:ml-auto sm:flex sm:w-auto">
                     <button
                       type="button"
                       onClick={() => toggleExpanded(bundle.id)}
                       aria-expanded={expanded[bundle.id] === true}
-                      className="flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-[10px] font-bold text-gray-500 transition-colors hover:bg-gray-50"
+                      className="flex min-w-0 items-center justify-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-center text-[10px] font-bold text-gray-500 transition-colors hover:bg-gray-50"
                     >
                       {expanded[bundle.id] ? (
                         <ChevronDown size={11} />
@@ -716,7 +716,7 @@ export default function PackingBundlePanel({
                       type="button"
                       onClick={() => handleSlipPrint(bundle)}
                       disabled={busy}
-                      className="flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-[10px] font-bold text-gray-500 transition-colors hover:bg-gray-50 disabled:opacity-50"
+                      className="flex min-w-0 items-center justify-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-center text-[10px] font-bold text-gray-500 transition-colors hover:bg-gray-50 disabled:opacity-50"
                     >
                       <Printer size={11} />
                       Print slip
@@ -725,7 +725,7 @@ export default function PackingBundlePanel({
                       type="button"
                       onClick={() => handleSlipDownload(bundle)}
                       disabled={busy}
-                      className="flex items-center gap-1 rounded-lg bg-gray-900 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-gray-700 disabled:opacity-50"
+                      className="flex min-w-0 items-center justify-center gap-1 rounded-lg bg-gray-900 px-2 py-1 text-center text-[10px] font-bold text-white transition-colors hover:bg-gray-700 disabled:opacity-50"
                     >
                       <Download size={11} />
                       Download slip
@@ -739,7 +739,7 @@ export default function PackingBundlePanel({
                         type="button"
                         onClick={() => handleDispatchClick(bundle)}
                         disabled={busy}
-                        className="flex items-center gap-1 rounded-lg bg-green-600 px-2 py-1 text-[10px] font-bold text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+                        className="flex min-w-0 items-center justify-center gap-1 rounded-lg bg-green-600 px-2 py-1 text-center text-[10px] font-bold text-white transition-colors hover:bg-green-700 disabled:opacity-50"
                       >
                         <Truck size={11} />
                         Dispatch
