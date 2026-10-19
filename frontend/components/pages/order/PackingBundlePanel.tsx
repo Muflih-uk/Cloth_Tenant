@@ -98,7 +98,7 @@ function BundleLineList({
         return (
           <li
             key={share.itemId}
-            className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2"
+            className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-2 py-2 sm:px-3"
           >
             <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
               {line?.variant_image ? (
@@ -496,7 +496,7 @@ export default function PackingBundlePanel({
   };
 
   return (
-    <section className="mb-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+    <section className="mb-4 rounded-2xl border border-amber-200 bg-amber-50/60 px-3 py-4 sm:p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="flex items-center gap-1.5 text-sm font-extrabold text-amber-900">
@@ -558,7 +558,7 @@ export default function PackingBundlePanel({
               {openBundle.rolls.map((roll) => (
                 <li
                   key={roll.id}
-                  className="flex items-center gap-2 rounded-xl border border-amber-200 bg-white px-3 py-2"
+                  className="flex items-center gap-2 rounded-xl border border-amber-200 bg-white px-2 py-2 sm:px-3"
                 >
                   <span className="w-20 shrink-0 font-mono text-[11px] font-bold text-gray-900">
                     {roll.roll_number}
@@ -673,7 +673,7 @@ export default function PackingBundlePanel({
             {sealedBundles.map((bundle) => (
               <li
                 key={bundle.id}
-                className="rounded-xl border border-gray-200 bg-white px-3 py-2"
+                className="rounded-xl border border-gray-200 bg-white px-2 py-2 sm:px-3"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-[11px] font-bold text-gray-900">
@@ -770,7 +770,7 @@ export default function PackingBundlePanel({
             {packedByHand.map((line) => (
               <li
                 key={line.id}
-                className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2"
+                className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-2 py-2 sm:px-3"
               >
                 <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
                   {line.variant_image ? (

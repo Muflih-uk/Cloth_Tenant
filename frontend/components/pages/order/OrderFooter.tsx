@@ -59,7 +59,7 @@ export default function OrderFooter({
     return (
       <div className="fixed bottom-6 left-0 right-0 px-4 max-w-4xl mx-auto">
         <div
-          className={`rounded-2xl px-5 py-3 flex items-center gap-2 text-sm font-bold ${
+          className={`rounded-2xl px-3 py-3 sm:px-5 flex items-center gap-2 text-sm font-bold ${
             fullyPacked
               ? "bg-blue-50 text-blue-800 border border-blue-200"
               : "bg-amber-50 text-amber-800 border border-amber-200"
@@ -93,7 +93,7 @@ export default function OrderFooter({
     if (allocatedMeters > 0) {
       return (
         <div className="fixed bottom-6 left-0 right-0 px-4 max-w-4xl mx-auto">
-          <div className="bg-amber-50 text-amber-800 border border-amber-200 rounded-2xl px-5 py-3 flex items-center gap-2 text-sm font-bold">
+          <div className="bg-amber-50 text-amber-800 border border-amber-200 rounded-2xl px-3 py-3 sm:px-5 flex items-center gap-2 text-sm font-bold">
             <Info size={18} className="flex-shrink-0" />
             {formatMeters(allocatedMeters)} m packed, rest is still owed
           </div>

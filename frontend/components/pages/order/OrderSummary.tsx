@@ -56,7 +56,7 @@ function DeliverySummary({
         </div>
       )}
       {dispatchTransport && (
-        <div className="w-full rounded-2xl border border-primary/20 bg-primary/5 p-4">
+        <div className="w-full rounded-2xl border border-primary/20 bg-primary/5 px-3 py-4 sm:p-4">
           <p className="text-[14px] text-gray-500 font-medium">
             Transported by{" "}
             <span className="text-[14px] font-semibold text-gray-800">
@@ -80,11 +80,11 @@ export default function OrderSummary({
   notes,
 }: OrderSummaryProps) {
   return (
-    <div className="flex flex-col bg-white border border-gray-100 rounded-2xl p-5 mb-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] gap-y-4">
+    <div className="flex flex-col bg-white border border-gray-100 rounded-2xl px-3 py-5 sm:p-5 mb-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] gap-y-4">
       <h2 className="text-xl font-extrabold text-gray-900 mb-4">
         Order Summary
       </h2>
-      <div className="grid grid-cols-2 gap-y-4 gap-x-6 border-b pb-4">
+      <div className="grid grid-cols-2 gap-y-4 gap-x-4 sm:gap-x-6 border-b pb-4">
         <div>
           <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">
             Customer
