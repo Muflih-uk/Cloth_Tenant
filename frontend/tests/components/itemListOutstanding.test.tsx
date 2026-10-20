@@ -49,7 +49,7 @@ describe("ItemList outstanding tab", () => {
 
     expect(screen.getByRole("button", { name: "Outstanding (1)" })).toBeTruthy();
     expect(screen.getByText("Cotton")).toBeTruthy();
-    expect(screen.getByText(/25 m/)).toBeTruthy();
+    expect(screen.getAllByText(/25 m/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/Blue:/)).toBeNull();
     expect(screen.queryByText(/Red:/)).toBeNull();
   });

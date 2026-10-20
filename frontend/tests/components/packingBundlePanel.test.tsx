@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import PackingBundlePanel from "@/components/pages/order/PackingBundlePanel";
 import { packingApi } from "@/lib/api/order";
+import { brandApi } from "@/lib/api/brand";
 import { transportApi } from "@/lib/api/transport";
 import type {
   OrderItem,
@@ -32,6 +33,10 @@ vi.mock("@/lib/api/order", () => ({
 /** Transport companies, loaded only when a dispatch actually needs a choice. */
 vi.mock("@/lib/api/transport", () => ({
   transportApi: { getActive: vi.fn() },
+}));
+
+vi.mock("@/lib/api/brand", () => ({
+  brandApi: { getAll: vi.fn() },
 }));
 
 /**
@@ -91,6 +96,7 @@ vi.mock("@/components/items/QRScanModal", () => ({
 }));
 
 const listBundles = vi.mocked(packingApi.listBundles);
+const getBrands = vi.mocked(brandApi.getAll);
 const createBundle = vi.mocked(packingApi.createBundle);
 const scanIntoBundle = vi.mocked(packingApi.scanIntoBundle);
 const removeRollFromBundle = vi.mocked(packingApi.removeRollFromBundle);
@@ -187,6 +193,21 @@ beforeEach(() => {
     toBlob: async () => new Blob(["pdf"]),
   }));
   listBundles.mockResolvedValue([]);
+  getBrands.mockResolvedValue([
+    {
+      id: 1,
+      name: "Example Textiles",
+      phone: "+91 98765 43210",
+      email: "hello@example.test",
+      address_line1: "12 Market Road",
+      address_line2: "Coimbatore",
+      logo: "/media/brand/logo.png",
+      logo_url: "https://example.test/logo.png",
+      gst: "GSTIN123",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    },
+  ]);
   // jsdom has no object-URL support; the panel only needs it to not throw.
   vi.stubGlobal("URL", {
     ...URL,
@@ -569,9 +590,13 @@ describe("PackingBundlePanel packing a second bundle", () => {
     await waitFor(() => expect(pdfMock).toHaveBeenCalledTimes(1));
     // The document handed to the renderer carries the bundle it was asked for, so
     // the second box's sheet cannot print the first box's roll.
-    const doc = pdfMock.mock.calls[0][0] as { props: { bundle: PackingBundle } };
+    const doc = pdfMock.mock.calls[0][0] as {
+      props: { bundle: PackingBundle; brand: { name: string; logo_url: string } };
+    };
     expect(doc.props.bundle.code).toBe("Order #5 -- Bundle 2");
     expect(doc.props.bundle.rolls.map((r) => r.roll_number)).toEqual(["NAT-0002"]);
+    expect(doc.props.brand.name).toBe("Example Textiles");
+    expect(doc.props.brand.logo_url).toBe("https://example.test/logo.png");
   });
 
   it("does not offer to create a bundle while one is still open", async () => {

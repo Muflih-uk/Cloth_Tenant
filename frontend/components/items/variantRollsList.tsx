@@ -175,7 +175,6 @@ export default function VariantRollsList({ variantId, label }: Props) {
           rolls={activeRolls}
           fabric={data.fabric || label}
           displayOrder={data.display_order}
-          pricePerMeter={data.price_per_meter}
           onClose={() => setPrinting(false)}
         />
       )}
@@ -185,7 +184,6 @@ export default function VariantRollsList({ variantId, label }: Props) {
           roll={printingRoll}
           fabric={data.fabric || label}
           displayOrder={data.display_order}
-          pricePerMeter={data.price_per_meter}
           onClose={() => setPrintingRoll(null)}
         />
       )}

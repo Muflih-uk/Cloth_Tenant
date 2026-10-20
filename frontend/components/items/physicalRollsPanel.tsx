@@ -421,7 +421,6 @@ export default function PhysicalRollsPanel({
           roll={labelFor}
           fabric={data.fabric || label}
           displayOrder={data.display_order}
-          pricePerMeter={data.price_per_meter}
           onClose={() => setLabelFor(null)}
         />
       )}

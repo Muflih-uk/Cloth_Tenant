@@ -13,6 +13,7 @@ export default function AdminLayout({
     const pathname = usePathname();
     const isStatusPage = pathname.includes("/admin/order/status/");
     const isNewOrderPage = pathname.includes("/admin/order/new");
+    const isItemQrPrintPage = pathname.includes("/admin/items/qr-print");
     // The packing board is a focused, full-height workflow: it has its own
     // header and a sticky action bar, so it takes the screen on its own.
     const isPackingBoard = pathname.includes("/admin/packing/");
@@ -22,6 +23,7 @@ export default function AdminLayout({
         pathname.includes("/admin/settings/brands") ||
         isStatusPage ||
         isNewOrderPage ||
+        isItemQrPrintPage ||
         isPackingBoard;
 
     return (

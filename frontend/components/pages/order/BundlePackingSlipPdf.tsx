@@ -1,8 +1,16 @@
 "use client";
 
-import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
+import {
+  Document,
+  Image,
+  Page,
+  StyleSheet,
+  Text,
+  View,
+} from "@react-pdf/renderer";
 
 import type { PackingBundle } from "@/types/order";
+import type { Brand } from "@/types/brand";
 
 /**
  * The sheet that goes into the box.
@@ -19,6 +27,7 @@ import type { PackingBundle } from "@/types/order";
  */
 interface BundlePackingSlipPdfProps {
   bundle: PackingBundle;
+  brand: Brand | null;
 }
 
 const styles = StyleSheet.create({
@@ -35,6 +44,33 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: "#111827",
+  },
+  companyHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingBottom: 12,
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#d1d5db",
+  },
+  companyLogo: {
+    width: 58,
+    height: 48,
+    marginRight: 12,
+    objectFit: "contain",
+  },
+  companyDetails: {
+    flexGrow: 1,
+  },
+  companyName: {
+    fontSize: 14,
+    fontWeight: 800,
+    marginBottom: 3,
+  },
+  companyDetail: {
+    fontSize: 8,
+    color: "#4b5563",
+    marginTop: 2,
   },
   title: {
     fontSize: 17,
@@ -181,16 +217,54 @@ const metres = (value: string) => `${Number(value).toFixed(3)} m`;
 const dateOnly = (iso: string | null) =>
   iso ? iso.slice(0, 10) : "-";
 
-export function BundlePackingSlipPdf({ bundle }: BundlePackingSlipPdfProps) {
+export function BundlePackingSlipPdf({
+  bundle,
+  brand,
+}: BundlePackingSlipPdfProps) {
   const rolls = bundle.rolls;
 
   return (
     <Document
       title={bundle.code}
-      author="Stock Flow"
+      author={brand?.name || "Stock Flow"}
       subject={`Packing slip for ${bundle.customer}`}
     >
       <Page size="A4" style={styles.page}>
+        {brand && (
+          <View style={styles.companyHeader}>
+            {brand.logo_url ? (
+              <>
+                {/* react-pdf's Image component does not expose an alt prop. */}
+                {/* eslint-disable-next-line jsx-a11y/alt-text */}
+                <Image src={brand.logo_url} style={styles.companyLogo} />
+              </>
+            ) : null}
+            <View style={styles.companyDetails}>
+              {brand.name ? (
+                <Text style={styles.companyName}>{brand.name}</Text>
+              ) : null}
+              {brand.address_line1 ? (
+                <Text style={styles.companyDetail}>
+                  {brand.address_line1}
+                </Text>
+              ) : null}
+              {brand.address_line2 ? (
+                <Text style={styles.companyDetail}>
+                  {brand.address_line2}
+                </Text>
+              ) : null}
+              {brand.phone ? (
+                <Text style={styles.companyDetail}>Phone: {brand.phone}</Text>
+              ) : null}
+              {brand.email ? (
+                <Text style={styles.companyDetail}>{brand.email}</Text>
+              ) : null}
+              {brand.gst ? (
+                <Text style={styles.companyDetail}>GST: {brand.gst}</Text>
+              ) : null}
+            </View>
+          </View>
+        )}
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>Packing Slip</Text>

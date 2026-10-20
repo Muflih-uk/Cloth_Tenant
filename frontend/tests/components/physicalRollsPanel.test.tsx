@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import PhysicalRollsPanel from "@/components/items/physicalRollsPanel";
+import { RollLabelsDialog } from "@/components/items/rollLabelDialog";
 import { rollApi } from "@/lib/api/item";
 import type { VariantRollsResponse } from "@/types/item";
 
@@ -34,8 +35,12 @@ const QR_DATA_URL = "data:image/png;base64,AAAA";
  * leaves `mockResolvedValue` on the wrong overload.
  */
 const toDataURL = vi.hoisted(() => vi.fn<(text: string) => Promise<string>>());
+const getBrands = vi.hoisted(() => vi.fn());
 
 vi.mock("qrcode", () => ({ default: { toDataURL } }));
+vi.mock("@/lib/api/brand", () => ({
+  brandApi: { getAll: getBrands },
+}));
 
 const getForVariant = vi.mocked(rollApi.getForVariant);
 const receive = vi.mocked(rollApi.receive);
@@ -98,6 +103,9 @@ beforeEach(() => {
   getForVariant.mockResolvedValue(rollsResponse());
   // Set here rather than in the mock factory because clearing wipes it.
   toDataURL.mockResolvedValue(QR_DATA_URL);
+  getBrands.mockResolvedValue([
+    { logo_url: "https://example.test/company-logo.png" },
+  ]);
 });
 
 /** The panel starts collapsed, so anything below the summary needs opening. */
@@ -284,7 +292,7 @@ describe("PhysicalRollsPanel", () => {
     expect(screen.getByRole("button", { name: /receive rolls/i })).toBeTruthy();
   });
 
-  it("prints a label carrying the roll's own id, its length and its value", async () => {
+  it("shows a roll label without price details", async () => {
     render(<PhysicalRollsPanel variantId={7} label="Cotton Cambric" />);
 
     await waitFor(() => screen.getByText(/2 rolls/i));
@@ -293,13 +301,11 @@ describe("PhysicalRollsPanel", () => {
       screen.getByRole("button", { name: /print label for NAT-0001/i }),
     );
 
-    // The label names the roll, the colour and what it is worth: 100 m received at
-    // Rs. 9.00/m, so the label says 900 even though 60 m has since been cut off.
     expect(await screen.findByText("NAT-0001 label")).toBeTruthy();
     expect(screen.getByText("Cotton Cambric")).toBeTruthy();
     expect(screen.getByText("Color #Natural")).toBeTruthy();
-    expect(screen.getByText("Rs. 900.00")).toBeTruthy();
-    expect(screen.getByText("Rs. 9.00/m × 100 m")).toBeTruthy();
+    expect(screen.getByText("100 m")).toBeTruthy();
+    expect(screen.queryByText(/Rs\./)).toBeNull();
   });
 
   it("puts the scanned roll's id in the label's QR code", async () => {
@@ -321,7 +327,15 @@ describe("PhysicalRollsPanel", () => {
   });
 
   it("sends the browser print dialog for the label", async () => {
-    const print = vi.spyOn(window, "print").mockImplementation(() => {});
+    const write = vi.fn();
+    const printWindow = {
+      document: {
+        open: vi.fn(),
+        write,
+        close: vi.fn(),
+      },
+    } as unknown as Window;
+    const open = vi.spyOn(window, "open").mockReturnValue(printWindow);
     render(<PhysicalRollsPanel variantId={7} label="Cotton Cambric" />);
 
     await waitFor(() => screen.getByText(/2 rolls/i));
@@ -333,8 +347,64 @@ describe("PhysicalRollsPanel", () => {
     const button = await screen.findByRole("button", { name: /^Print label$/i });
     await userEvent.click(button);
 
-    expect(print).toHaveBeenCalled();
-    print.mockRestore();
+    expect(open).toHaveBeenCalledWith(
+      "",
+      "_blank",
+      "popup,width=420,height=560",
+    );
+    const html = write.mock.calls[0][0] as string;
+    expect(html.match(/<article class="label">/g)).toHaveLength(1);
+    expect(html).toContain("@page { size: 80mm 100mm; margin: 0; }");
+    expect(html).toContain('src="data:image/png;base64,AAAA"');
+    expect(html).toContain(
+      'class="logo" src="https://example.test/company-logo.png"',
+    );
+    expect(html).toContain("NAT-0001");
+    expect(html).not.toContain("Rs.");
+    open.mockRestore();
+  });
+
+  it("prints one scrollable label per roll in bulk", async () => {
+    const write = vi.fn();
+    const printWindow = {
+      document: {
+        open: vi.fn(),
+        write,
+        close: vi.fn(),
+      },
+    } as unknown as Window;
+    const open = vi.spyOn(window, "open").mockReturnValue(printWindow);
+    render(
+      <RollLabelsDialog
+        rolls={rollsResponse().rolls}
+        fabric="Cotton Cambric"
+        displayOrder="Natural"
+        onClose={vi.fn()}
+      />,
+    );
+
+    const printButton = await screen.findByRole("button", {
+      name: /print 2 labels/i,
+    });
+    expect(document.querySelector(".roll-label-dialog")?.className).toContain(
+      "overflow-y-auto",
+    );
+    expect(document.querySelector(".roll-label-dialog")?.className).toContain(
+      "max-h-[calc(100dvh-2rem)]",
+    );
+    expect(document.querySelector(".roll-label-overlay")?.className).toContain(
+      "z-[60]",
+    );
+    expect(printButton.parentElement?.className).toContain("sticky");
+    await userEvent.click(printButton);
+
+    const html = write.mock.calls[0][0] as string;
+    expect(html.match(/<article class="label">/g)).toHaveLength(2);
+    expect(html).toContain("NAT-0001");
+    expect(html).toContain("NAT-0002");
+    expect(html.match(/class="logo"/g)).toHaveLength(2);
+    expect(html).not.toContain("Rs.");
+    open.mockRestore();
   });
 });
 

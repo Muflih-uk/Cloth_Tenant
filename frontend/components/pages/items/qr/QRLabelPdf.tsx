@@ -30,38 +30,50 @@ const styles = StyleSheet.create({
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    gap: 3,
+    gap: 2,
     backgroundColor: "#fff",
   },
   name: {
-    fontSize: 12,
+    fontSize: 8,
     fontWeight: 800,
     textAlign: "center",
+    maxLines: 2,
+    textOverflow: "ellipsis",
   },
   variant: {
-    fontSize: 11,
+    fontSize: 7,
     padding: 2,
     fontWeight: 600,
+    textAlign: "center",
+    maxLines: 1,
+    textOverflow: "ellipsis",
   },
   price: {
-    fontSize: 11,
+    fontSize: 9,
     fontWeight: 800,
   },
   qr: {
-    width: 60,
-    height: 60,
+    width: 56,
+    height: 56,
   },
 });
 
-export const QRLabelPdf = ({ item, qrImages, id }: QRLabelPdfProps) => (
+export const QRLabelPdf = ({ item, qrImages }: QRLabelPdfProps) => (
   <Document>
-    {item.variants.map((variant, index) => {
+    {item.variants.map((variant) => {
       return (
-        <Page key={variant.id} size={[70.87, 141.73]} style={styles.page}>
+        <Page
+          key={variant.id}
+          size={[70.87, 141.73]}
+          style={styles.page}
+          wrap={false}
+        >
           <Text style={styles.name}>{item.name}</Text>
-          {variant.display_order ? (
-            <Text style={styles.variant}>Color #{variant.display_order}</Text>
-          ) : null}
+          <Text style={styles.variant}>
+            {variant.display_order
+              ? `Color #${variant.display_order}`
+              : `Color #${variant.id}`}
+          </Text>
           <View>
             {/* eslint-disable-next-line*/}
             <Image src={qrImages[variant.id]} style={styles.qr} />

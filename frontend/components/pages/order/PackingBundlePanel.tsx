@@ -20,6 +20,7 @@ import QRScanModal from "@/components/items/QRScanModal";
 import { ImagePreview } from "@/components/pages/ImagePreview";
 import { BundlePackingSlipPdf } from "@/components/pages/order/BundlePackingSlipPdf";
 import { packingApi } from "@/lib/api/order";
+import { brandApi } from "@/lib/api/brand";
 import { transportApi } from "@/lib/api/transport";
 import { orderItemColorSuffix } from "@/lib/colorLabel";
 import { toastError, toastErrorFromError, toastSuccess } from "@/lib/toast";
@@ -260,9 +261,13 @@ export default function PackingBundlePanel({
    */
   const printSlip = useCallback(
     async (bundle: PackingBundle, download: boolean) => {
+      const brands = await brandApi.getAll();
+      const brand = brands[0] ?? null;
       // The inner await matters: `pdf()` hands back a promise, and `toBlob` lives
       // on what it resolves to.
-      const blob = await (await pdf(<BundlePackingSlipPdf bundle={bundle} />)).toBlob();
+      const blob = await (
+        await pdf(<BundlePackingSlipPdf bundle={bundle} brand={brand} />)
+      ).toBlob();
       const url = URL.createObjectURL(blob);
       if (download) {
         const anchor = document.createElement("a");
