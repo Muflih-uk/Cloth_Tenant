@@ -90,7 +90,7 @@ def _variants_with_availability():
 
 def _total_stock(qs):
     return FabricVariant.objects.filter(fabric__in=qs).aggregate(
-        total=Sum("stock_meters")
+        total=Sum(F("stock_meters") + F("untracked_stock_meters"))
     )["total"] or ZERO
 
 
@@ -140,6 +140,13 @@ def _sync_fabrics_payload(request, qs, page, page_size):
                             else None
                         ),
                         "stock_meters": str(variant.stock_meters),
+                        "base_opening": str(variant.base_opening),
+                        "untracked_stock_meters": str(
+                            variant.untracked_stock_meters
+                        ),
+                        "is_roll_tracked": variant.is_roll_tracked,
+                        "roll_stock_meters": str(variant.stock_meters),
+                        "available_meters": str(variant.available_to_order),
                         "stock_updated_at": variant.stock_updated_at.isoformat(),
                     }
                     for variant in variants
@@ -150,12 +157,17 @@ def _sync_fabrics_payload(request, qs, page, page_size):
 
 
 def _sync_stock_payload(since, active_ids):
-    """Variants whose metre stock moved since the cursor."""
+    """Variants whose physical stock moved since the cursor."""
     rows = FabricVariant.objects.filter(
         stock_updated_at__gt=since, fabric__in=active_ids
-    ).values_list("id", "stock_meters")
+    ).values_list("id", "stock_meters", "untracked_stock_meters")
     return [
-        {"variant_id": vid, "stock_meters": str(stock)} for vid, stock in rows
+        {
+            "variant_id": vid,
+            "stock_meters": str(stock),
+            "untracked_stock_meters": str(untracked),
+        }
+        for vid, stock, untracked in rows
     ]
 
 
@@ -164,7 +176,10 @@ class FabricViewSet(ModelViewSet):
 
     def get_queryset(self):
         return _active_fabrics().annotate(
-            _total_stock=Sum("variants__stock_meters")
+            _total_stock=Sum(
+                F("variants__stock_meters")
+                + F("variants__untracked_stock_meters")
+            )
         ).order_by("-id")
 
     def get_permissions(self):
@@ -217,10 +232,13 @@ class FabricViewSet(ModelViewSet):
                                 else None
                             ),
                             "stock_meters": str(variant.stock_meters),
-                            # What is still orderable, so the Inventory page shows
-                            # the figure that drops as orders are placed rather
-                            # than only the shelf total.
+                            "base_opening": str(variant.base_opening),
+                            "untracked_stock_meters": str(
+                                variant.untracked_stock_meters
+                            ),
                             "available_meters": str(variant.available_to_order),
+                            "is_roll_tracked": variant.is_roll_tracked,
+                            "roll_stock_meters": str(variant.stock_meters),
                         }
                         for variant in variants
                     ],
@@ -376,6 +394,10 @@ class FabricViewSet(ModelViewSet):
                         ),
                         "display_order": v.display_order,
                         "stock_meters": str(v.stock_meters),
+                        "base_opening": str(v.base_opening),
+                        "untracked_stock_meters": str(v.untracked_stock_meters),
+                        "is_roll_tracked": v.is_roll_tracked,
+                        "roll_stock_meters": str(v.stock_meters),
                         "available_meters": str(v.available_to_order),
                     }
                     for v in variants
@@ -429,6 +451,9 @@ class FabricViewSet(ModelViewSet):
                     "fabric_id": variant.fabric_id,
                     "display_order": variant.display_order,
                     "stock_meters": str(variant.stock_meters),
+                    "untracked_stock_meters": str(
+                        variant.untracked_stock_meters
+                    ),
                     "outstanding_meters": str(wanted),
                     "is_backordered": wanted > variant.stock_meters,
                 }
@@ -732,8 +757,11 @@ class FabricVariantViewSet(ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="all")
     def get_all_variants(self, request):
+        from apps.orders.stock import variants_with_committed_demand
+
         variants = (
-            FabricVariant.objects.select_related("fabric")
+            variants_with_committed_demand()
+            .select_related("fabric")
             .prefetch_related("rolls")
             .filter(fabric__is_deleted=False)
             .order_by("fabric__name", "display_order")
@@ -754,6 +782,11 @@ class FabricVariantViewSet(ModelViewSet):
                         else None
                     ),
                     "stock_meters": str(variant.stock_meters),
+                    "base_opening": str(variant.base_opening),
+                    "available_meters": str(variant.available_to_order),
+                    "untracked_stock_meters": str(
+                        variant.untracked_stock_meters
+                    ),
                     "stock_updated_at": variant.stock_updated_at.isoformat(),
                     **dict(
                         zip(

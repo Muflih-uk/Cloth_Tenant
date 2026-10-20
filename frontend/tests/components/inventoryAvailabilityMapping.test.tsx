@@ -22,6 +22,7 @@ function entry(available: string): FabricStockEntry {
         qr_code: "FABRICQRCOD",
         image: null,
         display_order: "Natural",
+        base_opening: "3000.000",
         stock_meters: "3000.000",
         available_meters: available,
       },

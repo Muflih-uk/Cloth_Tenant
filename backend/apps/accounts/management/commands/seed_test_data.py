@@ -199,12 +199,14 @@ class Command(BaseCommand):
             )
             colours = random.sample(COLOURS, random.randint(2, 4))
             for colour in colours:
+                stock = Decimal(random.randint(2000, 9000))
                 FabricVariant.objects.create(
                     fabric=fabric,
                     display_order=colour,
                     # Thousands of metres so seeded orders are comfortably
                     # coverable; the allocation tests set their own numbers.
-                    stock_meters=Decimal(random.randint(2000, 9000)),
+                    stock_meters=stock,
+                    base_opening=stock,
                 )
             created.append(fabric)
             self.stdout.write(

@@ -20,21 +20,17 @@ const colour = (over: Partial<ColorVariant> = {}): ColorVariant => ({
 
 describe("buildFabricPayload", () => {
   it("sends the opening figure for a colour with no rolls", () => {
-    // Unchanged behaviour: no rolls key at all, so the API applies the figure
-    // directly and leaves the colour roll-less.
+    // Opening stock initializes the order-stock base and roll-less physical stock.
     const payload = buildFabricPayload(common, [colour()]);
-    expect(payload.variants[0].stock_meters).toBe("1000");
+    expect(payload.variants[0].base_opening).toBe("1000");
     expect(payload.variants[0]).not.toHaveProperty("rolls");
   });
 
-  it("sends the rolls alongside the opening figure", () => {
-    // The figure is still sent, because it is the same field for a roll-less
-    // colour. The API adds the two together and records the figure as a roll of
-    // its own, so both count.
+  it("sends rolls separately from the opening order-stock base", () => {
     const payload = buildFabricPayload(common, [
       colour({ rolls: [{ meters: "500" }, { meters: "450" }] }),
     ]);
-    expect(payload.variants[0].stock_meters).toBe("1000");
+    expect(payload.variants[0].base_opening).toBe("1000");
     expect(payload.variants[0].rolls).toEqual([
       { meters: "500" },
       { meters: "450" },
@@ -58,7 +54,7 @@ describe("buildFabricPayload", () => {
     ]);
     expect(payload.variants[0].rolls).toHaveLength(1);
     expect(payload.variants[1]).not.toHaveProperty("rolls");
-    expect(payload.variants[1].stock_meters).toBe("750");
+    expect(payload.variants[1].base_opening).toBe("750");
   });
 });
 
@@ -74,7 +70,7 @@ describe("fabricToFormData with rolls", () => {
       ]),
     );
 
-    expect(form.get("variants[0]stock_meters")).toBe("1000");
+    expect(form.get("variants[0]base_opening")).toBe("1000");
     expect(form.get("variants[0]rolls[0][meters]")).toBe("500");
     expect(form.get("variants[0]rolls[1][meters]")).toBe("450");
     expect(form.get("variants[0]rolls[0][note]")).toBeNull();
@@ -92,7 +88,7 @@ describe("fabricToFormData with rolls", () => {
       ]),
     );
 
-    expect(form.get("variants[0]stock_meters")).toBe("1000");
+    expect(form.get("variants[0]base_opening")).toBe("1000");
     for (let i = 0; i < 5; i++) {
       expect(form.get(`variants[0]rolls[${i}][meters]`)).toBe("100");
     }
@@ -118,7 +114,7 @@ describe("fabricToFormData with rolls", () => {
   it("adds no roll keys for a roll-less colour", () => {
     const form = fabricToFormData(buildFabricPayload(common, [colour()]));
 
-    expect(form.get("variants[0]stock_meters")).toBe("1000");
+    expect(form.get("variants[0]base_opening")).toBe("1000");
     expect([...form.keys()].some((k) => k.includes("rolls"))).toBe(false);
   });
 });

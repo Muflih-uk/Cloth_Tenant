@@ -30,14 +30,18 @@ interface Props {
   /** Colour label, used in headings and dialogs. */
   label: string;
   /**
-   * Called after any change to the colour's stock, so the page can refresh the
-   * read-only metre figure it shows next to the colour name.
+   * Called after a roll change so the row's roll and carryover figures stay current.
    *
    * The roll count travels with it because the badge above the panel quotes the
    * same number: sending only the metres left the badge reading the count the
    * page loaded with, so it said "0 rolls" over a panel showing one.
    */
-  onStockChanged?: (stockMeters: string, rollCount: number) => void;
+  onStockChanged?: (
+    stockMeters: string,
+    rollCount: number,
+    untrackedStockMeters: string,
+    isRollTracked: boolean,
+  ) => void;
 }
 
 /**
@@ -93,7 +97,12 @@ export default function PhysicalRollsPanel({
       .then((rolls) => {
         if (cancelled) return;
         setData(rolls);
-        notifyStock.current?.(rolls.stock_meters, rolls.roll_count);
+        notifyStock.current?.(
+          rolls.stock_meters,
+          rolls.roll_count,
+          rolls.untracked_stock_meters ?? "0",
+          rolls.is_roll_tracked,
+        );
       })
       .catch((e) => {
         if (!cancelled) toastError("Failed to load rolls", e);
@@ -111,7 +120,12 @@ export default function PhysicalRollsPanel({
     try {
       const rolls = await fetchRolls();
       setData(rolls);
-      notifyStock.current?.(rolls.stock_meters, rolls.roll_count);
+      notifyStock.current?.(
+        rolls.stock_meters,
+        rolls.roll_count,
+        rolls.untracked_stock_meters ?? "0",
+        rolls.is_roll_tracked,
+      );
     } catch (e) {
       toastError("Failed to load rolls", e);
     } finally {
@@ -304,8 +318,8 @@ export default function PhysicalRollsPanel({
             </div>
           ) : (
             <p className="text-xs text-gray-400 pt-3 leading-relaxed">
-              Receiving a roll adds its metres to this colour&apos;s stock, and
-              packing then cuts from the oldest roll first.
+              Receiving a roll adds only to on-hand rolls. Order stock is managed
+              separately; packing cuts from the oldest roll first.
             </p>
           )}
 

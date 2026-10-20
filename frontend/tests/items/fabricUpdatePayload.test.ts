@@ -5,6 +5,7 @@ import type { EditableVariant } from "@/types/item";
 const existing = (over: Partial<EditableVariant> = {}): EditableVariant => ({
   backendId: 7,
   localId: "a",
+  baseOpening: "120.5",
   stockMeters: "120.5",
   displayOrder: "Maroon",
   imageUrl: "https://cdn.example.com/maroon.jpg",
@@ -17,6 +18,7 @@ const existing = (over: Partial<EditableVariant> = {}): EditableVariant => ({
 const fresh = (over: Partial<EditableVariant> = {}): EditableVariant => ({
   backendId: -1,
   localId: "b",
+  baseOpening: "40",
   stockMeters: "40",
   displayOrder: "Ivory",
   imageUrl: null,
@@ -28,22 +30,20 @@ const fresh = (over: Partial<EditableVariant> = {}): EditableVariant => ({
 const common = { name: "Cotton Lawn", description: "Light", price_per_meter: "180.00" };
 
 describe("buildFabricUpdatePayload", () => {
-  it("sends stock for an existing colour", () => {
-    // The row shows the live warehouse count and edits it in place; it is
-    // echoed on every save so a correction is applied through the fabric.
+  it("sends the opening order-stock base for an existing colour", () => {
     const payload = buildFabricUpdatePayload(common, [existing()]);
-    expect(payload.variants[0].stock_meters).toBe("120.5");
+    expect(payload.variants[0].base_opening).toBe("120.5");
   });
 
   it("sends opening stock for a colour that does not exist yet", () => {
     const payload = buildFabricUpdatePayload(common, [fresh()]);
-    expect(payload.variants[0].stock_meters).toBe("40");
+    expect(payload.variants[0].base_opening).toBe("40");
     expect(payload.variants[0]).not.toHaveProperty("id");
   });
 
   it("defaults a new colour with no stock entered to zero", () => {
-    const payload = buildFabricUpdatePayload(common, [fresh({ stockMeters: "" })]);
-    expect(payload.variants[0].stock_meters).toBe("0");
+    const payload = buildFabricUpdatePayload(common, [fresh({ baseOpening: "" })]);
+    expect(payload.variants[0].base_opening).toBe("0");
   });
 
   it("sends every colour, including untouched ones", () => {

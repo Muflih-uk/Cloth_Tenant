@@ -85,10 +85,15 @@ export const fabricApi = {
         return api.delete(`/api/items/${id}/`, { data: { pin } }).then((r) => r.data);
     },
 
-    /** Set a variant's on-hand metres without touching the rest of the roll. */
-    setVariantStock(variantId: number, stockMeters: string): Promise<FabricVariant> {
+    /** Set the opening order-stock base without changing physical stock. */
+    setVariantOpeningStock(
+        variantId: number,
+        baseOpening: string,
+    ): Promise<FabricVariant> {
         return api
-            .patch<FabricVariant>(`/api/items/variants/${variantId}/`, { stock_meters: stockMeters })
+            .patch<FabricVariant>(`/api/items/variants/${variantId}/`, {
+                base_opening: baseOpening,
+            })
             .then((r) => r.data);
     },
 };

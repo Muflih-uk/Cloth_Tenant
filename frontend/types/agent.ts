@@ -13,10 +13,13 @@ export interface AgentItemVariant {
     image: string | null;
     qr_code: string | null;
     display_order?: string;
-    /** Physical metres on the roll, as a string from the API. */
+    /** Physical stock: roll total when roll-tracked, flat figure otherwise. */
     stock_meters: string;
-    /** Metres still orderable: warehouse total less what live orders have claimed. */
+    /** Order stock after extant line reservations. */
     available_meters?: string;
+    untracked_stock_meters?: string;
+    is_roll_tracked?: boolean;
+    roll_stock_meters?: string;
     created_at: string;
 }
 

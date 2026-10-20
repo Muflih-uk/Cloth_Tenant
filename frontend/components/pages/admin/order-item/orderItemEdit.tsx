@@ -71,19 +71,27 @@ const OrderItemEditModal: React.FC<OrderItemEditModalProps> = ({
 
   const alreadyPacked = toMeters(item.allocated_quantity);
   const selected = colours.find((colour) => colour.id === variantId);
+  const currentReservation = Math.max(
+    toMeters(item.ordered_quantity),
+    alreadyPacked,
+  );
+  const editCapacity =
+    availableMeters === undefined || availableMeters === null
+      ? 0
+      : toMeters(availableMeters) + currentReservation;
+  const nextReservation = Math.max(toMeters(metres), alreadyPacked);
 
   /**
    * Where this colour's orderable metres land once the typed quantity is saved.
    *
-   * `availableMeters` already has this line's current claim subtracted, so
-   * retyping the quantity moves availability by exactly the difference between
-   * the old and new figures -- the packed metres cancel out and need no separate
-   * handling here.
+   * The current line reserves the greater of ordered or allocated metres.
+   * Under-packing cannot release its allocated portion, and over-packing is
+   * reserved through the allocated figure.
    */
   const projectedAvailability =
     availableMeters === undefined || availableMeters === null
       ? 0
-      : toMeters(availableMeters) + toMeters(item.ordered_quantity) - toMeters(metres);
+      : editCapacity - nextReservation;
 
   return (
     <Modal
@@ -140,18 +148,18 @@ const OrderItemEditModal: React.FC<OrderItemEditModalProps> = ({
               <p className="mt-1.5 text-xs font-medium text-amber-600 flex items-start gap-1">
                 <TriangleAlert size={13} className="mt-px flex-shrink-0" />
                 <span>
-                  {toMeters(availableMeters) < 0
+                  {editCapacity < 0
                     ? `Already oversold by ${formatMeters(
-                        Math.abs(toMeters(availableMeters)),
+                        Math.abs(editCapacity),
                       )} m on other orders. `
-                    : `Only ${formatMeters(toMeters(availableMeters))} m available. `}
+                    : `Only ${formatMeters(editCapacity)} m available to this line. `}
                   This line would take it to {formatMeters(projectedAvailability)}{" "}
                   m. You can still proceed.
                 </span>
               </p>
             ) : (
               <p className="mt-1.5 text-xs text-gray-400">
-                {formatMeters(toMeters(availableMeters))} m of this colour
+                {formatMeters(editCapacity)} m of this colour
                 available for ordering
               </p>
             )

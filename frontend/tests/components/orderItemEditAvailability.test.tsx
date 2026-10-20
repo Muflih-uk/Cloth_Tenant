@@ -73,8 +73,8 @@ function setup(availableMeters: string | null | undefined, ordered = "100.000") 
  * Retyping a line's metres, warned about *before* it is saved.
  *
  * Demand outrunning supply is allowed here, so this never stops the save. What
- * `variant_available_meters` gives us already has this line's own claim taken
- * out, so the typed figure is compared against it directly.
+ * `variant_available_meters` includes this line's current reservation, so the
+ * edit preview adds that reservation back before comparing the new quantity.
  */
 describe("order form availability warning", () => {
   beforeEach(() => {
@@ -87,7 +87,7 @@ describe("order form availability warning", () => {
 
     await waitFor(() => expect(getAllVariants).toHaveBeenCalled());
 
-    expect(screen.getByText(/40 m of this colour available for ordering/)).toBeTruthy();
+    expect(screen.getByText(/140 m of this colour available for ordering/)).toBeTruthy();
     expect(screen.queryByText(/You can still proceed/)).toBeNull();
   });
 
@@ -104,7 +104,7 @@ describe("order form availability warning", () => {
     await user.clear(field);
     await user.type(field, "200");
 
-    expect(screen.getByText(/Only 40 m available/)).toBeTruthy();
+    expect(screen.getByText(/Only 140 m available to this line/)).toBeTruthy();
     expect(screen.getByText(/You can still proceed/)).toBeTruthy();
     // Advisory only: the field is still enabled and nothing was committed.
     expect(
@@ -136,7 +136,7 @@ describe("order form availability warning", () => {
 
     await waitFor(() => expect(getAllVariants).toHaveBeenCalled());
 
-    expect(screen.getByText(/Already oversold by 60 m on other orders/)).toBeTruthy();
+    expect(screen.getByText(/Only 40 m available to this line/)).toBeTruthy();
     expect(screen.getByText(/You can still proceed/)).toBeTruthy();
   });
 

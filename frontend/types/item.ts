@@ -15,27 +15,25 @@ export type OrderStatus =
   | "DISPATCHED";
 
 /**
- * A fabric variant is one colour/finish of a fabric, and it is what carries the
- * cloth: `stockMeters` is physical on-hand stock in the warehouse. Metres are
+ * A fabric variant is one colour/finish of a fabric, and it carries the
+ * cloth. Metres are
  * sent as strings by the API (Django decimals) and parsed where numbers are
  * needed, so nothing here silently rounds a 0.5 m cut.
  *
- * `is_roll_tracked` says whether the colour's metres are broken down into
- * physical rolls. When it is true the stock figure is the roll total and must be
- * changed by receiving, cutting or adjusting a roll -- never by typing it in.
+ * `base_opening` is the opening order-stock base. `stock_meters` is physical
+ * on-hand stock, derived from rolls for roll-tracked variants.
  */
 export interface FabricVariant {
   id: number;
   qr_code: string | null;
   image: string | null;
   display_order?: string;
+  base_opening?: string;
   stock_meters: string;
+  untracked_stock_meters?: string;
   /**
-   * `stock_meters` less what live orders have already claimed: the metres that
-   * are genuinely still orderable, so this is the figure to show an agent. Can
-   * be negative when orders between them promise more than the warehouse holds,
-   * which is a real state -- the shortage is settled at packing, not by
-   * refusing orders.
+   * `base_opening` less the greater of ordered or allocated quantity for each
+   * extant order line. Can be negative; orders are still allowed.
    */
   available_meters?: string;
   stock_updated_at?: string;
@@ -69,6 +67,7 @@ export interface RollSummary {
   exhausted_roll_count: number;
   total_received_meters: string;
   roll_stock_meters: string;
+  untracked_stock_meters?: string;
   consumed_meters: string;
   largest_roll_meters: string;
   smallest_roll_meters: string;
@@ -151,18 +150,11 @@ export interface FabricVariantRequest {
   remove_image?: boolean;
   /** Null clears an existing colour's label. */
   display_order?: string | null;
-  /** Warehouse stock in metres; sent for new and existing colours. */
-  stock_meters?: string | number;
+  /** Opening order-stock base in metres. */
+  base_opening?: string | number;
   /**
-   * Set for a colour whose metres live on physical rolls. `stock_meters` is then
-   * left out of the payload entirely: that colour's total is the roll total, and
-   * only receiving, cutting or adjusting a roll may move it.
-   */
-  is_roll_tracked?: boolean;
-  /**
-   * Physical rolls the colour arrives on. When any are sent, the API creates them
-   * and takes the colour's stock from their sum, so `stock_meters` is not also
-   * applied on top of them.
+   * Physical rolls the colour arrives on. They initialize on-hand stock only;
+   * `base_opening` remains independent.
    */
   rolls?: VariantRollDraft[];
 }
@@ -194,6 +186,9 @@ export interface VariantAllItem {
   display_order?: string;
   stock_meters: string;
   stock_updated_at: string;
+  base_opening?: string;
+  available_meters?: string;
+  untracked_stock_meters?: string;
   is_roll_tracked?: boolean;
   roll_count?: number;
   roll_stock_meters?: string;
@@ -261,9 +256,8 @@ export interface ColorVariant {
   imagePreview: string | null;
   /**
    * Physical rolls this colour arrives on, collected on the create screen and
-   * received when the fabric is saved. Present only while it is non-empty: a
-   * colour with rolls takes its stock from them, so the typed opening figure is
-   * not applied on top.
+   * received when the fabric is saved. Present only while it is non-empty;
+   * rolls initialize on-hand stock independently from the typed opening base.
    */
   rolls?: VariantRollDraft[];
 }
@@ -278,17 +272,17 @@ export interface FabricDetails {
 export interface EditableVariant {
   backendId: number;
   localId: string;
+  baseOpening: string;
+  initialBaseOpening?: string;
   stockMeters: string;
+  availableMeters?: string;
+  untrackedStockMeters?: string;
+  isRollTracked?: boolean;
+  rollCount?: number;
   displayOrder: string;
   imageUrl: string | null;
   newImage: File | null;
   imagePreview: string | null;
-  /**
-   * True once the colour has physical rolls. Its metre count is then owned by
-   * those rolls: shown read-only here, and left out of the save payload.
-   */
-  isRollTracked?: boolean;
-  rollCount?: number;
 }
 
 export type WizardStep =
@@ -302,8 +296,12 @@ export interface UIVariant {
   qr_code: string | null;
   display_order?: string;
   stock_meters: string;
-  /** Metres still orderable: warehouse total less what live orders have claimed. */
+  /** Opening stock retained outside rolls and unavailable to roll scanning. */
+  untracked_stock_meters?: string;
+  /** Order stock after extant order-line reservations. */
   available_meters?: string;
+  is_roll_tracked?: boolean;
+  roll_stock_meters?: string;
 }
 
 export interface UIItem {

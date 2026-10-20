@@ -4,17 +4,19 @@ import { formatMeters } from "@/types/item";
 
 interface StockBadgeProps {
   total: number;
-  /** Metres still orderable. Defaults to `total` when the server omits it. */
+  /** Available-to-order metres. Defaults to `total` when omitted. */
   available?: number;
   /** Unit suffix after the figure. Cloth is metres; orders use none. */
   unit?: string;
+  physicalLabel?: string;
+  untrackedPhysical?: number;
   showLabel?: boolean;
   lowThreshold?: number;
   size?: "sm" | "md" | "lg";
 }
 
 /**
- * A colour's stock in the Inventory list: orderable metres over physical metres.
+ * A colour's inventory: available-to-order metres and on-hand metres.
  *
  * The headline is what is still available, since that is what moves when an
  * order is placed and what an admin scanning the list is actually judging. The
@@ -27,6 +29,8 @@ export default function StockBadge({
   total,
   available,
   unit,
+  physicalLabel = "On rolls",
+  untrackedPhysical = 0,
   showLabel = true,
   lowThreshold = 50,
   size = "md",
@@ -64,14 +68,20 @@ export default function StockBadge({
           {unit ? ` ${unit}` : ""}
         </span>
         {showLabel && (
-          <span className={`text-gray-400 ${labelSizeClasses[size]}`}>available</span>
+          <span className={`text-gray-400 ${labelSizeClasses[size]}`}>Available to order</span>
         )}
       </div>
-      {/* The physical total, so the audit trail is always on screen. */}
+      {/* The physical total remains visible beside the order balance. */}
       <p className={`text-gray-400 ${labelSizeClasses[size]}`}>
-        On hand: {formatMeters(total)}
+        {physicalLabel}: {formatMeters(total)}
         {unit ? ` ${unit}` : ""}
       </p>
+      {untrackedPhysical > 0 && (
+        <p className={`text-amber-700 ${labelSizeClasses[size]}`}>
+          Untracked physical (not packable): {formatMeters(untrackedPhysical)}
+          {unit ? ` ${unit}` : ""}
+        </p>
+      )}
     </div>
   );
 }

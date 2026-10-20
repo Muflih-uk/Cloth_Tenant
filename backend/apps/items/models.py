@@ -40,7 +40,7 @@ def fabric_variant_image_path(instance, filename):
 
 
 class FabricVariant(models.Model):
-    """A colour/finish of a fabric: own QR label, own image, own stock."""
+    """A colour/finish of a fabric with separate order and physical quantities."""
 
     fabric = models.ForeignKey(
         Fabric, related_name="variants", on_delete=models.CASCADE
@@ -53,8 +53,23 @@ class FabricVariant(models.Model):
         upload_to=fabric_variant_image_path, null=True, blank=True
     )
 
-    # Fractional metres: cloth is cut and sold to three decimal places.
+    # On-hand metres: the physical figure for roll-less variants, or roll sum
+    # for roll-tracked variants.
     stock_meters = models.DecimalField(
+        max_digits=14,
+        decimal_places=3,
+        default=0,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    base_opening = models.DecimalField(
+        max_digits=14,
+        decimal_places=3,
+        default=0,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    # Loose physical stock retained when a variant receives its first roll.
+    # Only roll rows are scanner-packable.
+    untracked_stock_meters = models.DecimalField(
         max_digits=14,
         decimal_places=3,
         default=0,
@@ -75,52 +90,36 @@ class FabricVariant(models.Model):
     def is_roll_tracked(self):
         """Whether this colour's metres are broken down into physical rolls.
 
-        A colour with no roll rows keeps the original single-figure stock model,
-        so existing data and every existing packing path carry on working
-        untouched. The moment the first roll is received the rolls become the
-        breakdown of ``stock_meters`` and ``sum(roll.remaining_meters)`` must
-        equal it.
+        A colour with no roll rows keeps its physical figure in ``stock_meters``.
+        Once rolls exist, their active remaining metres make up that figure.
         """
+        annotated = getattr(self, "_has_rolls", None)
+        if annotated is not None:
+            return bool(annotated)
         return self.rolls.exists()
 
     @property
     def available_to_order(self):
         """Metres of this colour that are not already promised to an order.
 
-        ``stock_meters`` minus what live orders have asked for and not yet had.
-        This is the figure that moves when an order is placed and is meant to be
-        shown instead of the raw total, because an admin deciding whether to take
-        an order cares what is still free, not what is on the shelf.
-
-        It is derived on every read rather than stored, so it cannot drift from
-        the orders behind it: placing, editing, withdrawing or packing an order
-        all show up here without anything keeping a counter in step.
-
-        Packing leaves it alone on purpose. Packing X metres takes X off
-        ``stock_meters`` *and* closes X of the promised gap, so the two cancel and
-        availability is unchanged by the act of packing itself. It moves when an
-        order is written, or when cloth is received or adjusted.
-
-        Goes negative when orders between them promise more than exists, which is
-        a real and allowed state here -- the shortage is arbitrated at packing,
-        not by refusing orders.
+        ``base_opening`` less each existing order line's greater quantity of
+        ordered or allocated metres.
         """
-        promised = getattr(self, "_committed_demand", None)
-        if promised is None:
+        reserved = getattr(self, "_committed_demand", None)
+        if reserved is None:
             from apps.orders.stock import committed_demand_for_variant
 
-            promised = committed_demand_for_variant(self)
-        return (self.stock_meters or Decimal("0")) - Decimal(str(promised or 0))
+            reserved = committed_demand_for_variant(self)
+        return (self.base_opening or Decimal("0")) - Decimal(str(reserved or 0))
 
 
 class FabricRoll(models.Model):
     """One physical roll of cloth in the warehouse, for one colour.
 
-    ``FabricVariant.stock_meters`` stays the warehouse's total -- it is what
-    packing, valuation and the allocation engine read. A roll is the *breakdown*
-    of that total: every roll received adds its metres to the variant, and every
-    metre packing cuts comes off a named roll, so a cancelling round can hand the
-    cloth back to the roll it actually came off rather than to an arbitrary one.
+    ``FabricVariant.stock_meters`` is the active-roll total. Legacy loose physical
+    stock is kept separately on the variant and is not scanner-packable. Every
+    metre packing cuts comes off a named roll, so a cancelling round can return
+    cloth to the roll it actually came off rather than an arbitrary active roll.
 
     A roll is never deleted for being used up: ``remaining_meters`` reaches zero,
     ``is_active`` flips to false and the row stays as the warehouse's record of
@@ -183,24 +182,11 @@ class FabricRoll(models.Model):
 
 
 class StockMovement(models.Model):
-    """A recorded change to a colour's warehouse total that is otherwise silent.
+    """Legacy stock adjustment records kept for historical compatibility."""
 
-    Most stock movement is reconstructable: a roll that was cut from says so, and
-    a roll that was received is still on the shelf. One transition is not. A colour
-    created with a plain opening metre figure has stock that belongs to no roll,
-    and the first roll received on it replaces that figure instead of adding to
-    it -- otherwise the warehouse would count the same cloth twice. Without a
-    record, the total dropping from the opening figure to the roll total looks
-    like cloth going missing, so the discard is written down here.
-
-    This is a log of notable transitions, not a complete double-entry ledger: it
-    records what would otherwise leave no trace, and nothing else.
-    """
-
-    #: A colour's metres were replaced by its first physical rolls.
     OPENING_FIGURE_DISCARDED = "opening_figure_discarded"
     REASON_CHOICES = [
-        (OPENING_FIGURE_DISCARDED, "Opening figure replaced by first roll"),
+        (OPENING_FIGURE_DISCARDED, "Legacy opening stock adjustment"),
     ]
 
     variant = models.ForeignKey(

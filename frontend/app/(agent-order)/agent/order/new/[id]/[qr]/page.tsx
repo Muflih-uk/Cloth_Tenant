@@ -46,6 +46,12 @@ export default function ProductDetailPage() {
     const [existingMetres, setExistingMetres] = useState<
         Record<number, number>
     >({});
+    const [existingReservation, setExistingReservation] = useState<
+        Record<number, number>
+    >({});
+    const [existingPacked, setExistingPacked] = useState<
+        Record<number, number>
+    >({});
     /** The line id already on the order for a given colour, per colour. */
     const [lineIdByVariant, setLineIdByVariant] = useState<
         Record<number, number>
@@ -107,6 +113,8 @@ export default function ProductDetailPage() {
                     // Same colour already on the order: editing beats adding a
                     // second line for it, which is what the merge flow did.
                     const byVariant: Record<number, number> = {};
+                    const reservedByVariant: Record<number, number> = {};
+                    const packedByVariant: Record<number, number> = {};
                     const lineIds: Record<number, number> = {};
                     const rates: Record<number, string> = {};
                     const overrides: Record<number, boolean> = {};
@@ -115,6 +123,13 @@ export default function ProductDetailPage() {
                         byVariant[line.variant] =
                             (byVariant[line.variant] ?? 0) +
                             toMeters(line.ordered_quantity);
+                        const ordered = toMeters(line.ordered_quantity);
+                        const allocated = toMeters(line.allocated_quantity);
+                        reservedByVariant[line.variant] =
+                            (reservedByVariant[line.variant] ?? 0) +
+                            Math.max(ordered, allocated);
+                        packedByVariant[line.variant] =
+                            (packedByVariant[line.variant] ?? 0) + allocated;
                         lineIds[line.variant] = line.id;
                         rates[line.variant] = line.rate_per_meter;
                         // The server's own answer to "was this line repriced?".
@@ -124,6 +139,8 @@ export default function ProductDetailPage() {
                         overrides[line.variant] = !!line.is_rate_overridden;
                     }
                     setExistingMetres(byVariant);
+                    setExistingReservation(reservedByVariant);
+                    setExistingPacked(packedByVariant);
                     setLineIdByVariant(lineIds);
                     setRateByVariant(rates);
                     setOverriddenByVariant(overrides);
@@ -182,9 +199,10 @@ export default function ProductDetailPage() {
      * screen still shows a sensible figure rather than a blank or a zero.
      */
     const availableMetres =
-        selectedVariant?.available_meters !== undefined
+        (selectedVariant?.available_meters !== undefined
             ? toMeters(selectedVariant.available_meters)
-            : onHandMetres;
+            : onHandMetres) +
+        (selectedVariant ? existingReservation[selectedVariant.id] ?? 0 : 0);
     /** The agreed rate already on this colour's line, if the order has one. */
     const existingRate = selectedVariant
         ? rateByVariant[selectedVariant.id]
@@ -329,7 +347,17 @@ export default function ProductDetailPage() {
                     metres={metres}
                     onChange={setMetres}
                     onHandMetres={onHandMetres}
+                    onHandLabel={
+                        selectedVariant?.is_roll_tracked
+                            ? "On rolls"
+                            : "Physical stock"
+                    }
                     availableMetres={availableMetres}
+                    alreadyPackedMetres={
+                        selectedVariant
+                            ? existingPacked[selectedVariant.id] ?? 0
+                            : 0
+                    }
                     isEditMode={isEditMode}
                 />
 

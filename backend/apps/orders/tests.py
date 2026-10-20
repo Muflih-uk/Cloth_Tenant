@@ -74,6 +74,7 @@ class OrderTestBase(TestCase):
             fabric=self.fabric,
             display_order="Natural",
             stock_meters=Decimal("2400"),
+            base_opening=Decimal("2400"),
         )
         for agent in (self.agent, self.other_agent):
             AgentItem.objects.create(agent=agent, variant=self.variant)
@@ -188,6 +189,11 @@ class DraftAndPlacementTests(OrderTestBase):
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
         self.assertEqual(len(resp.data["shortfall_lines"]), 1)
         self.assertEqual(resp.data["shortfall_lines"][0]["shortfall"], "1600.000")
+        self.variant.refresh_from_db()
+        self.assertEqual(
+            self.variant.available_to_order, Decimal("-1600.000")
+        )
+        self.assertEqual(self.variant.stock_meters, Decimal("2400.000"))
         self.assertIsNotNone(resp.data["notice"])
 
     def test_cannot_place_empty_order(self):
@@ -2468,6 +2474,7 @@ class OrderDeletionTests(OrderTestBase):
             )
         self.variant.refresh_from_db()
         self.assertEqual(self.variant.stock_meters, Decimal("1400.000"))
+        self.assertEqual(self.variant.available_to_order, Decimal("1400.000"))
 
         self.auth(self.admin)
         resp = self.client.delete(f"/api/orders/{order.pk}/")
@@ -2478,6 +2485,7 @@ class OrderDeletionTests(OrderTestBase):
             self.variant.stock_meters, Decimal("2400.000"),
             "undispatched cloth must go back on the roll",
         )
+        self.assertEqual(self.variant.available_to_order, Decimal("2400.000"))
 
     def test_deleting_a_dispatched_order_keeps_the_cloth_gone(self):
         # The same refusal for a colour with no rolls behind it, where the cloth is
@@ -3923,5 +3931,3 @@ class BundleDispatchTests(OrderTestBase):
         log = OrderLog.objects.filter(action="ORDER_DELETED").latest("id")
         self.assertEqual(log.details["metres_returned_to_stock"], "100.000")
         self.assertEqual(log.details["bundles_dispatched"], 1)
-
-

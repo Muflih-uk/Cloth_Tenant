@@ -39,6 +39,7 @@ describe('fabric edit upload', () => {
       {
         backendId: 31,
         localId: 'c1',
+        baseOpening: '0',
         stockMeters: '0',
         displayOrder: 'Black',
         imageUrl: 'http://localhost:8000/media/fabrics/10/old-black.jpg',
@@ -48,6 +49,7 @@ describe('fabric edit upload', () => {
       {
         backendId: 30,
         localId: 'c2',
+        baseOpening: '0',
         stockMeters: '0',
         displayOrder: 'White',
         imageUrl: null,
@@ -57,6 +59,7 @@ describe('fabric edit upload', () => {
       {
         backendId: 29,
         localId: 'c3',
+        baseOpening: '0',
         stockMeters: '0',
         displayOrder: 'Navy Blue',
         imageUrl: null,
@@ -95,7 +98,6 @@ describe('fabric edit upload', () => {
     expect(sent.get('variants[1]remove_image')).toBe('true')
     expect(sent.get('variants[1]display_order')).toBe('White')
     expect(sent.get('variants[2]remove_image')).toBe('true')
-    // Existing colours send stock back too, so a correction in the row lands.
-    expect(sent.get('variants[0]stock_meters')).toBe('0')
+    expect(sent.get('variants[0]base_opening')).toBe('0')
   })
 })

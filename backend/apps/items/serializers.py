@@ -18,10 +18,8 @@ from .models import Fabric, FabricRoll, FabricVariant
 from .rolls import (
     MAX_METERS,
     MIN_ROLL_METERS,
-    OPENING_STOCK_NOTE,
     RollError,
     clean_meters,
-    is_roll_tracked,
     receive_rolls,
     variant_roll_info,
 )
@@ -45,9 +43,7 @@ class FabricVariantSerializer(serializers.ModelSerializer):
     is_roll_tracked = serializers.SerializerMethodField()
     roll_count = serializers.SerializerMethodField()
     roll_stock_meters = serializers.SerializerMethodField()
-    #: What is genuinely still orderable: the warehouse total less what live
-    #: orders have already claimed. Derived per read, never stored, so it cannot
-    #: drift from the orders behind it. May be negative.
+    #: Order stock after subtracting extant reservations. May be negative.
     available_meters = serializers.SerializerMethodField()
 
     class Meta:
@@ -58,13 +54,21 @@ class FabricVariantSerializer(serializers.ModelSerializer):
             "image",
             "display_order",
             "stock_meters",
+            "base_opening",
+            "untracked_stock_meters",
             "available_meters",
             "stock_updated_at",
             "is_roll_tracked",
             "roll_count",
             "roll_stock_meters",
         ]
-        read_only_fields = ["qr_code", "stock_updated_at", "available_meters"]
+        read_only_fields = [
+            "qr_code",
+            "stock_meters",
+            "stock_updated_at",
+            "available_meters",
+            "untracked_stock_meters",
+        ]
 
     def get_available_meters(self, obj):
         return str(obj.available_to_order)
@@ -84,14 +88,6 @@ class FabricVariantSerializer(serializers.ModelSerializer):
         if data.get("image") and request:
             data["image"] = request.build_absolute_uri(data["image"])
         return data
-
-    def validate_stock_meters(self, value):
-        # The one figure that must never be written directly: on a roll-tracked
-        # colour it *is* the sum of the rolls, so editing it here would leave the
-        # two disagreeing with nothing to say which is right.
-        if self.instance is not None and is_roll_tracked(self.instance):
-            raise serializers.ValidationError(ROLL_TRACKED_MESSAGE)
-        return value
 
     def create(self, validated_data):
         variant = FabricVariant.objects.create(**validated_data)
@@ -133,7 +129,11 @@ class FabricSerializer(serializers.ModelSerializer):
         total = getattr(obj, "_total_stock", None)
         if total is not None:
             return str(total or 0)
-        total = obj.variants.aggregate(total=Sum("stock_meters"))["total"]
+        from django.db.models import F
+
+        total = obj.variants.aggregate(
+            total=Sum(F("stock_meters") + F("untracked_stock_meters"))
+        )["total"]
         return str(total or 0)
 
     def _purge_date(self, obj):
@@ -245,12 +245,13 @@ class FabricVariantRequestSerializer(serializers.Serializer):
     display_order = serializers.CharField(
         max_length=100, required=False, allow_null=True, allow_blank=True
     )
-    stock_meters = serializers.DecimalField(
+    base_opening = serializers.DecimalField(
         max_digits=14,
         decimal_places=3,
         required=False,
         allow_null=True,
-        help_text="Stock in metres; applied on create and on edit.",
+        min_value=ZERO,
+        help_text="Opening order-stock base in metres.",
     )
     rolls = FormRollListField(
         child=serializers.DictField(),
@@ -261,9 +262,8 @@ class FabricVariantRequestSerializer(serializers.Serializer):
         write_only=True,
         help_text=(
             "Physical rolls this colour arrives on, one entry per roll with a "
-            "'meters' figure and an optional 'note'. Rolls add to the colour's "
-            "stock rather than replacing it, so a 'stock_meters' figure sent "
-            "alongside them is kept as well and recorded as a roll of its own."
+            "'meters' figure and an optional 'note'. Rolls only add to on-hand "
+            "stock; the opening order-stock base is independent."
         ),
     )
 
@@ -305,19 +305,16 @@ class CreateFabricSerializer(serializers.Serializer):
         image_file = variant_data.pop("image", None)
         variant_data.pop("remove_image", None)  # nothing to remove on create
         roll_drafts = variant_data.pop("rolls", None)
-        stock = variant_data.pop("stock_meters", None) or 0
+        opening = variant_data.pop("base_opening", None) or 0
         display_order = variant_data.pop("display_order", None) or None
 
         lengths = _roll_lengths(roll_drafts or [])
-        # An opening figure and rolls are two separate deliveries of cloth, so both
-        # count. The figure is kept on the variant and ``receive_rolls`` turns it
-        # into a roll of its own, because the colour's total is the sum of its rolls
-        # and packing can only cut metres some roll holds.
         variant = FabricVariant.objects.create(
             fabric=fabric,
             qr_code=uuid.uuid4(),
             display_order=display_order,
-            stock_meters=stock,
+            base_opening=opening,
+            stock_meters=0 if lengths else opening,
         )
         if lengths:
             try:
@@ -380,16 +377,8 @@ class CreateFabricSerializer(serializers.Serializer):
                 if "display_order" in variant_data:
                     variant.display_order = variant_data.get("display_order") or None
 
-                if "stock_meters" in variant_data:
-                    new_stock = variant_data["stock_meters"] or 0
-                    if is_roll_tracked(variant):
-                        # The metre total is the sum of this colour's rolls now,
-                        # so the catalogue form must not overwrite it. The row
-                        # is saved unchanged instead of failing the whole save.
-                        pass
-                    elif variant.stock_meters != new_stock:
-                        variant.stock_meters = new_stock
-                        variant.stock_updated_at = timezone.now()
+                if "base_opening" in variant_data:
+                    variant.base_opening = variant_data["base_opening"] or 0
 
                 if remove_image and variant.image:
                     variant.image.delete(save=False)

@@ -1,15 +1,28 @@
+import type { FabricRequest } from "@/types/item";
+
+type FormDataInput =
+  | string
+  | number
+  | boolean
+  | bigint
+  | File
+  | null
+  | undefined
+  | FormDataInput[]
+  | { [key: string]: FormDataInput };
+
 /**
  * Flatten a nested object into FormData compatible with Django REST Framework's multipart parser.
  * Handles nested arrays and objects like `variants[0]image`.
  */
 export function objectToFormData(
-  obj: Record<string, any>,
+  obj: Record<string, FormDataInput>,
   rootName?: string,
   ignoreList?: string[],
 ): FormData {
   const formData = new FormData();
 
-  function appendFormData(data: any, root: string) {
+  function appendFormData(data: FormDataInput, root: string) {
     if (!data) return;
 
     if (ignoreList && ignoreList.indexOf(root) !== -1) return;
@@ -42,8 +55,8 @@ export function objectToFormData(
 /**
  * Build the multipart body for `CreateFabricSerializer` / `UpdateFabricSerializer`.
  *
- * A variant is one colour, so it carries its own `stock_meters` and nothing
- * else -- there is no nested size list to flatten.
+ * A variant is one colour, so its opening order-stock base is sent alongside any
+ * physical rolls it is created with.
  *
  * Two subtleties on update, both of which silently do nothing if you skip them:
  *  - `display_order` has to be sent even when blank, because the API only
@@ -51,27 +64,17 @@ export function objectToFormData(
  *  - `remove_image` is the only way to clear a photo; an absent `image` simply
  *    means "leave the existing one alone".
  *
- * A colour flagged `is_roll_tracked` is the third case: its metres belong to
- * physical rolls, so no `stock_meters` is sent for it at all.
+ * The editable figure is always `base_opening`; physical stock is never edited
+ * through this form.
  */
-export function fabricToFormData(data: Record<string, any>): FormData {
+export function fabricToFormData(data: FabricRequest): FormData {
   const formData = new FormData();
 
-  formData.append("name", data.name as string);
-  formData.append("description", (data.description as string) || "");
+  formData.append("name", data.name);
+  formData.append("description", data.description || "");
   formData.append("price_per_meter", String(data.price_per_meter));
 
-  (
-    data.variants as Array<{
-      id?: number;
-      image?: File | string | null;
-      display_order?: string | null;
-      stock_meters?: string | number | null;
-      remove_image?: boolean;
-      is_roll_tracked?: boolean;
-      rolls?: Array<{ meters: string; note?: string }>;
-    }>
-  ).forEach((variant, index: number) => {
+  data.variants.forEach((variant, index) => {
     if (variant.id !== undefined && variant.id !== null) {
       formData.append(`variants[${index}]id`, String(variant.id));
     }
@@ -90,29 +93,13 @@ export function fabricToFormData(data: Record<string, any>): FormData {
         variant.display_order ?? "",
       );
     }
-    // Rolls the colour is being created with. The API receives them as the colour's
-    // stock and does not also apply `stock_meters`, so the opening figure and the
-    // rolls can never be added together. Sent ahead of the early return below,
-    // because a colour can be created on its rolls in the same request.
+    // Rolls initialize physical stock independently from the opening base.
     (variant.rolls ?? []).forEach((roll, rollIndex) => {
       formData.append(`variants[${index}]rolls[${rollIndex}][meters]`, roll.meters);
-      if (roll.note) {
-        formData.append(
-          `variants[${index}]rolls[${rollIndex}][note]`,
-          roll.note,
-        );
-      }
     });
-    // A colour tracked by physical rolls owns its own total: that figure is the
-    // roll sum, and only receiving, cutting or adjusting a roll may move it.
-    // Sending it here would either be refused or, worse, silently contradict the
-    // rolls, so it is left out.
-    if (variant.is_roll_tracked) return;
-    // Stock is sent for every other colour, existing or new: the API applies it
-    // and records a change on the colour's stock cursor.
     formData.append(
-      `variants[${index}]stock_meters`,
-      String(variant.stock_meters ?? 0),
+      `variants[${index}]base_opening`,
+      String(variant.base_opening ?? 0),
     );
   });
 

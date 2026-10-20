@@ -51,6 +51,7 @@ class AgentTestBase(TestCase):
             fabric=self.fabric,
             display_order="Natural",
             stock_meters=Decimal("2500"),
+            base_opening=Decimal("2500"),
         )
 
 

@@ -21,6 +21,12 @@ class VariantColorSerializer(serializers.Serializer):
     created_at = serializers.CharField(allow_null=True)
     display_order = serializers.CharField(allow_null=True)
     stock_meters = serializers.DecimalField(max_digits=14, decimal_places=3)
+    available_meters = serializers.DecimalField(max_digits=14, decimal_places=3)
+    untracked_stock_meters = serializers.DecimalField(
+        max_digits=14, decimal_places=3
+    )
+    is_roll_tracked = serializers.BooleanField()
+    roll_stock_meters = serializers.DecimalField(max_digits=14, decimal_places=3)
 
 
 class AgentFabricListSerializer(serializers.Serializer):
@@ -52,6 +58,11 @@ class AgentFabricListSerializer(serializers.Serializer):
                 # What is still orderable, so the agent is shown the figure that
                 # moves when an order is placed rather than the shelf total.
                 "available_meters": str(ai.variant.available_to_order),
+                "untracked_stock_meters": str(
+                    ai.variant.untracked_stock_meters
+                ),
+                "is_roll_tracked": ai.variant.is_roll_tracked,
+                "roll_stock_meters": str(ai.variant.stock_meters),
             }
             for ai in agent_items
         ]

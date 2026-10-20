@@ -29,7 +29,7 @@ export default function ColorCard({ variant, index, onEdit, onDelete, isOnly }: 
           {variant.displayOrder || `Colour #${index + 1}`}
         </p>
         <p className="text-[11px] text-gray-400 mt-0.5">
-          {formatMeters(variant.stockMeters)} m in stock
+          Available to order: {formatMeters(variant.stockMeters)} m
         </p>
       </div>
 

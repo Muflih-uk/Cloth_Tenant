@@ -1,9 +1,7 @@
 """Items (fabric catalogue) tests: requirements, archive/purge, sync, stock.
 
-The domain is metres of cloth, so every fixture here is a ``Fabric`` with
-colour ``FabricVariant``s holding ``stock_meters``. Order placement records
-demand only -- cloth leaves the warehouse on a confirmed packing round -- so
-these tests lean on ``outstanding_demand`` rather than reserved stock.
+Every fixture has separate order-stock and physical-stock quantities. Order
+placement reserves the opening base; physical metres move during packing.
 """
 
 from datetime import timedelta
@@ -30,12 +28,7 @@ from apps.items.services import (
     purge_archived_fabrics,
     sync_out_of_stock,
 )
-from apps.items.rolls import (
-    OPENING_STOCK_NOTE,
-    is_roll_tracked,
-    move_variant_stock,
-    roll_stock,
-)
+from apps.items.rolls import is_roll_tracked, move_variant_stock, roll_stock
 from apps.items.tasks import purge_archived_fabrics_task
 from apps.orders.models import Order, OrderItem
 
@@ -87,10 +80,12 @@ class FabricTestBase(TestCase):
             price_per_meter=Decimal("9.00"),
         )
         self.variant1 = FabricVariant.objects.create(
-            fabric=self.fabric, display_order="Natural", stock_meters=Decimal("3000")
+            fabric=self.fabric, display_order="Natural", stock_meters=Decimal("3000"),
+            base_opening=Decimal("3000"),
         )
         self.variant2 = FabricVariant.objects.create(
-            fabric=self.fabric, display_order="White", stock_meters=Decimal("1500")
+            fabric=self.fabric, display_order="White", stock_meters=Decimal("1500"),
+            base_opening=Decimal("1500"),
         )
 
     def make_order(self, customer, status="PENDING"):
@@ -231,11 +226,7 @@ class OutstandingDemandTests(FabricTestBase):
 
 
 class AvailableToOrderTests(FabricTestBase):
-    """``available_to_order`` = warehouse total less every order's claim.
-
-    The claim is the raw ``ordered - allocated`` sum with no clamp at zero, which
-    is what keeps an over-packed line honest, and it spans every order still in
-    the database rather than only the ones a packing round can act on.
+    """Opening order-stock base less each extant line's max quantity.
     """
 
     def available(self, variant=None):
@@ -260,12 +251,7 @@ class AvailableToOrderTests(FabricTestBase):
         self.assertEqual(self.available(), Decimal("1600.000"))
 
     def test_packing_a_line_leaves_it_unchanged(self):
-        """The whole point of deriving it: packing moves both terms together.
-
-        Taking 400 m off the warehouse and closing 400 m of the promised gap is
-        the same 400 m twice over, so availability must not shift at all. The
-        two writes below are exactly what a confirmed packing round does.
-        """
+        """Packing to less than ordered leaves the order reservation unchanged."""
         order = self.make_order(self.customer1)
         line = self.make_line(order, 1000)
         before = self.available()
@@ -280,12 +266,30 @@ class AvailableToOrderTests(FabricTestBase):
         self.assertEqual(self.available(), before)
 
     def test_an_over_packed_line_puts_the_extra_metres_back(self):
-        """Unfloored on purpose: clamping at zero would inflate availability."""
+        """Allocated metres above ordered quantity reserve the overpacked excess."""
         order = self.make_order(self.customer1)
         self.make_line(order, 400, allocated=Decimal("550"))
 
-        # 3000 - (400 - 550)
-        self.assertEqual(self.available(), Decimal("3150.000"))
+        # 3000 - max(400, 550)
+        self.assertEqual(self.available(), Decimal("2450.000"))
+
+    def test_underpacking_keeps_the_ordered_quantity_reserved(self):
+        self.variant1.base_opening = Decimal("1000")
+        self.variant1.save(update_fields=["base_opening"])
+        self.make_line(
+            self.make_order(self.customer1), 100, allocated=Decimal("90")
+        )
+
+        self.assertEqual(self.available(), Decimal("900.000"))
+
+    def test_overpacking_reserves_only_the_packed_excess(self):
+        self.variant1.base_opening = Decimal("1000")
+        self.variant1.save(update_fields=["base_opening"])
+        self.make_line(
+            self.make_order(self.customer1), 100, allocated=Decimal("110")
+        )
+
+        self.assertEqual(self.available(), Decimal("890.000"))
 
     def test_it_goes_negative_rather_than_clamping(self):
         self.make_line(self.make_order(self.customer1), 3400)
@@ -370,6 +374,31 @@ class AvailableToOrderTests(FabricTestBase):
             annotated[self.variant1.pk],
             FabricVariant.objects.get(pk=self.variant1.pk).available_to_order,
         )
+
+
+class BaseOpeningBackfillTests(FabricTestBase):
+    def test_backfill_preserves_the_pre_migration_displayed_value(self):
+        from types import SimpleNamespace
+
+        from django.apps import apps
+        from django.db import connection
+
+        order = self.make_order(self.customer1)
+        self.make_line(order, 100, allocated=Decimal("110"))
+        old_displayed = self.variant1.stock_meters - Decimal("100") + Decimal("110")
+
+        from importlib import import_module
+
+        backfill_base_opening = import_module(
+            "apps.items.migrations.0005_two_quantity_stock"
+        ).backfill_base_opening
+
+        backfill_base_opening(
+            apps, SimpleNamespace(connection=connection)
+        )
+
+        self.variant1.refresh_from_db()
+        self.assertEqual(self.variant1.available_to_order, old_displayed)
 
 
 class ScanAvailabilityTests(FabricTestBase):
@@ -777,8 +806,8 @@ class FabricWriteTests(FabricTestBase):
                 "description": "Suiting",
                 "price_per_meter": "14.50",
                 "variants": [
-                    {"display_order": "Ivory", "stock_meters": "800"},
-                    {"display_order": "Sage", "stock_meters": "400"},
+                    {"display_order": "Ivory", "base_opening": "800"},
+                    {"display_order": "Sage", "base_opening": "400"},
                 ],
             },
             format="json",
@@ -808,10 +837,10 @@ class FabricWriteTests(FabricTestBase):
                 "description": "Rigid selvedge",
                 "price_per_meter": "18.90",
                 "variants[0]display_order": "Indigo",
-                "variants[0]stock_meters": "1200",
+                "variants[0]base_opening": "1200",
                 "variants[0]image": make_image("indigo.png", (2200, 1600)),
                 "variants[1]display_order": "Ecru",
-                "variants[1]stock_meters": "300",
+                "variants[1]base_opening": "300",
             },
             format="multipart",
         )
@@ -849,7 +878,7 @@ class FabricWriteTests(FabricTestBase):
                     {
                         "id": self.variant1.pk,
                         "display_order": "Natural",
-                        "stock_meters": "7777",
+                        "base_opening": "7777",
                     }
                 ]
             },
@@ -857,7 +886,8 @@ class FabricWriteTests(FabricTestBase):
         )
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
         self.variant1.refresh_from_db()
-        self.assertEqual(self.variant1.stock_meters, Decimal("7777.000"))
+        self.assertEqual(self.variant1.base_opening, Decimal("7777.000"))
+        self.assertEqual(self.variant1.stock_meters, Decimal("3000.000"))
 
     def test_edit_leaves_stock_untouched_when_the_key_is_absent(self):
         # A payload that does not mention stock must not rewrite the live count.
@@ -871,8 +901,8 @@ class FabricWriteTests(FabricTestBase):
         self.variant1.refresh_from_db()
         self.assertEqual(self.variant1.stock_meters, Decimal("3000.000"))
 
-    def test_edit_stock_bumps_the_stock_cursor(self):
-        # The sync feed only reports variants with a fresh stock_updated_at.
+    def test_editing_base_does_not_move_on_hand_stock(self):
+        # The editable field is the order-stock base, not physical stock.
         FabricVariant.objects.filter(pk=self.variant1.pk).update(
             stock_updated_at=timezone.now() - timedelta(days=1)
         )
@@ -884,7 +914,7 @@ class FabricWriteTests(FabricTestBase):
                     {
                         "id": self.variant1.pk,
                         "display_order": "Natural",
-                        "stock_meters": "4000",
+                        "base_opening": "4000",
                     }
                 ]
             },
@@ -892,9 +922,8 @@ class FabricWriteTests(FabricTestBase):
         )
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
         self.variant1.refresh_from_db()
-        self.assertGreater(
-            self.variant1.stock_updated_at, timezone.now() - timedelta(seconds=10)
-        )
+        self.assertEqual(self.variant1.base_opening, Decimal("4000.000"))
+        self.assertEqual(self.variant1.stock_meters, Decimal("3000.000"))
 
     def test_agent_cannot_create(self):
         self.auth(self.agent_user)
@@ -907,22 +936,23 @@ class FabricWriteTests(FabricTestBase):
 
 
 class FabricVariantWriteTests(FabricTestBase):
-    def test_admin_can_restock_a_variant(self):
+    def test_admin_can_edit_the_order_stock_base(self):
         self.auth()
         resp = self.client.patch(
             f"/api/items/variants/{self.variant1.pk}/",
-            {"stock_meters": "4200"},
+            {"base_opening": "4200"},
             format="json",
         )
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
         self.variant1.refresh_from_db()
-        self.assertEqual(self.variant1.stock_meters, Decimal("4200.000"))
+        self.assertEqual(self.variant1.base_opening, Decimal("4200.000"))
+        self.assertEqual(self.variant1.stock_meters, Decimal("3000.000"))
 
     def test_negative_stock_rejected(self):
         self.auth()
         resp = self.client.patch(
             f"/api/items/variants/{self.variant1.pk}/",
-            {"stock_meters": "-5"},
+            {"base_opening": "-5"},
             format="json",
         )
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
@@ -961,10 +991,9 @@ class CreateWithRollsTests(FabricTestBase):
     def test_opening_quantity_alone_still_sets_stock_and_leaves_the_colour_roll_less(
         self,
     ):
-        # Unchanged behaviour: no rolls means no FabricRoll rows, a plain metre
-        # figure, and an editable total.
+        # Without rolls, opening stock initializes the physical figure too.
         fabric, _ = self.create_fabric(
-            [{"display_order": "Natural", "stock_meters": "2400"}]
+            [{"display_order": "Natural", "base_opening": "2400"}]
         )
 
         natural = fabric.variants.get(display_order="Natural")
@@ -972,15 +1001,12 @@ class CreateWithRollsTests(FabricTestBase):
         self.assertEqual(FabricRoll.objects.count(), 0)
         self.assertFalse(is_roll_tracked(natural))
 
-    def test_rolls_add_to_the_opening_quantity(self):
-        # Typed 1000, rolls add up to 950. The figure is the cloth already on hand
-        # and the rolls are the shipment on top of it, so 1950 -- not 950 (the
-        # figure silently dropped) and not 0.
+    def test_rolls_and_opening_order_stock_are_independent(self):
         fabric, _ = self.create_fabric(
             [
                 {
                     "display_order": "Natural",
-                    "stock_meters": "1000",
+                    "base_opening": "1000",
                     "rolls": [
                         {"meters": "500", "note": "mill roll"},
                         {"meters": "450"},
@@ -990,25 +1016,22 @@ class CreateWithRollsTests(FabricTestBase):
         )
 
         natural = fabric.variants.get(display_order="Natural")
-        self.assertEqual(natural.stock_meters, Decimal("1950.000"))
-        self.assertEqual(roll_stock(natural), Decimal("1950.000"))
+        self.assertEqual(natural.base_opening, Decimal("1000.000"))
+        self.assertEqual(natural.stock_meters, Decimal("950.000"))
+        self.assertEqual(natural.available_to_order, Decimal("1000.000"))
+        self.assertEqual(roll_stock(natural), Decimal("950.000"))
         self.assertTrue(is_roll_tracked(natural))
         rolls = list(FabricRoll.objects.filter(variant=natural).order_by("id"))
-        self.assertEqual(len(rolls), 3)
-        # The figure leads, marked so the warehouse can see which cloth it is.
-        self.assertEqual(rolls[0].note, OPENING_STOCK_NOTE)
-        self.assertEqual(rolls[0].remaining_meters, Decimal("1000.000"))
-        # The shipment keeps its own order and its own note.
+        self.assertEqual(len(rolls), 2)
         self.assertEqual(
-            [r.remaining_meters for r in rolls[1:]],
+            [r.remaining_meters for r in rolls],
             [Decimal("500.000"), Decimal("450.000")],
         )
-        self.assertEqual(rolls[1].note, "mill roll")
+        self.assertEqual(rolls[0].note, "mill roll")
 
     def test_the_whole_delivery_is_one_stock_movement(self):
-        # Opening figure plus rolls, in one request. It has to land as a single
-        # adjustment: two would show up as two movements in the warehouse's stock
-        # history for one delivery.
+        # Opening order stock is separate; only the submitted roll delivery moves
+        # physical stock.
         with patch(
             "apps.items.rolls.move_variant_stock", wraps=move_variant_stock
         ) as moved:
@@ -1016,7 +1039,7 @@ class CreateWithRollsTests(FabricTestBase):
                 [
                     {
                         "display_order": "Natural",
-                        "stock_meters": "1000",
+                        "base_opening": "1000",
                         "rolls": [
                             {"meters": "600"},
                             {"meters": "400"},
@@ -1026,15 +1049,14 @@ class CreateWithRollsTests(FabricTestBase):
             )
 
         natural = fabric.variants.get(display_order="Natural")
-        self.assertEqual(natural.stock_meters, Decimal("2000.000"))
-        # One call, for the delivery, added to the figure the variant was created
-        # holding -- so neither the figure nor the rolls are adjusted separately.
+        self.assertEqual(natural.stock_meters, Decimal("1000.000"))
+        self.assertEqual(natural.base_opening, Decimal("1000.000"))
         self.assertEqual(moved.call_count, 1)
         self.assertEqual(moved.call_args.args[1], Decimal("1000.000"))
 
     def test_rolls_only_with_no_opening_figure(self):
         fabric, _ = self.create_fabric(
-            [{"display_order": "Natural", "stock_meters": "0",
+            [{"display_order": "Natural", "base_opening": "0",
               "rolls": [{"meters": "300"}, {"meters": "200.5"}]}]
         )
 
@@ -1047,19 +1069,20 @@ class CreateWithRollsTests(FabricTestBase):
         # own typed figure.
         fabric, _ = self.create_fabric(
             [
-                {"display_order": "Natural", "stock_meters": "1000",
+                {"display_order": "Natural", "base_opening": "1000",
                  "rolls": [{"meters": "500"}]},
-                {"display_order": "Ivory", "stock_meters": "750"},
+                {"display_order": "Ivory", "base_opening": "750"},
             ]
         )
 
         natural = fabric.variants.get(display_order="Natural")
         ivory = fabric.variants.get(display_order="Ivory")
-        # Its own 1000 plus its own roll, and the roll-less colour untouched.
-        self.assertEqual(natural.stock_meters, Decimal("1500.000"))
+        # Opening order stock stays separate from the rolls.
+        self.assertEqual(natural.stock_meters, Decimal("500.000"))
+        self.assertEqual(natural.base_opening, Decimal("1000.000"))
         self.assertEqual(ivory.stock_meters, Decimal("750.000"))
         self.assertFalse(is_roll_tracked(ivory))
-        self.assertEqual(FabricRoll.objects.count(), 2)
+        self.assertEqual(FabricRoll.objects.count(), 1)
 
     def test_a_bad_roll_length_is_refused_and_creates_nothing(self):
         self.auth()
@@ -1071,7 +1094,7 @@ class CreateWithRollsTests(FabricTestBase):
                 "variants": [
                     {
                         "display_order": "Natural",
-                        "stock_meters": "1000",
+                        "base_opening": "1000",
                         "rolls": [{"meters": "500"}, {"meters": "0"}],
                     }
                 ],
@@ -1087,7 +1110,7 @@ class CreateWithRollsTests(FabricTestBase):
 
     def test_created_rolls_report_the_whole_delivery_through_the_api(self):
         fabric, _ = self.create_fabric(
-            [{"display_order": "Natural", "stock_meters": "1000",
+            [{"display_order": "Natural", "base_opening": "1000",
               "rolls": [{"meters": "950"}]}]
         )
 
@@ -1097,10 +1120,10 @@ class CreateWithRollsTests(FabricTestBase):
 
         natural = detail.data["variants"][0]
         self.assertEqual(natural["display_order"], "Natural")
-        self.assertEqual(natural["stock_meters"], "1950.000")
-        # The opening figure is a roll now, so the roll total and the stock agree.
-        self.assertEqual(natural["roll_stock_meters"], "1950.000")
-        self.assertEqual(natural["roll_count"], 2)
+        self.assertEqual(natural["stock_meters"], "950.000")
+        self.assertEqual(natural["base_opening"], "1000.000")
+        self.assertEqual(natural["roll_stock_meters"], "950.000")
+        self.assertEqual(natural["roll_count"], 1)
         self.assertTrue(natural["is_roll_tracked"])
 
 
@@ -1131,7 +1154,7 @@ class CreateWithRollsOverMultipartTests(FabricTestBase):
         fabric, _ = self.create_multipart(
             {
                 "variants[0]display_order": "Natural",
-                "variants[0]stock_meters": "0",
+                "variants[0]base_opening": "0",
                 "variants[0]rolls[0][meters]": "500",
                 "variants[0]rolls[1][meters]": "450",
             }
@@ -1150,7 +1173,7 @@ class CreateWithRollsOverMultipartTests(FabricTestBase):
         fabric, _ = self.create_multipart(
             {
                 "variants[0][display_order]": "Natural",
-                "variants[0][stock_meters]": "0",
+                "variants[0][base_opening]": "0",
                 "variants[0][rolls][0][meters]": "500",
                 "variants[0][rolls][1][meters]": "450",
             },
@@ -1161,13 +1184,11 @@ class CreateWithRollsOverMultipartTests(FabricTestBase):
         self.assertEqual(natural.stock_meters, Decimal("950.000"))
         self.assertEqual(roll_stock(natural), Decimal("950.000"))
 
-    def test_an_opening_figure_survives_alongside_the_rolls(self):
-        # The reported bug: a figure typed on the create screen came back as zero
-        # once rolls were added to the same colour.
+    def test_opening_figure_is_separate_from_the_rolls(self):
         fabric, _ = self.create_multipart(
             {
                 "variants[0]display_order": "Natural",
-                "variants[0]stock_meters": "1000",
+                "variants[0]base_opening": "1000",
                 "variants[0]rolls[0][meters]": "500",
                 "variants[0]rolls[1][meters]": "450",
             },
@@ -1175,14 +1196,10 @@ class CreateWithRollsOverMultipartTests(FabricTestBase):
         )
 
         natural = fabric.variants.get(display_order="Natural")
-        self.assertEqual(natural.stock_meters, Decimal("1950.000"))
-        # Held as a roll, so the figure is still cuttable and the total is still
-        # the sum of the rolls.
-        self.assertEqual(roll_stock(natural), Decimal("1950.000"))
-        self.assertEqual(natural.rolls.count(), 3)
-        self.assertEqual(
-            natural.rolls.filter(note=OPENING_STOCK_NOTE).count(), 1
-        )
+        self.assertEqual(natural.base_opening, Decimal("1000.000"))
+        self.assertEqual(natural.stock_meters, Decimal("950.000"))
+        self.assertEqual(roll_stock(natural), Decimal("950.000"))
+        self.assertEqual(natural.rolls.count(), 2)
 
     def test_a_note_key_does_not_disturb_the_roll(self):
         # The API accepts a note beside a length. Whether a note is stored is
@@ -1191,7 +1208,7 @@ class CreateWithRollsOverMultipartTests(FabricTestBase):
         fabric, _ = self.create_multipart(
             {
                 "variants[0]display_order": "Natural",
-                "variants[0]stock_meters": "0",
+                "variants[0]base_opening": "0",
                 "variants[0]rolls[0][meters]": "500",
                 "variants[0]rolls[0][note]": "mill roll",
             },
@@ -1207,7 +1224,7 @@ class CreateWithRollsOverMultipartTests(FabricTestBase):
         fabric, _ = self.create_multipart(
             {
                 "variants[0]display_order": "Natural",
-                "variants[0]stock_meters": "0",
+                "variants[0]base_opening": "0",
                 "variants[0]rolls[0][meters]": "500",
                 "variants[0]image": make_image(),
             },
@@ -1222,10 +1239,10 @@ class CreateWithRollsOverMultipartTests(FabricTestBase):
         fabric, _ = self.create_multipart(
             {
                 "variants[0]display_order": "Natural",
-                "variants[0]stock_meters": "0",
+                "variants[0]base_opening": "0",
                 "variants[0]rolls[0][meters]": "500",
                 "variants[1]display_order": "Ivory",
-                "variants[1]stock_meters": "0",
+                "variants[1]base_opening": "0",
                 "variants[1]rolls[0][meters]": "300",
             },
             name="Two Lawns",
@@ -1243,7 +1260,7 @@ class CreateWithRollsOverMultipartTests(FabricTestBase):
         fabric, _ = self.create_multipart(
             {
                 "variants[0]display_order": "Natural",
-                "variants[0]stock_meters": "1000",
+                "variants[0]base_opening": "1000",
             },
             name="Undescribed Lawn",
         )
@@ -1257,7 +1274,7 @@ class CreateWithRollsOverMultipartTests(FabricTestBase):
                 "name": "Blank Roll",
                 "price_per_meter": "180.00",
                 "variants[0]display_order": "Natural",
-                "variants[0]stock_meters": "1000",
+                "variants[0]base_opening": "1000",
                 "variants[0]rolls[0][meters]": "",
             },
             format="multipart",
@@ -1281,7 +1298,7 @@ class CreateWithRollsOverMultipartTests(FabricTestBase):
                 "variants": [
                     {
                         "display_order": "Natural",
-                        "stock_meters": "1000",
+                        "base_opening": "1000",
                         "rolls": [{"meters": "500"}, {"meters": "450"}],
                     }
                 ],
@@ -1291,5 +1308,5 @@ class CreateWithRollsOverMultipartTests(FabricTestBase):
 
         self.assertEqual(resp.status_code, status.HTTP_201_CREATED, resp.data)
         natural = Fabric.objects.get(name="Json Lawn").variants.get()
-        # Same rule as the form path: the figure is kept, as its own roll.
-        self.assertEqual(roll_stock(natural), Decimal("1950.000"))
+        self.assertEqual(natural.base_opening, Decimal("1000.000"))
+        self.assertEqual(roll_stock(natural), Decimal("950.000"))

@@ -83,8 +83,8 @@ describe('fabricToFormData', () => {
       description: 'Fine weave, 60 GSM',
       price_per_meter: '185.50',
       variants: [
-        { image: null, display_order: 'Red', stock_meters: '2400' },
-        { image: null, display_order: 'Blue', stock_meters: '900' }
+        { image: null, display_order: 'Red', base_opening: '2400' },
+        { image: null, display_order: 'Blue', base_opening: '900' }
       ]
     }
 
@@ -93,9 +93,9 @@ describe('fabricToFormData', () => {
     expect(result.get('description')).toBe('Fine weave, 60 GSM')
     expect(result.get('price_per_meter')).toBe('185.50')
     expect(result.get('variants[0]display_order')).toBe('Red')
-    expect(result.get('variants[0]stock_meters')).toBe('2400')
+    expect(result.get('variants[0]base_opening')).toBe('2400')
     expect(result.get('variants[1]display_order')).toBe('Blue')
-    expect(result.get('variants[1]stock_meters')).toBe('900')
+    expect(result.get('variants[1]base_opening')).toBe('900')
   })
 
   it('sends the id only for colours that already exist', () => {
@@ -105,7 +105,7 @@ describe('fabricToFormData', () => {
       price_per_meter: '240',
       variants: [
         { id: 7, display_order: 'Natural' },
-        { display_order: 'Sage', stock_meters: '50' }
+        { display_order: 'Sage', base_opening: '50' }
       ]
     })
 
@@ -113,15 +113,15 @@ describe('fabricToFormData', () => {
     expect(result.get('variants[1]id')).toBeNull()
   })
 
-  it('sends stock_meters for existing colours so a correction is saved', () => {
+  it('sends base_opening for existing colours so the opening stock is saved', () => {
     const result = fabricToFormData({
       name: 'Linen',
       description: '',
       price_per_meter: '240',
-      variants: [{ id: 7, display_order: 'Natural', stock_meters: '9999' }]
+      variants: [{ id: 7, display_order: 'Natural', base_opening: '9999' }]
     })
 
-    expect(result.get('variants[0]stock_meters')).toBe('9999')
+    expect(result.get('variants[0]base_opening')).toBe('9999')
     expect(result.get('variants[0]id')).toBe('7')
   })
 
@@ -131,7 +131,7 @@ describe('fabricToFormData', () => {
       name: 'Denim',
       description: '',
       price_per_meter: '320',
-      variants: [{ image: file, display_order: 'Indigo', stock_meters: '10' }]
+      variants: [{ image: file, display_order: 'Indigo', base_opening: '10' }]
     })
 
     expect(result.get('variants[0]image')).toBe(file)

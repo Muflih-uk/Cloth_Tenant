@@ -111,8 +111,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
     #: Whether this colour's metres live on physical rolls, so the order page can
     #: offer the scan-a-roll control instead of a typed figure.
     is_roll_tracked = serializers.SerializerMethodField()
-    #: What is still orderable of this line's colour, warehouse total less every
-    #: order's claim on it. Carried on the line so the order form can say "this
+    #: What is still orderable of this line's colour, opening base less every
+    #: order line's reservation. Carried on the line so the order form can say "this
     #: will oversell" while the agent types, instead of only after they commit.
     #: Includes this line's own outstanding metres, so it is the figure to
     #: compare an edit against.

@@ -202,7 +202,7 @@ export default function ReceiveRollsDialog({
             <h2 className="text-base font-black">Receive Rolls</h2>
             <p className="text-xs text-gray-400 mt-0.5">
               {label ? `${label} — ` : ""}one row per roll length, with how many
-              rolls of it. Metres are added to this colour&apos;s stock as soon as
+              rolls of it. Metres are added only to this colour&apos;s on-hand rolls as soon as
               they are received.
             </p>
           </div>

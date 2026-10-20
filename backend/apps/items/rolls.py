@@ -50,11 +50,6 @@ MAX_METERS = Decimal("99999999999.999")
 
 ROLL_NUMBER_PREFIX = "R-"
 
-#: Marks the roll a colour's pre-roll metre figure is recorded as, so the cloth
-#: that was already on hand is still visible as a roll in the warehouse.
-OPENING_STOCK_NOTE = "Opening stock"
-
-
 class RollError(ValueError):
     """A roll operation that cannot go ahead, phrased for an admin to read."""
 
@@ -146,6 +141,7 @@ def roll_payload(variant, rows=None):
         "exhausted_roll_count": summary["exhausted_roll_count"],
         "total_received_meters": str(summary["total_received_meters"]),
         "roll_stock_meters": str(summary["roll_stock_meters"]),
+        "untracked_stock_meters": str(variant.untracked_stock_meters),
         "consumed_meters": str(summary["consumed_meters"]),
         "largest_roll_meters": str(summary["largest_roll_meters"]),
         "smallest_roll_meters": str(summary["smallest_roll_meters"]),
@@ -249,40 +245,6 @@ def move_variant_stock(variant, delta):
 # --------------------------------------------------------------------------- #
 
 
-def record_opening_stock_roll(variant):
-    """Give a colour's pre-roll metre figure a roll of its own.
-
-    A colour created with a plain metre figure holds cloth belonging to no roll.
-    Receiving is additive, so that figure stays in the total -- and a figure that
-    is in the total but on no roll breaks this module's invariant and, worse, is
-    metres packing cannot cut: every cut is planned against rolls.
-
-    So the figure is turned into a roll, noted as the opening stock, on the same
-    transaction and under the same lock as the delivery that triggered it. The
-    caller is adding the delivery's metres on top afterwards, which is what makes
-    the colour's total right rather than merely consistent.
-
-    Returns the figure's size, or zero when there is nothing to convert: no rolls
-    yet is the only case that does any work, so this is a no-op for every later
-    receive. Caller holds the variant lock and the transaction.
-    """
-    if variant.rolls.exists():
-        return ZERO
-
-    opening = Decimal(str(variant.stock_meters or ZERO))
-    if opening <= ZERO:
-        return ZERO
-
-    _create_roll(variant, opening, None, OPENING_STOCK_NOTE)
-    logger.info(
-        "Recorded %s m of opening stock on variant %s as its own roll, so it can "
-        "be cut and stays part of the roll total.",
-        opening,
-        variant.pk,
-    )
-    return opening
-
-
 def next_roll_number():
     """The next human-readable roll number, e.g. ``R-000007``.
 
@@ -334,15 +296,13 @@ def receive_roll(variant, metres, *, roll_number=None, note=""):
     under the variant's row lock, so a colour can never show metres on its rolls
     that the warehouse total does not have (or the other way round).
 
-    A roll only ever adds. A colour opened with a plain metre figure keeps that
-    figure: the first delivery converts it into a roll of its own so it can be
-    cut and counted, then adds the new metres on top.
+    A roll only changes on-hand stock; the order-stock opening base is separate.
     """
     metres = clean_meters(metres)
 
     with transaction.atomic():
         locked = lock_variant(variant)
-        record_opening_stock_roll(locked)
+        _preserve_untracked_stock(locked)
         roll = _create_roll(locked, metres, roll_number, note)
         move_variant_stock(locked, metres)
         logger.info(
@@ -398,6 +358,26 @@ def _insert_roll(variant, roll_number, metres, note):
     )
 
 
+def _preserve_untracked_stock(variant):
+    """Move loose physical stock out of the roll total on first roll receipt.
+
+    Existing loose stock remains visible but is not scanner-packable; once a
+    variant has rolls, packing continues to consume only those rolls.
+    """
+    if FabricRoll.objects.filter(variant=variant).exists():
+        return
+    if variant.stock_meters <= ZERO:
+        return
+    FabricVariant.objects.filter(pk=variant.pk).update(
+        untracked_stock_meters=variant.untracked_stock_meters + variant.stock_meters,
+        stock_meters=ZERO,
+        stock_updated_at=timezone.now(),
+    )
+    variant.refresh_from_db(
+        fields=["stock_meters", "untracked_stock_meters", "stock_updated_at"]
+    )
+
+
 def receive_rolls(variant, lengths):
     """Receive a whole factory shipment as several rolls, atomically.
 
@@ -425,7 +405,7 @@ def receive_rolls(variant, lengths):
 
     with transaction.atomic():
         locked = lock_variant(variant)
-        record_opening_stock_roll(locked)
+        _preserve_untracked_stock(locked)
         total = sum((metres for metres, _ in parsed), ZERO)
         created = []
         for metres, note in parsed:

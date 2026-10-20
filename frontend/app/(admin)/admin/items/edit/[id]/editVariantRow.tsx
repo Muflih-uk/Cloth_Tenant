@@ -10,7 +10,7 @@ interface Props {
   variant: EditableVariant;
   index: number; // 0-based
   isOnly: boolean;
-  /** New colours start with opening stock; existing colours edit live stock. */
+  /** New colours initialize physical stock from their opening figure. */
   isNew: boolean;
   onChange: (updated: EditableVariant) => void;
   onDelete: () => void;
@@ -18,14 +18,8 @@ interface Props {
 }
 
 /**
- * One colour row. The metre figure is the warehouse's live stock count and is
- * edited in place -- on save the API applies it and records the change on the
- * stock cursor, so a correction here is authoritative.
- *
- * A colour whose metres live on physical rolls is the exception: its total is
- * the sum of those rolls, so the figure is shown read-only and the roll panel
- * below is the only place it can change. A newly added colour has no rolls yet,
- * so its opening figure is editable as usual.
+ * The editable figure is the opening order-stock base. Physical stock is shown
+ * separately and remains controlled by rolls or packing.
  */
 export default function EditVariantRow({
   variant,
@@ -44,6 +38,12 @@ export default function EditVariantRow({
   const imageSrc = variant.imagePreview ?? variant.imageUrl;
   const label = variant.displayOrder.trim();
   const rollTracked = !isNew && variant.isRollTracked === true;
+  const available =
+    toMeters(variant.availableMeters ?? variant.baseOpening) +
+    toMeters(variant.baseOpening) -
+    toMeters(variant.initialBaseOpening ?? variant.baseOpening);
+  const physicalStock =
+    isNew && !rollTracked ? variant.baseOpening : variant.stockMeters;
 
   return (
     <div className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5">
@@ -76,31 +76,38 @@ export default function EditVariantRow({
 
         <div className="flex items-center gap-2">
           <span className="text-[11px] text-gray-400 flex-shrink-0">
-            {rollTracked ? "Stock (derived from physical rolls)" : isNew ? "Opening" : "Stock"}
+            Opening stock (order-stock base)
           </span>
           <Input
             type="number"
             min={0}
             step="0.5"
             inputMode="decimal"
-            value={variant.stockMeters}
+            value={variant.baseOpening}
             placeholder="0"
-            onChange={(e) => set("stockMeters", e.target.value)}
+            onChange={(e) => set("baseOpening", e.target.value)}
             onFocus={(e) => e.target.select()}
-            readOnly={rollTracked}
-            aria-readonly={rollTracked}
-            title={
-              rollTracked
-                ? "Stock is derived from physical rolls for this colour. Add or adjust rolls to change the total."
-                : undefined
-            }
-            className={`h-8 text-sm w-24 ${rollTracked ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""}`}
+            className="h-8 text-sm w-24"
           />
           <span className="text-[11px] text-gray-400">m</span>
-          {rollTracked && (
-            <span className="text-[10px] uppercase tracking-wide text-primary bg-primary/10 rounded-full px-2 py-0.5">
-              derived from physical rolls · {variant.rollCount ?? 0} roll{variant.rollCount === 1 ? "" : "s"}
+        </div>
+        <div className="flex flex-wrap gap-x-3 text-[11px] text-gray-500">
+          <span className={available < 0 ? "text-red-600 font-semibold" : ""}>
+            Available to order: {toMeters(variant.baseOpening) === 0 && isNew
+              ? "0"
+              : available.toLocaleString()} m
+          </span>
+          <span>
+            {rollTracked ? "On rolls" : "Physical stock"}: {toMeters(physicalStock).toLocaleString()} m
+          </span>
+          {toMeters(variant.untrackedStockMeters ?? "0") > 0 && (
+            <span className="text-amber-700">
+              Untracked physical (not packable):{" "}
+              {toMeters(variant.untrackedStockMeters ?? "0").toLocaleString()} m
             </span>
+          )}
+          {rollTracked && (
+            <span>{variant.rollCount ?? 0} physical roll{variant.rollCount === 1 ? "" : "s"}</span>
           )}
         </div>
       </div>

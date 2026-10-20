@@ -24,6 +24,9 @@ export function normalizeAdminItem(item: FabricStockEntry): UIItem {
       display_order: variant.display_order,
       stock_meters: variant.stock_meters,
       available_meters: variant.available_meters,
+      untracked_stock_meters: variant.untracked_stock_meters,
+      is_roll_tracked: variant.is_roll_tracked,
+      roll_stock_meters: variant.roll_stock_meters,
     })),
   };
 }

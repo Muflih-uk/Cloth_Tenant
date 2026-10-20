@@ -21,6 +21,9 @@ function normalizeAgentItem(item: AssignedItem): UIItem {
             display_order: v.display_order,
             stock_meters: v.stock_meters,
             available_meters: v.available_meters,
+            untracked_stock_meters: v.untracked_stock_meters,
+            is_roll_tracked: v.is_roll_tracked,
+            roll_stock_meters: v.roll_stock_meters,
         })),
     };
 }

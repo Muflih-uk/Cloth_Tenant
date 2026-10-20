@@ -31,21 +31,21 @@ describe("available stock after scanning", () => {
   it("shows availability as the headline and stock on hand underneath", () => {
     renderSelector();
 
-    expect(availableFigure().textContent).toContain("2500 m available");
-    expect(body()).toContain("On hand: 3000 m");
+    expect(availableFigure().textContent).toContain("2500 m available to order");
+    expect(body()).toContain("Physical stock: 3000 m");
   });
 
   it("keeps availability visible when nothing is on hand", () => {
     renderSelector({ onHandMetres: 0, availableMetres: 0, metres: "50" });
 
-    expect(availableFigure().textContent).toContain("0 m available");
-    expect(body()).toContain("On hand: 0 m");
+    expect(availableFigure().textContent).toContain("0 m available to order");
+    expect(body()).toContain("Physical stock: 0 m");
   });
 
   it("marks availability red once it has gone negative", () => {
     renderSelector({ onHandMetres: 100, availableMetres: -60, metres: "10" });
 
-    expect(availableFigure().textContent).toContain("-60 m available");
+    expect(availableFigure().textContent).toContain("-60 m available to order");
     expect(availableFigure().className).toContain("text-red-600");
   });
 

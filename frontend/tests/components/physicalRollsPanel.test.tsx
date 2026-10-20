@@ -55,6 +55,7 @@ function rollsResponse(overrides: Partial<VariantRollsResponse> = {}) {
     exhausted_roll_count: 0,
     total_received_meters: "150.000",
     roll_stock_meters: "90.000",
+    untracked_stock_meters: "0.000",
     consumed_meters: "60.000",
     largest_roll_meters: "100.000",
     smallest_roll_meters: "50.000",
@@ -122,7 +123,7 @@ describe("PhysicalRollsPanel", () => {
     // The count travels with the metres: the badge above the panel quotes the
     // same number, so sending only the metres left it stale at whatever the page
     // loaded with.
-    expect(onStockChanged).toHaveBeenCalledWith("90.000", 2);
+    expect(onStockChanged).toHaveBeenCalledWith("90.000", 2, "0.000", true);
   });
 
   it("lists each roll with what is left when opened", async () => {
@@ -336,8 +337,8 @@ describe("PhysicalRollsPanel", () => {
 });
 
 /**
- * The first roll onto a colour created with a plain metre figure replaces that
- * figure rather than adding to it, so the swap is confirmed before it happens.
+ * A first received roll becomes roll-tracked, while any existing loose physical
+ * metres remain in their separate non-packable carryover bucket.
  */
 describe("PhysicalRollsPanel first roll on untracked stock", () => {
   /** A colour with no rolls but a plain opening figure on hand. */
@@ -371,10 +372,8 @@ describe("PhysicalRollsPanel first roll on untracked stock", () => {
     await userEvent.click(screen.getByRole("button", { name: /^Receive$/i }));
   }
 
-  it("adds to the opening figure instead of replacing it", async () => {
-    // The figure is cloth already on hand, so a roll is a further delivery on top
-    // of it. The API records the figure as a roll of its own, so it still counts
-    // and can still be cut -- there is nothing to confirm and nothing to lose.
+  it("preserves loose physical stock separately when receiving the first roll", async () => {
+    const onStockChanged = vi.fn();
     receive.mockResolvedValue({
       ...rollsResponse(),
       roll: rollsResponse().rolls[0],
@@ -382,8 +381,20 @@ describe("PhysicalRollsPanel first roll on untracked stock", () => {
     // The panel reloads after receiving, and now has its first roll.
     getForVariant
       .mockResolvedValueOnce(untracked())
-      .mockResolvedValueOnce(rollsResponse({ roll_count: 1, stock_meters: "1100.000" }));
-    render(<PhysicalRollsPanel variantId={7} label="Cotton Cambric" />);
+      .mockResolvedValueOnce(
+        rollsResponse({
+          roll_count: 1,
+          stock_meters: "100.000",
+          untracked_stock_meters: "1000.000",
+        }),
+      );
+    render(
+      <PhysicalRollsPanel
+        variantId={7}
+        label="Cotton Cambric"
+        onStockChanged={onStockChanged}
+      />,
+    );
 
     await startReceive();
     await submitDraft("100");
@@ -391,6 +402,12 @@ describe("PhysicalRollsPanel first roll on untracked stock", () => {
     await waitFor(() => expect(receive).toHaveBeenCalledWith(7, { meters: "100" }));
     expect(screen.queryByText(/Replace untracked stock\?/i)).toBeNull();
     expect(screen.queryByText(/will no longer be counted/i)).toBeNull();
+    expect(onStockChanged).toHaveBeenLastCalledWith(
+      "100.000",
+      1,
+      "1000.000",
+      true,
+    );
   });
 
   it("receives a multi-roll delivery onto an untracked colour in one request", async () => {
@@ -398,13 +415,18 @@ describe("PhysicalRollsPanel first roll on untracked stock", () => {
       ...rollsResponse(),
       created: 5,
       total_meters: "500.000",
-      stock_meters: "1500.000",
+      stock_meters: "500.000",
+      untracked_stock_meters: "1000.000",
       rolls: [],
     } as never);
     getForVariant
       .mockResolvedValueOnce(untracked())
       .mockResolvedValueOnce(
-        rollsResponse({ roll_count: 5, stock_meters: "1500.000" }),
+        rollsResponse({
+          roll_count: 5,
+          stock_meters: "500.000",
+          untracked_stock_meters: "1000.000",
+        }),
       );
     render(<PhysicalRollsPanel variantId={7} label="Cotton Cambric" />);
 
@@ -460,13 +482,16 @@ describe("PhysicalRollsPanel first roll on untracked stock", () => {
     );
   });
 
-  it("reports the new roll's count up so the badge above cannot go stale", async () => {
+  it("reports the new roll count and loose stock separately", async () => {
     const onStockChanged = vi.fn();
     getForVariant
       .mockResolvedValueOnce(untracked())
-      // The figure's own roll plus the one received, and both sets of metres.
       .mockResolvedValueOnce(
-        rollsResponse({ roll_count: 2, stock_meters: "1100.000" }),
+        rollsResponse({
+          roll_count: 2,
+          stock_meters: "100.000",
+          untracked_stock_meters: "1000.000",
+        }),
       );
     receive.mockResolvedValue({
       ...rollsResponse(),
@@ -483,9 +508,14 @@ describe("PhysicalRollsPanel first roll on untracked stock", () => {
     await startReceive();
     await submitDraft("100");
 
-    // The pair that keeps the badge and the panel agreeing: 1100 m over 2 rolls.
+    // Roll metres and loose carryover remain separate figures.
     await waitFor(() =>
-      expect(onStockChanged).toHaveBeenLastCalledWith("1100.000", 2),
+      expect(onStockChanged).toHaveBeenLastCalledWith(
+        "100.000",
+        2,
+        "1000.000",
+        true,
+      ),
     );
   });
 
@@ -511,6 +541,6 @@ describe("PhysicalRollsPanel first roll on untracked stock", () => {
 
     await waitFor(() => screen.getByText(/Total: 40 m/i));
     expect(screen.getByText(/2 rolls/i)).toBeTruthy();
-    expect(onStockChanged).toHaveBeenCalledWith("40.000", 2);
+    expect(onStockChanged).toHaveBeenCalledWith("40.000", 2, "0.000", true);
   });
 });

@@ -10,6 +10,8 @@ vi.mock("@/components/pages/ImagePreview", () => ({
 const existing = (over: Partial<EditableVariant> = {}): EditableVariant => ({
   backendId: 7,
   localId: "a",
+  baseOpening: "100.000",
+  initialBaseOpening: "100.000",
   stockMeters: "100.000",
   displayOrder: "Natural",
   imageUrl: null,
@@ -37,51 +39,50 @@ function renderRow(variant: EditableVariant, isNew = false) {
   );
 }
 
-describe("EditVariantRow roll badge", () => {
-  // The badge quotes the roll count sitting directly above the Physical Rolls
-  // panel, which keeps its own copy from the API. It used to keep the count the
-  // page loaded with, so after a receive it read "0 rolls" over a panel showing
-  // one. Both numbers now arrive together from that panel.
-  it("shows the roll count it is given", () => {
-    renderRow(existing({ rollCount: 1 }));
+describe("EditVariantRow stock figures", () => {
+  it("edits the opening base and displays order and on-roll balances separately", () => {
+    renderRow(
+      existing({
+        baseOpening: "200.000",
+        initialBaseOpening: "100.000",
+        availableMeters: "40.000",
+        stockMeters: "100.000",
+        isRollTracked: true,
+        rollCount: 1,
+      }),
+    );
 
-    expect(screen.getByText(/derived from physical rolls · 1 roll$/i)).toBeTruthy();
+    expect(screen.getByDisplayValue("200.000")).toHaveProperty("readOnly", false);
+    expect(document.body.textContent).toContain("Opening stock (order-stock base)");
+    expect(document.body.textContent).toContain("Available to order: 140 m");
+    expect(document.body.textContent).toContain("On rolls: 100 m");
   });
 
-  it("pluralises a count above one", () => {
-    renderRow(existing({ rollCount: 3 }));
+  it("shows roll-less physical stock alongside available-to-order stock", () => {
+    renderRow(
+      existing({
+        baseOpening: "1000",
+        initialBaseOpening: "1000",
+        availableMeters: "1000",
+        stockMeters: "800",
+        isRollTracked: false,
+      }),
+    );
 
-    expect(screen.getByText(/derived from physical rolls · 3 rolls/i)).toBeTruthy();
+    expect(document.body.textContent).toContain("Available to order: 1,000 m");
+    expect(document.body.textContent).toContain("Physical stock: 800 m");
   });
 
-  it("shows the metre total the panel reported, read-only", () => {
-    renderRow(existing({ stockMeters: "100.000" }));
+  it("shows preserved loose stock separately when rolls are added", () => {
+    renderRow(
+      existing({
+        untrackedStockMeters: "1000.000",
+        isRollTracked: true,
+      }),
+    );
 
-    const field = screen.getByDisplayValue("100.000");
-    expect(field).toHaveProperty("readOnly", true);
-    expect(screen.getByText(/Stock \(derived from physical rolls\)/i)).toBeTruthy();
-  });
-
-  it("hides the badge for a colour with no rolls yet", () => {
-    // Not roll-tracked means not derived from anything, so claiming otherwise
-    // would be wrong.
-    renderRow(existing({ isRollTracked: false, rollCount: 0, stockMeters: "1000" }));
-
-    expect(screen.queryByText(/derived from physical rolls/i)).toBeNull();
-    expect(screen.getByText(/^Stock$/i)).toBeTruthy();
-    expect(screen.getByDisplayValue("1000")).toHaveProperty("readOnly", false);
-  });
-
-  it("hides the badge for a colour being created, which has no rolls", () => {
-    renderRow(existing({ isRollTracked: true, rollCount: 1 }), true);
-
-    expect(screen.queryByText(/derived from physical rolls/i)).toBeNull();
-    expect(screen.getByText(/^Opening$/i)).toBeTruthy();
-  });
-
-  it("treats a missing count as zero rather than rendering nothing", () => {
-    renderRow(existing({ rollCount: undefined }));
-
-    expect(screen.getByText(/derived from physical rolls · 0 rolls/i)).toBeTruthy();
+    expect(document.body.textContent).toContain(
+      "Untracked physical (not packable): 1,000 m",
+    );
   });
 });

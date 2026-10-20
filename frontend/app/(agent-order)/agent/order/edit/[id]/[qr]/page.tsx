@@ -38,6 +38,12 @@ export default function EditProductDetailPage() {
   const [existingMetres, setExistingMetres] = useState<Record<number, number>>(
     {},
   );
+  const [existingReservation, setExistingReservation] = useState<
+    Record<number, number>
+  >({});
+  const [existingPacked, setExistingPacked] = useState<Record<number, number>>(
+    {},
+  );
   const [lineIdByVariant, setLineIdByVariant] = useState<Record<number, number>>(
     {},
   );
@@ -71,6 +77,8 @@ const [overriddenByVariant, setOverriddenByVariant] = useState<
 
         if (orderResponse && matched) {
           const byVariant: Record<number, number> = {};
+          const reservedByVariant: Record<number, number> = {};
+          const packedByVariant: Record<number, number> = {};
           const lineIds: Record<number, number> = {};
           const rates: Record<number, string> = {};
           const overrides: Record<number, boolean> = {};
@@ -78,6 +86,13 @@ const [overriddenByVariant, setOverriddenByVariant] = useState<
             if (!line.variant) continue;
             byVariant[line.variant] =
               (byVariant[line.variant] ?? 0) + toMeters(line.ordered_quantity);
+            const ordered = toMeters(line.ordered_quantity);
+            const allocated = toMeters(line.allocated_quantity);
+            reservedByVariant[line.variant] =
+              (reservedByVariant[line.variant] ?? 0) +
+              Math.max(ordered, allocated);
+            packedByVariant[line.variant] =
+              (packedByVariant[line.variant] ?? 0) + allocated;
             lineIds[line.variant] = line.id;
             rates[line.variant] = line.rate_per_meter;
             // The server's own answer to "was this line repriced?" — comparing
@@ -86,6 +101,8 @@ const [overriddenByVariant, setOverriddenByVariant] = useState<
             overrides[line.variant] = !!line.is_rate_overridden;
           }
           setExistingMetres(byVariant);
+          setExistingReservation(reservedByVariant);
+          setExistingPacked(packedByVariant);
           setLineIdByVariant(lineIds);
           setRateByVariant(rates);
           setOverriddenByVariant(overrides);
@@ -138,8 +155,8 @@ const [overriddenByVariant, setOverriddenByVariant] = useState<
       selectedVariant.available_meters !== undefined
         ? toMeters(selectedVariant.available_meters)
         : onHandMetres;
-    return scanned + (existingMetres[selectedVariant.id] ?? 0);
-  }, [selectedVariant, existingMetres, onHandMetres]);
+    return scanned + (existingReservation[selectedVariant.id] ?? 0);
+  }, [selectedVariant, existingReservation, onHandMetres]);
   const requested = useMemo(() => toMeters(metres), [metres]);
 
   const catalogRate = data?.price_per_meter ?? "";
@@ -260,7 +277,13 @@ const [overriddenByVariant, setOverriddenByVariant] = useState<
           metres={metres}
           onChange={setMetres}
           onHandMetres={onHandMetres}
+          onHandLabel={
+            selectedVariant?.is_roll_tracked ? "On rolls" : "Physical stock"
+          }
         availableMetres={availableMetres}
+        alreadyPackedMetres={
+          selectedVariant ? existingPacked[selectedVariant.id] ?? 0 : 0
+        }
           isEditMode={isEditMode}
         />
 

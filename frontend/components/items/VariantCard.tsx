@@ -100,8 +100,8 @@ export default function VariantCard({
                 <StockMetresRow
                     stockMeters={variant.stock_meters}
                     availableMeters={variant.available_meters}
-                    isDisabled={isOutOfStock}
-                    isReadonly={isReadonly}
+                    isRollTracked={variant.is_roll_tracked}
+                    untrackedStockMeters={variant.untracked_stock_meters}
                 />
             </div>
 
@@ -118,12 +118,7 @@ export default function VariantCard({
                 {context === "agent" && (
                     <button
                         onClick={() => onOrder?.(variant.id)}
-                        disabled={isOutOfStock}
-                        className={`px-3 py-1 rounded-md text-xs font-bold transition-colors ${
-                            isOutOfStock && !isReadonly
-                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                : "bg-primary text-white hover:bg-primary/90"
-                        }`}
+                        className="px-3 py-1 rounded-md text-xs font-bold transition-colors bg-primary text-white hover:bg-primary/90"
                     >
                         Order
                     </button>

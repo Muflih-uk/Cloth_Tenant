@@ -15,7 +15,7 @@ function makeFabric(
   id: number;
   name: string;
   price_per_meter: string;
-  variants: { stock_meters: string }[];
+  variants: { stock_meters: string; untracked_stock_meters?: string }[];
 } {
   return {
     id,
@@ -43,6 +43,18 @@ describe("computeInventorySummary", () => {
 
     expect(summary.totalStock).toBe(12.75);
     expect(summary.totalValue).toBe(1275);
+  });
+
+  it("includes preserved loose stock in the physical total and valuation", () => {
+    const summary = computeInventorySummary([
+      {
+        ...makeFabric(1, "Cotton", "100", ["100"]),
+        variants: [{ stock_meters: "100", untracked_stock_meters: "1000" }],
+      },
+    ]);
+
+    expect(summary.totalStock).toBe(1100);
+    expect(summary.totalValue).toBe(110000);
   });
 
   it("flags a colour as low only when it is empty-but-not-below threshold", () => {

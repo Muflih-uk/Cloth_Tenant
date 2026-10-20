@@ -11,7 +11,7 @@ export interface FabricSummaryRow {
   name: string;
   pricePerMeter: number;
   variantCount: number;
-  /** Physical metres across every colour. */
+  /** All physical metres, including preserved loose stock outside the rolls. */
   totalStock: number;
   /** totalStock × pricePerMeter. */
   totalValue: number;
@@ -36,15 +36,14 @@ type StockSource = {
   id: number;
   name: string;
   price_per_meter: string;
-  variants: { stock_meters: string }[];
+  variants: { stock_meters: string; untracked_stock_meters?: string }[];
 };
 
 /**
- * Value the physical cloth on the rolls.
+ * Value all physical cloth.
  *
- * Metres come from `stock_meters`, not from order demand: a metre that is spoken
- * for but not yet cut is still on the roll. Value is metres × the fabric's rate
- * per metre, which is the same rate orders are billed at.
+ * Order reservations do not change the value. Loose carryover is counted in
+ * physical totals even though only the roll portion can be scanner-packed.
  */
 export function computeInventorySummary(fabrics: StockSource[]): InventorySummary {
   let totalStock = 0;
@@ -59,10 +58,12 @@ export function computeInventorySummary(fabrics: StockSource[]): InventorySummar
     let lowStockVariants = 0;
 
     for (const variant of fabric.variants) {
-      const meters = toMeters(variant.stock_meters);
-      stock += meters;
-      if (meters <= 0) outOfStockVariants += 1;
-      else if (meters < LOW_STOCK_METERS) lowStockVariants += 1;
+      const packableMeters = toMeters(variant.stock_meters);
+      stock +=
+        packableMeters +
+        toMeters(variant.untracked_stock_meters ?? "0");
+      if (packableMeters <= 0) outOfStockVariants += 1;
+      else if (packableMeters < LOW_STOCK_METERS) lowStockVariants += 1;
     }
 
     const value = stock * pricePerMeter;

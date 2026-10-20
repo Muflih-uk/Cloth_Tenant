@@ -81,8 +81,13 @@ export default function FabricEditPage() {
           data.variants.map((variant) => ({
             backendId: variant.id,
             localId: uid(),
-            // The live warehouse count, shown in the row and sent back on save.
+            // The opening order-stock base is edited; physical stock is shown
+            // separately and remains owned by rolls or packing.
+            baseOpening: variant.base_opening ?? variant.stock_meters,
+            initialBaseOpening: variant.base_opening ?? variant.stock_meters,
             stockMeters: variant.stock_meters,
+            availableMeters: variant.available_meters,
+            untrackedStockMeters: variant.untracked_stock_meters,
             displayOrder: variant.display_order ?? "",
             imageUrl: variant.image ?? null,
             newImage: null,
@@ -114,6 +119,8 @@ export default function FabricEditPage() {
       {
         backendId: nextTempId.current--,
         localId: uid(),
+        baseOpening: "0",
+        initialBaseOpening: "0",
         stockMeters: "0",
         displayOrder: "",
         imageUrl: null,
@@ -128,23 +135,28 @@ export default function FabricEditPage() {
   };
 
   /**
-   * A roll received, cut or adjusted moves the colour's warehouse total, so the
+   * A roll received, cut or adjusted moves the colour's on-hand total, so the
    * read-only figure beside the colour has to follow it without a page reload.
    *
-   * The roll count comes back with it, because the badge on the same row quotes
-   * it. Refreshing only the metres left that badge on the count the page loaded
-   * with -- "derived from physical rolls · 0 rolls" sitting directly above a
-   * panel that had just received one.
+   * The roll count comes back with it so the row updates alongside the panel.
    */
   const handleRollStockChanged = (
     localId: string,
     stockMeters: string,
     rollCount: number,
+    untrackedStockMeters: string,
+    isRollTracked: boolean,
   ) =>
     setVariants((prev) =>
       prev.map((v) =>
         v.localId === localId
-          ? { ...v, stockMeters, isRollTracked: true, rollCount }
+          ? {
+              ...v,
+              stockMeters,
+              untrackedStockMeters,
+              isRollTracked,
+              rollCount,
+            }
           : v,
       ),
     );
@@ -231,7 +243,10 @@ export default function FabricEditPage() {
   if (loading) return <PageLoading />;
 
   const totalMetres = variants.reduce(
-    (sum, v) => sum + toMeters(v.stockMeters),
+    (sum, v) =>
+      sum +
+      toMeters(v.stockMeters) +
+      toMeters(v.untrackedStockMeters ?? "0"),
     0,
   );
   const heroImage = variants[0]?.imagePreview ?? variants[0]?.imageUrl;
@@ -258,7 +273,7 @@ export default function FabricEditPage() {
                   variants.find((v) => v.localId === deleteConfirm.localId)
                     ?.stockMeters,
                 )}{" "}
-                m of stock will be removed. Existing order history is kept.
+                m of physical stock will be removed. Existing order history is kept.
               </p>
             </div>
             <div className="flex gap-3">
@@ -320,7 +335,7 @@ export default function FabricEditPage() {
         </div>
         <h2 className="text-xl font-black">{common.name || "—"}</h2>
         <p className="text-sm text-gray-400 font-medium">
-          {formatMeters(totalMetres)} m across {variants.length} colour
+            {formatMeters(totalMetres)} m on hand across {variants.length} colour
           {variants.length !== 1 ? "s" : ""}
         </p>
       </div>
@@ -426,8 +441,14 @@ export default function FabricEditPage() {
                     <PhysicalRollsPanel
                       variantId={variant.backendId}
                       label={common.name || "Fabric"}
-                      onStockChanged={(stock, rollCount) =>
-                        handleRollStockChanged(variant.localId, stock, rollCount)
+                      onStockChanged={(stock, rollCount, untracked, tracked) =>
+                        handleRollStockChanged(
+                          variant.localId,
+                          stock,
+                          rollCount,
+                          untracked,
+                          tracked,
+                        )
                       }
                     />
                   </div>
@@ -446,11 +467,10 @@ export default function FabricEditPage() {
           </button>
 
           <p className="mt-3 text-[11px] text-gray-400 leading-relaxed">
-            Colours are what orders are placed against, and a colour&apos;s metre
-            count is its warehouse stock. Edit it here and it is saved with the
-            fabric. A colour tracked by physical rolls shows its total read-only
-            instead: that figure is the sum of its rolls, so it changes by
-            receiving, packing or adjusting a roll.
+            Edit the opening base for available-to-order stock here. On-hand
+            physical stock is shown separately; manage rolls in the Physical
+            Rolls panel. For roll-less colours, manual packing changes physical
+            stock without changing the order-stock base.
           </p>
 
           {variantCrop && (

@@ -4,62 +4,60 @@ import { formatMeters, toMeters } from "@/types/item";
 
 interface StockMetresRowProps {
   stockMeters: string;
-  /**
-   * Warehouse total less what live orders have already claimed. Falls back to
-   * the physical figure when the server does not send it.
-   */
+  /** Order stock after reservations; falls back to physical stock if omitted. */
   availableMeters?: string | null;
-  isDisabled?: boolean;
-  isReadonly?: boolean;
+  isRollTracked?: boolean;
+  untrackedStockMeters?: string | null;
 }
 
 /**
- * One colour's metres: what is still orderable, over what is physically there.
+ * One colour's order stock and on-hand stock.
  *
  * The headline is `available_meters` because that is the figure that answers
  * "can this colour take another order", and it moves as soon as one is placed.
- * The physical total stays underneath as the audit trail, so an admin can still
- * see the real cloth on the shelf without opening anything.
+ * The physical total stays underneath so on-hand stock remains visible.
  */
 export default function StockMetresRow({
   stockMeters,
   availableMeters,
-  isDisabled = false,
-  isReadonly = false,
+  isRollTracked = false,
+  untrackedStockMeters,
 }: StockMetresRowProps) {
   const available =
     availableMeters === undefined || availableMeters === null
       ? toMeters(stockMeters)
       : toMeters(availableMeters);
-  const isOversold = available < 0;
+  const isNonPositive = available <= 0;
 
   return (
     <div
       className={`flex-shrink-0 px-3 py-2 rounded-lg min-w-[88px] ${
-        isDisabled && !isReadonly
-          ? "bg-red-100 border border-red-700"
-          : "bg-gray-50"
+        available < 0 ? "bg-red-100 border border-red-200" : "bg-gray-50"
       }`}
     >
       <span className="text-[10px] uppercase tracking-wider font-bold block text-gray-400">
-        Available
+        Available to order
       </span>
       <span
         className={`text-sm font-black block ${
-          isOversold
+          isNonPositive
             ? "text-red-600"
-            : isDisabled
-              ? "text-red-400"
-              : "text-gray-900"
+            : "text-gray-900"
         }`}
       >
         {formatMeters(available)} m
       </span>
-      {/* The cloth itself, kept visible so the derived figure above is never the
-          only thing on screen. */}
+      {/* Keep on-hand stock visible alongside the independent order balance. */}
       <span className="text-[10px] text-gray-400 block">
-        On hand: {formatMeters(toMeters(stockMeters))} m
+        {isRollTracked ? "On rolls" : "Physical stock"}:{" "}
+        {formatMeters(toMeters(stockMeters))} m
       </span>
+      {toMeters(untrackedStockMeters ?? "0") > 0 && (
+        <span className="text-[10px] text-amber-700 block">
+          Untracked physical (not packable):{" "}
+          {formatMeters(toMeters(untrackedStockMeters ?? "0"))} m
+        </span>
+      )}
     </div>
   );
 }

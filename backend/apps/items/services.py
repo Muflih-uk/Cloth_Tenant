@@ -38,7 +38,11 @@ def touch_catalog(fabric):
 
 def total_stock(fabric):
     """Cloth on hand across every variant of ``fabric``, in metres."""
-    total = fabric.variants.aggregate(total=Sum("stock_meters"))["total"]
+    from django.db.models import F
+
+    total = fabric.variants.aggregate(
+        total=Sum(F("stock_meters") + F("untracked_stock_meters"))
+    )["total"]
     return total or ZERO
 
 

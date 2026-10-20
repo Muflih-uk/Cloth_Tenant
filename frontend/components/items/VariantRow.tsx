@@ -41,13 +41,19 @@ export default function VariantRow({
             </div>
 
             <StockBadge
-                total={Number(variant.stock_meters)}
+                total={Number(
+                    variant.is_roll_tracked
+                        ? variant.roll_stock_meters ?? variant.stock_meters
+                        : variant.stock_meters,
+                )}
                 available={
                     variant.available_meters === undefined
                         ? undefined
                         : Number(variant.available_meters)
                 }
                 unit="m"
+                physicalLabel={variant.is_roll_tracked ? "On rolls" : "Physical stock"}
+                untrackedPhysical={Number(variant.untracked_stock_meters ?? 0)}
             />
 
             <button

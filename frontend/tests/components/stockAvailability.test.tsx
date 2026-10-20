@@ -17,8 +17,8 @@ describe("stock figures", () => {
       render(<StockBadge total={100} available={40} unit="m" />);
 
       expect(screen.getByText(/^40 m$/)).toBeTruthy();
-      expect(screen.getByText("available")).toBeTruthy();
-      expect(screen.getByText(/On hand: 100 m/)).toBeTruthy();
+      expect(screen.getByText("Available to order")).toBeTruthy();
+      expect(screen.getByText(/On rolls: 100 m/)).toBeTruthy();
     });
 
     it("marks an oversold colour as an error", () => {
@@ -29,14 +29,14 @@ describe("stock figures", () => {
       expect(screen.getByText(/^-60 m$/)).toBeTruthy();
       const figure = screen.getByText(/^-60 m$/);
       expect(figure.className).toContain("text-red-600");
-      expect(container.textContent).toContain("On hand: 100 m");
+      expect(container.textContent).toContain("On rolls: 100 m");
     });
 
     it("falls back to the physical figure when the server sends no availability", () => {
       render(<StockBadge total={100} unit="m" />);
 
       expect(screen.getByText(/^100 m$/)).toBeTruthy();
-      expect(screen.getByText(/On hand: 100 m/)).toBeTruthy();
+      expect(screen.getByText(/On rolls: 100 m/)).toBeTruthy();
     });
 
     it("treats exactly zero as empty rather than low", () => {
@@ -50,9 +50,9 @@ describe("stock figures", () => {
     it("leads with availability and shows the warehouse total underneath", () => {
       render(<StockMetresRow stockMeters="100.000" availableMeters="40.000" />);
 
-      expect(screen.getByText("Available")).toBeTruthy();
+      expect(screen.getByText("Available to order")).toBeTruthy();
       expect(screen.getByText("40 m")).toBeTruthy();
-      expect(screen.getByText("On hand: 100 m")).toBeTruthy();
+      expect(screen.getByText("Physical stock: 100 m")).toBeTruthy();
     });
 
     it("marks an oversold colour as an error", () => {
@@ -72,11 +72,10 @@ describe("stock figures", () => {
         <StockMetresRow
           stockMeters="0.000"
           availableMeters="0.000"
-          isDisabled
         />,
       );
 
-      expect(screen.getByText("On hand: 0 m")).toBeTruthy();
+      expect(screen.getByText("Physical stock: 0 m")).toBeTruthy();
     });
   });
 });

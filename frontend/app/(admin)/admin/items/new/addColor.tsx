@@ -9,7 +9,7 @@ import StockFlowButton from "@/components/ui/custom/stockFlowButton";
 import CropModal from "./cropModal";
 import CommonDetailsBadge from "./commonDetailsBadge";
 import { ColorVariant, FabricDetails } from "@/types/item";
-import { formatMeters, roundMetres, toMeters } from "@/types/item";
+import { formatMeters } from "@/types/item";
 import { Modal, ModalButton } from "@/components/ui/custom/Modals";
 import { normalizeImageFile } from "@/lib/image-utils";
 import ReceiveRollsDialog from "@/components/items/receiveRollsDialog";
@@ -25,15 +25,8 @@ interface Props {
 }
 
 /**
- * One colour of a fabric. A colour *is* the stock-keeping unit here, so the
- * opening metre count entered on this screen is the physical cloth on hand for
- * that colour -- there is no size breakdown to fill in.
- *
- * The cloth can also arrive on named rolls. Rolls are optional: a colour can be
- * created with just a metre figure, exactly as before. Once a roll is added the
- * rolls own the stock, so the opening figure below stops being the source of it
- * (the API takes the total from the rolls instead) -- which is why the field says
- * so rather than quietly showing two numbers that disagree.
+ * Opening stock initializes order stock; optional named rolls initialize
+ * on-hand stock independently.
  */
 export default function Step2AddColor({
   initial,
@@ -55,9 +48,6 @@ export default function Step2AddColor({
     return sum + (Number.isFinite(metres) ? metres : 0);
   }, 0);
   const hasRolls = rolls.length > 0;
-  /** Opening figure plus the rolls: what this colour will hold once saved. */
-  const combinedTotal = roundMetres(rollTotal + toMeters(stockInput));
-
   const galleryRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [showPicker, setShowPicker] = useState(false);
@@ -96,7 +86,7 @@ export default function Step2AddColor({
   const handleStockBlur = () => {
     const metres = Number(stockInput);
     if (stockInput === "" || Number.isNaN(metres) || metres < 0) {
-      setStockError("Enter the metres on hand, zero or more.");
+      setStockError("Enter opening stock, zero or more.");
       setStockInput("0");
       set("stockMeters", "0");
     }
@@ -105,7 +95,7 @@ export default function Step2AddColor({
   const handleSave = () => {
     const metres = Number(stockInput);
     if (stockInput === "" || Number.isNaN(metres) || metres < 0) {
-      setStockError("Enter the metres on hand, zero or more.");
+      setStockError("Enter opening stock, zero or more.");
       return;
     }
     onSave({ ...variant, stockMeters: stockInput });
@@ -233,7 +223,7 @@ export default function Step2AddColor({
 
           {/* Opening stock */}
           <Field>
-            <FieldLabel>Opening stock (metres)</FieldLabel>
+            <FieldLabel>Opening stock (available-to-order base)</FieldLabel>
             <Input
               type="number"
               min={0}
@@ -248,17 +238,16 @@ export default function Step2AddColor({
             {stockError ? (
               <p className="mt-1.5 text-xs text-red-600">{stockError}</p>
             ) : hasRolls ? (
-              // Both count: the figure is the cloth already on hand and the rolls
-              // are the shipment, so the total is the two added together.
+              // Opening stock and physical rolls initialize separate quantities.
               <p className="mt-1.5 text-xs text-gray-400">
-                Added to the {formatMeters(String(rollTotal))} m on these rolls:{" "}
-                {formatMeters(String(combinedTotal))} m on hand. The figure is kept
-                as a roll of its own, so it can still be cut.
+                Available to order starts at {formatMeters(stockInput)} m.
+                On-hand rolls are {formatMeters(String(rollTotal))} m; the two
+                figures are managed separately.
               </p>
             ) : (
               <p className="mt-1.5 text-xs text-gray-400">
-                {formatMeters(stockInput)} m of this colour on hand. You can
-                change this later without touching the order history.
+                Available to order starts at {formatMeters(stockInput)} m. For a
+                roll-less colour, physical stock also starts at this figure.
               </p>
             )}
           </Field>
@@ -308,9 +297,9 @@ export default function Step2AddColor({
               </button>
             )}
             <p className="mt-1.5 text-xs text-gray-400">
-              Optional. If the cloth arrives on rolls, name them here and they
-              become the stock that packing cuts from. Skip this and the colour
-              keeps a plain metre figure with no rolls behind it.
+              Optional. Rolls initialize on-hand stock only. The opening stock
+              above initializes available-to-order stock and is not replaced by
+              rolls.
             </p>
           </Field>
         </div>

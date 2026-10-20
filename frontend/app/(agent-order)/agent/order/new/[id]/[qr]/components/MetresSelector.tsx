@@ -7,10 +7,13 @@ interface MetresSelectorProps {
     /** Held as a string so a half-metre cut is never rounded away mid-typing. */
     metres: string;
     onChange: (metres: string) => void;
-    /** Physically in the warehouse. Becomes available stock as orders claim it. */
+    /** Physical stock in the warehouse; independent from order stock. */
     onHandMetres: number;
-    /** Not already promised to another order. May be negative. */
+    onHandLabel?: string;
+    /** Order stock, with this edited line's current reservation added back. */
     availableMetres: number;
+    /** Metres already packed on the existing line; never released by under-packing. */
+    alreadyPackedMetres?: number;
     isEditMode?: boolean;
 }
 
@@ -25,7 +28,9 @@ export default function MetresSelector({
     metres,
     onChange,
     onHandMetres,
+    onHandLabel = "Physical stock",
     availableMetres,
+    alreadyPackedMetres = 0,
     isEditMode,
 }: MetresSelectorProps) {
     const requested = toMeters(metres);
@@ -38,7 +43,8 @@ export default function MetresSelector({
      * which is the point -- packing decides who gets cloth, not this screen. So
      * this stays a note and never blocks the line.
      */
-    const oversubscribed = requested > availableMetres;
+    const reservation = Math.max(requested, alreadyPackedMetres);
+    const oversubscribed = reservation > availableMetres;
     const availableNegative = availableMetres < 0;
 
     return (
@@ -63,10 +69,10 @@ export default function MetresSelector({
                             }`}
                             data-testid="available-metres"
                         >
-                            {formatMeters(availableMetres)} m available
+                            {formatMeters(availableMetres)} m available to order
                         </p>
                         <p className="text-[11px] text-gray-400 font-medium">
-                            On hand: {formatMeters(onHandMetres)} m
+                            {onHandLabel}: {formatMeters(onHandMetres)} m
                         </p>
                     </div>
                 </div>
@@ -124,11 +130,11 @@ export default function MetresSelector({
                                 Already oversold by{" "}
                                 {formatMeters(Math.abs(availableMetres))} m against
                                 existing orders. Adding{" "}
-                                {formatMeters(requested)} m takes it further.
+                                {                                formatMeters(reservation)} m takes it further.
                             </>
                         ) : (
                             <>
-                                More than is free ({formatMeters(requested)} m
+                                More than is free ({formatMeters(reservation)} m
                                 asked, {formatMeters(availableMetres)} m
                                 available). The order can still go ahead — packing
                                 will allocate what is available and the rest

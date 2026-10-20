@@ -1,10 +1,9 @@
-"""Physical stock movements.
+"""Physical stock and order-stock calculations.
 
-``FabricVariant.stock_meters`` is **on-hand stock in the warehouse**, and it moves
-in exactly one place: when packing hands cloth to a customer. That is the only
-model that makes the business's own scenario work -- two customers each order
-1400 m of the same cotton while the mill only holds 2400 m. Both orders must be
-placeable; it is the packing round that decides who actually gets cloth.
+``FabricVariant.base_opening`` anchors order stock; each extant line reserves its
+greater ordered or allocated quantity. ``stock_meters`` remains physical stock:
+the roll total for roll-tracked colours, or the single figure for roll-less ones.
+Both quantities can move independently.
 
 So placing an order records *demand* and nothing else. Demand is allowed to exceed
 supply -- that is precisely the situation the allocation engine exists to
@@ -27,7 +26,7 @@ from django.db.models import (
     Sum,
     Value,
 )
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, Greatest
 from django.utils import timezone
 
 from apps.items.models import Fabric, FabricRoll, FabricVariant
@@ -210,18 +209,16 @@ def outstanding_demand(variant, exclude_order=None):
 
 
 def committed_demand_for_variant(variant):
-    """Metres already promised for ``variant``, across every order still here.
+    """Metres reserved by ``variant`` across every extant order line.
 
     Deliberately **not** :func:`outstanding_demand`. That one counts only the
     orders a packing round can still act on (PENDING/PACKED); this one is the
     whole claim on the cloth, so an order that has been edited or is still being
     drafted has already spent availability.
 
-    Two details make this the figure to judge orderability by:
-
-    * It is **unfloored**. ``outstanding_quantity`` clamps at zero for display,
-      which would let an over-packed line look like it still wants cloth and hide
-      the metres it over-took. Summing the raw difference keeps the sign.
+    Each line reserves the greater of its ordered and allocated quantities.
+    Ordinary packing does not release its reservation; over-packing reserves only
+    the excess.
     * An order has **no CANCELLED status** -- withdrawing one deletes it and the
       lines cascade away -- so "not cancelled and not deleted" means simply
       "still here". DISPATCHED orders count too: dispatching ships the packed
@@ -232,7 +229,7 @@ def committed_demand_for_variant(variant):
     from apps.orders.models import OrderItem
 
     total = OrderItem.objects.filter(variant=variant).aggregate(
-        total=Sum("ordered_quantity") - Sum("allocated_quantity")
+        total=Sum(Greatest("ordered_quantity", "allocated_quantity"))
     )["total"]
     return Decimal(str(total or ZERO))
 
@@ -246,7 +243,9 @@ def _committed_demand_expression(variant_ref):
             OrderItem.objects.filter(variant=variant_ref)
             .order_by()
             .values("variant")
-            .annotate(d=Sum("ordered_quantity") - Sum("allocated_quantity"))
+            .annotate(
+                d=Sum(Greatest("ordered_quantity", "allocated_quantity"))
+            )
             .values("d")[:1],
             output_field=DecimalField(max_digits=20, decimal_places=3),
         ),

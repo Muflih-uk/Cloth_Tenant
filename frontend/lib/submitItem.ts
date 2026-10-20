@@ -9,9 +9,8 @@ import { toMeters } from "@/types/item";
  * Each colour is one variant carrying its own opening metre stock -- there is no
  * size breakdown to expand, so a variant maps straight across.
  *
- * A colour can also arrive on physical rolls. When it does, the rolls are its
- * stock: the opening figure is still sent but is ignored server-side, so the two
- * never add up into one inflated total.
+ * Opening stock is the order-stock base. Physical rolls initialize on-hand stock
+ * independently and never replace or add to that base.
  */
 export function buildFabricPayload(
   common: { name: string; description?: string; price_per_meter: string },
@@ -20,7 +19,7 @@ export function buildFabricPayload(
   const variantPayload: FabricVariantRequest[] = variants.map((variant) => ({
     image: variant.image,
     display_order: variant.displayOrder || null,
-    stock_meters: variant.stockMeters || "0",
+    base_opening: variant.stockMeters || "0",
     ...(variant.rolls && variant.rolls.length > 0 ? { rolls: variant.rolls } : {}),
   }));
   return {
