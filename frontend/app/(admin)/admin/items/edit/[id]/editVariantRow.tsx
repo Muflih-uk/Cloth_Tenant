@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import type { EditableVariant } from "@/types/item";
 import { toMeters } from "@/types/item";
 import { ImagePreview } from "@/components/pages/ImagePreview";
+import type { ReactNode } from "react";
 
 interface Props {
   variant: EditableVariant;
@@ -15,6 +16,7 @@ interface Props {
   onChange: (updated: EditableVariant) => void;
   onDelete: () => void;
   onPickImage: () => void;
+  children?: ReactNode;
 }
 
 /**
@@ -29,6 +31,7 @@ export default function EditVariantRow({
   onChange,
   onDelete,
   onPickImage,
+  children,
 }: Props) {
   const set = <K extends keyof EditableVariant>(
     key: K,
@@ -46,7 +49,8 @@ export default function EditVariantRow({
     isNew && !rollTracked ? variant.baseOpening : variant.stockMeters;
 
   return (
-    <div className="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5">
+    <div className="overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
+      <div className="flex items-center gap-3 px-3 py-2.5">
       {/* Thumbnail */}
       <button
         type="button"
@@ -134,6 +138,8 @@ export default function EditVariantRow({
           <Trash2 size={15} />
         </button>
       )}
+      </div>
+      {children}
     </div>
   );
 }

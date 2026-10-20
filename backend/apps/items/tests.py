@@ -1201,6 +1201,66 @@ class CreateWithRollsOverMultipartTests(FabricTestBase):
         self.assertEqual(roll_stock(natural), Decimal("950.000"))
         self.assertEqual(natural.rolls.count(), 2)
 
+    def test_three_creation_rolls_are_on_hand_in_the_inventory_list(self):
+        fabric, _ = self.create_multipart(
+            {
+                "variants[0]display_order": "Natural",
+                "variants[0]base_opening": "1000",
+                "variants[0]rolls[0][meters]": "250",
+                "variants[0]rolls[1][meters]": "180",
+                "variants[0]rolls[2][meters]": "300",
+            },
+            name="Three Roll Lawn",
+        )
+        natural = fabric.variants.get(display_order="Natural")
+        rolls = list(natural.rolls.order_by("id"))
+
+        self.assertEqual(natural.base_opening, Decimal("1000.000"))
+        self.assertEqual(natural.available_to_order, Decimal("1000.000"))
+        self.assertEqual(len(rolls), 3)
+        self.assertEqual(
+            [roll.original_meters for roll in rolls],
+            [Decimal("250.000"), Decimal("180.000"), Decimal("300.000")],
+        )
+        self.assertEqual(
+            [roll.remaining_meters for roll in rolls],
+            [Decimal("250.000"), Decimal("180.000"), Decimal("300.000")],
+        )
+        self.assertTrue(all(roll.is_active for roll in rolls))
+        self.assertEqual(len({roll.roll_number for roll in rolls}), 3)
+        self.assertEqual(len({roll.pk for roll in rolls}), 3)
+        self.assertTrue(natural.qr_code)
+
+        self.auth()
+        response = self.client.get("/api/items/stock-list/")
+        listed = next(
+            row
+            for fabric_row in response.data
+            for row in fabric_row["variants"]
+            if row["id"] == natural.pk
+        )
+        self.assertEqual(listed["stock_meters"], "730.000")
+        self.assertEqual(listed["roll_stock_meters"], "730.000")
+        self.assertEqual(listed["available_meters"], "1000.000")
+
+    def test_creation_reconciles_on_hand_from_created_roll_rows(self):
+        with patch("apps.items.rolls.move_variant_stock"):
+            fabric, _ = self.create_multipart(
+                {
+                    "variants[0]display_order": "Natural",
+                    "variants[0]base_opening": "1000",
+                    "variants[0]rolls[0][meters]": "250",
+                    "variants[0]rolls[1][meters]": "180",
+                    "variants[0]rolls[2][meters]": "300",
+                },
+                name="Reconciled Roll Lawn",
+            )
+
+        natural = fabric.variants.get(display_order="Natural")
+        self.assertEqual(natural.stock_meters, Decimal("730.000"))
+        self.assertEqual(natural.base_opening, Decimal("1000.000"))
+        self.assertEqual(natural.available_to_order, Decimal("1000.000"))
+
     def test_a_note_key_does_not_disturb_the_roll(self):
         # The API accepts a note beside a length. Whether a note is stored is
         # the receive service's business, but its presence must not cost the

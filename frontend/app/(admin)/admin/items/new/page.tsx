@@ -98,7 +98,7 @@ export default function NewItemPage() {
         );
       }
       await submitFabric(common, variants);
-      router.push("/admin/items");
+      router.push(`/admin/items?created=${Date.now()}`);
     } catch (err) {
       toastError("Failed to create fabric", err);
       setLoading(false);

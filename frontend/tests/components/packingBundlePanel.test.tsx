@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useState } from "react";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 
@@ -846,6 +846,38 @@ describe("PackingBundlePanel showing the lines a bundle packed", () => {
     // A box that can still change has no slip, so none is offered.
     expect(screen.queryByRole("button", { name: /^print slip$/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /^download slip$/i })).toBeNull();
+  });
+
+  it("does not mislabel bundle-packed metres while bundle details are loading", async () => {
+    let resolveBundles!: (rows: PackingBundle[]) => void;
+    listBundles.mockReturnValue(
+      new Promise((resolve) => {
+        resolveBundles = resolve;
+      }),
+    );
+    panel({
+      items: [
+        line({
+          allocated_quantity: "600.000",
+          outstanding_quantity: "0.000",
+        }),
+      ],
+    });
+
+    expect(screen.queryByText("Packed without a bundle")).toBeNull();
+
+    await act(async () => {
+      resolveBundles([
+        sealed({
+          rolls: [roll({ item: 7, metres: "600.000" })],
+          roll_count: 1,
+          total_metres: "600.000",
+        }),
+      ]);
+    });
+
+    expect(await screen.findByText("Sealed bundles")).toBeTruthy();
+    expect(screen.queryByText("Packed without a bundle")).toBeNull();
   });
 
   it("collects metres packed without a bundle, and only those", async () => {

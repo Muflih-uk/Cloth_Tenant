@@ -1,5 +1,6 @@
 import { fabricApi } from "@/lib/api/item";
 import { fabricToFormData } from "@/lib/form-utils";
+import { invalidateRolls } from "@/lib/rollsCache";
 import type { ColorVariant, FabricRequest, FabricVariantRequest } from "@/types/item";
 import { toMeters } from "@/types/item";
 
@@ -35,6 +36,7 @@ export async function submitFabric(
   variants: ColorVariant[],
 ): Promise<void> {
   await fabricApi.create(fabricToFormData(buildFabricPayload(common, variants)));
+  invalidateRolls();
 }
 
 /** Reject a stock figure the warehouse cannot honour, before we bother the API. */

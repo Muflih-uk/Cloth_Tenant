@@ -176,6 +176,7 @@ export default function PackingBundlePanel({
 }: Props) {
   const [bundles, setBundles] = useState<PackingBundle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [bundleLoadError, setBundleLoadError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -202,11 +203,13 @@ export default function PackingBundlePanel({
     packingApi
       .listBundles(orderId)
       .then((rows) => {
-        if (live) setBundles(rows);
+        if (live) {
+          setBundles(rows);
+          setBundleLoadError(false);
+        }
       })
       .catch(() => {
-        // A failed listing is not worth blocking packing over: the admin can carry
-        // on and reload. Creating a bundle still works and will show up next load.
+        if (live) setBundleLoadError(true);
       })
       .finally(() => {
         if (live) setLoading(false);
@@ -761,7 +764,14 @@ export default function PackingBundlePanel({
           and that path records no bundle to hang them on. Shown here rather than
           left out of the page, since the main list below only carries what is
           still owed. */}
-      {packedByHand.length > 0 && (
+      {!loading && bundleLoadError && (
+        <p className="mt-3 border-t border-amber-200 pt-3 text-[11px] font-medium text-amber-800">
+          Bundle details could not be loaded, so packed items cannot be classified.
+          Please reload the order.
+        </p>
+      )}
+
+      {!loading && !bundleLoadError && packedByHand.length > 0 && (
         <div className="mt-3 border-t border-amber-200 pt-3">
           <p className="text-[11px] font-bold text-amber-900">
             Packed without a bundle

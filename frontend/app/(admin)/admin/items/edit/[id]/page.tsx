@@ -432,15 +432,12 @@ export default function FabricEditPage() {
                   onPickImage={() =>
                     fileRefs.current[variant.localId]?.click()
                   }
-                />
-
-                {/* Physical rolls: the only place a roll-tracked colour's
-                    metre total can change, once it has rolls. */}
-                {variant.backendId > 0 && (
-                  <div className="mt-2">
+                >
+                  {variant.backendId > 0 && (
                     <PhysicalRollsPanel
                       variantId={variant.backendId}
                       label={common.name || "Fabric"}
+                      embedded
                       onStockChanged={(stock, rollCount, untracked, tracked) =>
                         handleRollStockChanged(
                           variant.localId,
@@ -451,8 +448,8 @@ export default function FabricEditPage() {
                         )
                       }
                     />
-                  </div>
-                )}
+                  )}
+                </EditVariantRow>
               </div>
             ))}
           </div>

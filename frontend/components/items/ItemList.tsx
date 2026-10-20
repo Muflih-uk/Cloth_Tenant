@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react"; // ✅ added useCallback
 import { Plus, ShoppingBag, Search, QrCode, X } from "lucide-react";
-import { OutstandingDemandRow, UIItem } from "@/types/item";
+import { OutstandingDemandRow, toMeters, UIItem } from "@/types/item";
 import StockFlowButton from "@/components/ui/custom/stockFlowButton";
 import ItemCard from "./ItemCard";
 import OrderedItemList from "./OrderedItemList";
@@ -142,9 +142,12 @@ export default function ItemList({
     }, [items, activeTab, searchQuery, qrFilter]);
 
     const filteredOutstanding = useMemo(() => {
-        if (!searchQuery.trim()) return outstandingDemand;
+        const rowsWithDemand = outstandingDemand.filter(
+            (row) => toMeters(row.outstanding_meters) > 0,
+        );
+        if (!searchQuery.trim()) return rowsWithDemand;
         const query = searchQuery.toLowerCase();
-        return outstandingDemand.filter((row) =>
+        return rowsWithDemand.filter((row) =>
             row.fabric.toLowerCase().includes(query),
         );
     }, [outstandingDemand, searchQuery]);
@@ -301,10 +304,8 @@ export default function ItemList({
                             }`}
                         >
                             Outstanding (
-                        {searchQuery.trim()
-                            ? filteredOutstanding.length
-                            : outstandingDemand.length}
-                        )
+                                {filteredOutstanding.length}
+                            )
                         </button>
                     )}
                 </div>

@@ -11,6 +11,7 @@ vi.mock("@/lib/api/item", () => ({
     receive: vi.fn(),
     bulkReceive: vi.fn(),
     adjust: vi.fn(),
+    syncStock: vi.fn(),
     history: vi.fn(),
   },
 }));
@@ -40,6 +41,7 @@ const getForVariant = vi.mocked(rollApi.getForVariant);
 const receive = vi.mocked(rollApi.receive);
 const bulkReceive = vi.mocked(rollApi.bulkReceive);
 const adjust = vi.mocked(rollApi.adjust);
+const syncStock = vi.mocked(rollApi.syncStock);
 const history = vi.mocked(rollApi.history);
 
 function rollsResponse(overrides: Partial<VariantRollsResponse> = {}) {
@@ -542,5 +544,53 @@ describe("PhysicalRollsPanel first roll on untracked stock", () => {
     await waitFor(() => screen.getByText(/Total: 40 m/i));
     expect(screen.getByText(/2 rolls/i)).toBeTruthy();
     expect(onStockChanged).toHaveBeenCalledWith("40.000", 2, "0.000", true);
+  });
+
+  it("repairs an on-hand total that does not match the persisted rolls", async () => {
+    const onStockChanged = vi.fn();
+    getForVariant
+      .mockResolvedValueOnce(
+        rollsResponse({
+          stock_meters: "0.000",
+          roll_stock_meters: "500.000",
+        }),
+      )
+      .mockResolvedValueOnce(
+        rollsResponse({
+          stock_meters: "500.000",
+          roll_stock_meters: "500.000",
+        }),
+      );
+    syncStock.mockResolvedValue({
+      ...rollsResponse({
+        stock_meters: "500.000",
+        roll_stock_meters: "500.000",
+      }),
+      stock_meters: "500.000",
+    });
+    render(
+      <PhysicalRollsPanel
+        variantId={7}
+        label="Cotton Cambric"
+        onStockChanged={onStockChanged}
+      />,
+    );
+
+    await waitFor(() => screen.getByText(/Total: 500 m/i));
+    await expand();
+    await userEvent.click(
+      screen.getByRole("button", { name: /sync on hand/i }),
+    );
+
+    await waitFor(() => expect(syncStock).toHaveBeenCalledWith(7));
+    expect(onStockChanged).toHaveBeenLastCalledWith(
+      "500.000",
+      2,
+      "0.000",
+      true,
+    );
+    expect(
+      screen.queryByText(/does not match these rolls/i),
+    ).toBeNull();
   });
 });

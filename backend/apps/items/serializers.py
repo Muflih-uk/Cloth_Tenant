@@ -21,6 +21,7 @@ from .rolls import (
     RollError,
     clean_meters,
     receive_rolls,
+    sync_variant_stock,
     variant_roll_info,
 )
 from .services import sync_out_of_stock, touch_catalog
@@ -318,7 +319,8 @@ class CreateFabricSerializer(serializers.Serializer):
         )
         if lengths:
             try:
-                receive_rolls(variant, lengths)
+                _, _, variant = receive_rolls(variant, lengths)
+                sync_variant_stock(variant)
             except RollError as exc:
                 raise serializers.ValidationError({"rolls": [str(exc)]})
         if image_file:

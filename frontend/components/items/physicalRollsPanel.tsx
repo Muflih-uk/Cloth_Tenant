@@ -27,6 +27,7 @@ import RollSummary from "./rollSummary";
 
 interface Props {
   variantId: number;
+  embedded?: boolean;
   /** Colour label, used in headings and dialogs. */
   label: string;
   /**
@@ -55,6 +56,7 @@ interface Props {
  */
 export default function PhysicalRollsPanel({
   variantId,
+  embedded = false,
   label,
   onStockChanged,
 }: Props) {
@@ -71,6 +73,7 @@ export default function PhysicalRollsPanel({
   const [labelFor, setLabelFor] = useState<FabricRoll | null>(null);
   const [adjusting, setAdjusting] = useState<number | null>(null);
   const [adjustValue, setAdjustValue] = useState("");
+  const [syncingStock, setSyncingStock] = useState(false);
 
   /**
    * The parent's callback, held in a ref so it is not an effect dependency.
@@ -133,6 +136,27 @@ export default function PhysicalRollsPanel({
     }
   };
 
+  const syncStock = async () => {
+    setSyncingStock(true);
+    try {
+      const result = await rollApi.syncStock(variantId);
+      setData((current) =>
+        current ? { ...current, stock_meters: result.stock_meters } : current,
+      );
+      notifyStock.current?.(
+        result.stock_meters,
+        result.roll_count,
+        result.untracked_stock_meters ?? "0",
+        result.is_roll_tracked,
+      );
+      toastSuccess("On-hand stock synced from rolls");
+    } catch (e) {
+      toastError("Could not sync on-hand stock", e);
+    } finally {
+      setSyncingStock(false);
+    }
+  };
+
   const submitReceive = async (drafts: VariantRollDraft[]) => {
     if (drafts.length === 1) {
       await rollApi.receive(variantId, { meters: drafts[0].meters });
@@ -192,11 +216,19 @@ export default function PhysicalRollsPanel({
   const hasRolls = rolls.length > 0;
 
   return (
-    <div className="border border-gray-100 rounded-2xl bg-white overflow-hidden">
+    <div
+      className={
+        embedded
+          ? "border-t border-gray-200 bg-white/70"
+          : "border border-gray-100 rounded-2xl bg-white overflow-hidden"
+      }
+    >
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+        className={`w-full flex items-center gap-3 text-left hover:bg-gray-50 transition-colors ${
+          embedded ? "px-3 py-2.5" : "px-4 py-3"
+        }`}
         aria-expanded={expanded}
       >
         <Package className="w-4 h-4 text-primary flex-shrink-0" />
@@ -223,7 +255,33 @@ export default function PhysicalRollsPanel({
       </button>
 
       {expanded && (
-        <div className="px-4 pb-4 space-y-3 border-t border-gray-100">
+        <div
+          className={`pb-4 space-y-3 border-t border-gray-100 ${
+            embedded ? "px-3" : "px-4"
+          }`}
+        >
+          {hasRolls &&
+            Number(data.stock_meters) !== Number(data.roll_stock_meters) && (
+              <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+                <p className="text-xs text-amber-800">
+                  Inventory on hand ({formatMeters(data.stock_meters)} m) does
+                  not match these rolls ({formatMeters(data.roll_stock_meters)} m).
+                </p>
+                <button
+                  type="button"
+                  onClick={syncStock}
+                  disabled={syncingStock}
+                  className="flex shrink-0 items-center gap-1 rounded-lg bg-white px-2.5 py-1.5 text-xs font-semibold text-amber-800 disabled:opacity-50"
+                >
+                  {syncingStock ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3" />
+                  )}
+                  Sync on hand
+                </button>
+              </div>
+            )}
           {hasRolls && (
             <div className="grid grid-cols-3 gap-2 pt-3 text-center">
               <Stat

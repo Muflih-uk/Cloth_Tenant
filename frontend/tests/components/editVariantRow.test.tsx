@@ -25,7 +25,11 @@ const existing = (over: Partial<EditableVariant> = {}): EditableVariant => ({
 /** No callbacks do anything here: this is about what the row displays. */
 const noop = () => {};
 
-function renderRow(variant: EditableVariant, isNew = false) {
+function renderRow(
+  variant: EditableVariant,
+  isNew = false,
+  children?: React.ReactNode,
+) {
   return render(
     <EditVariantRow
       variant={variant}
@@ -35,7 +39,9 @@ function renderRow(variant: EditableVariant, isNew = false) {
       onChange={noop}
       onDelete={noop}
       onPickImage={noop}
-    />,
+    >
+      {children}
+    </EditVariantRow>,
   );
 }
 
@@ -84,5 +90,16 @@ describe("EditVariantRow stock figures", () => {
     expect(document.body.textContent).toContain(
       "Untracked physical (not packable): 1,000 m",
     );
+  });
+
+  it("keeps the physical roll panel inside the variant card", () => {
+    renderRow(
+      existing(),
+      false,
+      <div data-testid="physical-roll-panel">Physical Rolls</div>,
+    );
+
+    const panel = screen.getByTestId("physical-roll-panel");
+    expect(panel.closest(".rounded-xl.border")).not.toBeNull();
   });
 });

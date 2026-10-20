@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { fabricApi } from "@/lib/api/item";
 import { invalidateRolls } from "@/lib/rollsCache";
@@ -34,6 +34,8 @@ export function normalizeAdminItem(item: FabricStockEntry): UIItem {
 const ListItems: React.FC<ListItemsProps> = ({ initialTab }) => {
   const { isAuthenticated } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const createdToken = searchParams.get("created");
   const [data, setData] = useState<UIItem[]>([]);
   const [outstanding, setOutstanding] = useState<OutstandingDemandRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,7 +76,7 @@ const ListItems: React.FC<ListItemsProps> = ({ initialTab }) => {
       window.removeEventListener("focus", handleFocus);
       clearInterval(interval);
     };
-  }, [isAuthenticated, fetchData]);
+  }, [isAuthenticated, fetchData, createdToken]);
 
   const handleEdit = (id: number) => {
     router.push(`/admin/items/edit/${id}`);
