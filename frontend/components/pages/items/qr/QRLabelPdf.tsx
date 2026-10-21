@@ -25,6 +25,8 @@ interface QRLabelPdfProps {
 
 const styles = StyleSheet.create({
   page: {
+    width: 85.04,
+    height: 141.73,
     padding: 4,
     display: "flex",
     flexDirection: "column",
@@ -64,9 +66,8 @@ export const QRLabelPdf = ({ item, qrImages }: QRLabelPdfProps) => (
       return (
         <Page
           key={variant.id}
-          size={[70.87, 141.73]}
+          size={[85.04, 141.73]}
           style={styles.page}
-          wrap={false}
         >
           <Text style={styles.name}>{item.name}</Text>
           <Text style={styles.variant}>

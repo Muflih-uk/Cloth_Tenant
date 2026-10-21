@@ -12,24 +12,28 @@ const jakartha = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "XL Apparals",
+  title: "R JOGHANI",
   description: "Control your stock seamlessly.",
+  icons: {
+    icon: "/brand-logo.png",
+    apple: "/brand-logo.png",
+  },
   appleWebApp: {
     capable: true,
-    title: "StockFlow",
+    title: "R JOGHANI",
     statusBarStyle: "black-translucent",
   },
   openGraph: {
-    title: "StockFlow",
+    title: "R JOGHANI",
     description: "Control your stock seamlessly",
     url: "https://xlapparals.in/",
-    siteName: "XL Apparals",
+    siteName: "R JOGHANI",
     images: [
       {
         url: "/opengraph.jpg",
         width: 1200,
         height: 630,
-        alt: "StockFlow App",
+        alt: "R JOGHANI",
       },
     ],
     type: "website",

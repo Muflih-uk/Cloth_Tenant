@@ -30,5 +30,8 @@ describe("QRLabelPdf", () => {
     const document = await PDFDocument.load(await blob.arrayBuffer());
 
     expect(document.getPageCount()).toBe(variants.length);
+    const { width, height } = document.getPage(0).getSize();
+    expect(width).toBeCloseTo((30 * 72) / 25.4, 1);
+    expect(height).toBeCloseTo((50 * 72) / 25.4, 1);
   });
 });

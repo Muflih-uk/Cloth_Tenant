@@ -146,6 +146,36 @@ describe("PhysicalRollsPanel", () => {
     expect(screen.getByText("NAT-0002")).toBeTruthy();
     expect(screen.getByText(/40 m left of 100/)).toBeTruthy();
     expect(screen.getByText(/second batch/)).toBeTruthy();
+    expect(screen.getByText("Used")).toBeTruthy();
+    expect(screen.queryByText("Used up")).toBeNull();
+    expect(screen.getByText("Used").className).toContain("bg-red-100");
+    expect(screen.getByText("Used").className).toContain("text-red-700");
+    expect(screen.getByText("NAT-0001").className).toContain("text-red-700");
+    expect(screen.getByText("NAT-0002").className).toContain("text-gray-700");
+  });
+
+  it("shows exhausted rolls in light red", async () => {
+    const response = rollsResponse();
+    getForVariant.mockResolvedValue({
+      ...response,
+      rolls: [
+        {
+          ...response.rolls[0],
+          remaining_meters: "0.000",
+          consumed_meters: "100.000",
+          is_exhausted: true,
+        },
+        response.rolls[1],
+      ],
+    });
+    render(<PhysicalRollsPanel variantId={7} label="Cotton Cambric" />);
+
+    await waitFor(() => screen.getByText(/2 rolls/i));
+    await expand();
+
+    expect(screen.getByText("Used up").className).toContain("bg-red-100");
+    expect(screen.getByText("Used up").className).toContain("text-red-700");
+    expect(screen.getByText("NAT-0001").className).toContain("text-red-700");
   });
 
   it("sends a single figure as one roll", async () => {

@@ -11,7 +11,7 @@ self.addEventListener("push", function (event) {
 
   self.registration.showNotification(data.title, {
     body: data.body,
-    icon: "/web-app-manifest-192x192.png",
+    icon: "/brand-logo-192.png",
   });
 });
 

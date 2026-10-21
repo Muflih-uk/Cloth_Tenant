@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "XL Apparals",
-    short_name: "XL Apparals",
+    name: "R JOGHANI",
+    short_name: "R JOGHANI",
     description: "Control your stock seamlessly.",
     start_url: "/",
     scope: "/",
@@ -12,13 +12,13 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#ff6200",
     icons: [
       {
-        src: "/web-app-manifest-192x192.png",
+        src: "/brand-logo-192.png",
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/web-app-manifest-512x512.png",
+        src: "/brand-logo-512.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
