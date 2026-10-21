@@ -10,8 +10,8 @@ interface StatusDonutChartProps {
 const STATUS_COLORS: Record<string, string> = {
   draft: "#9ca3af",
   pending: "#eab308",
-  editing: "#f97316",
-  packed: "#a855f7",
+  editing: "#0b2b61",
+  packed: "#e60023",
   // Teal, sitting deliberately between packed and dispatched: some bundles are on a
   // truck and some are not, which is neither of the two states either colour means.
   partially_dispatched: "#14b8a6",

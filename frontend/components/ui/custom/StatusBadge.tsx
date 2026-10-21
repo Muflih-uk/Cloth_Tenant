@@ -14,7 +14,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
       case "PENDING":
         return "bg-amber-50 text-amber-600 border-amber-200";
       case "PACKED":
-        return "bg-orange-50 text-orange-600 border-orange-200";
+        return "bg-red-50 text-red-700 border-red-200";
       // Somewhere between the two: some boxes have gone out on a truck and others are
       // still here, so it is deliberately not the full green of DISPATCHED.
       case "PARTIALLY_DISPATCHED":
