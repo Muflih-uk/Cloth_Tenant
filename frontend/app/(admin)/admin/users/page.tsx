@@ -5,14 +5,16 @@ import { useState } from "react";
 import AdminsList from "@/components/pages/admin/users/AdminsList";
 import AgentsList from "@/components/pages/admin/users/AgentsList";
 import CustomerList from "@/components/pages/admin/users/CustomersList";
+import SubAdminsList from "@/components/pages/admin/settings/SubAdminsList";
 import PageHeader from "@/components/ui/app/PageHeader";
 import SegmentedControl from "@/components/ui/app/SegmentedControl";
 import { useAuth } from "@/context/AuthContext";
 
-type Tab = "Customers" | "Agents" | "Admins";
+type Tab = "Customers" | "Agents" | "Admins" | "Sub Admins";
 
 export default function CustomersPage() {
-  const { isSuperuser } = useAuth();
+  const { role, permissions } = useAuth();
+  const isAdmin = role === "ADMIN";
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     if (typeof window !== "undefined") {
       return (
@@ -22,9 +24,11 @@ export default function CustomersPage() {
     return "Customers";
   });
 
-  const usersTabs: Tab[] = isSuperuser
-    ? ["Customers", "Agents", "Admins"]
-    : ["Customers", "Agents"];
+  const usersTabs: Tab[] = [
+    "Customers",
+    ...(isAdmin || permissions.agents_view ? (["Agents"] as Tab[]) : []),
+    ...(isAdmin ? (["Admins", "Sub Admins"] as Tab[]) : []),
+  ];
   const visibleTab = usersTabs.includes(activeTab) ? activeTab : "Customers";
 
   const handleTabChange = (tab: Tab) => {
@@ -36,7 +40,7 @@ export default function CustomersPage() {
     <div className="mx-auto min-h-screen w-full max-w-2xl px-2 pb-32 pt-2">
       <PageHeader
         title="Users"
-        subtitle="Manage customers, agents, and admins."
+        subtitle="Manage customers, agents, admins, and sub admins."
         className="mb-4"
       />
 
@@ -51,7 +55,8 @@ export default function CustomersPage() {
       <div>
         {visibleTab === "Agents" && <AgentsList />}
         {visibleTab === "Customers" && <CustomerList />}
-        {visibleTab === "Admins" && isSuperuser && <AdminsList />}
+        {visibleTab === "Admins" && isAdmin && <AdminsList />}
+        {visibleTab === "Sub Admins" && isAdmin && <SubAdminsList />}
       </div>
     </div>
   );

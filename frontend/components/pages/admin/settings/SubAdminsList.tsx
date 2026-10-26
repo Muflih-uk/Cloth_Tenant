@@ -1,96 +1,147 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Info, Plus, ShieldCheck } from "lucide-react";
+import { Plus } from "lucide-react";
 
+import Button from "@/components/ui/app/Button";
+import ListRow from "@/components/ui/app/ListRow";
+import SearchInput from "@/components/ui/app/SearchInput";
+import { SkeletonRow } from "@/components/ui/app/Skeleton";
 import StockflowAvatar from "@/components/ui/custom/stockflowAvatar";
-import StockFlowButton from "@/components/ui/custom/stockFlowButton";
-import { PageLoading } from "@/components/ui/Loading";
-import { adminApi } from "@/lib/api/admin";
-import { AdminAllResponse } from "@/types/admin";
+import EmptyState from "@/components/ui/EmptyState";
+import { subAdminApi } from "@/lib/api/admin";
+import { formatDisplayName } from "@/lib/displayName";
+import { formatApiError } from "@/lib/toast";
+import type { SubAdminAllResponse } from "@/types/admin";
 
-/**
- * Settings › Sub admins.
- *
- * The same accounts the Users screen lists, reached from where a superuser goes
- * to configure the system. Creating and editing happen on the existing admin
- * forms, so this is only the picker: who else can sign in as an admin, and a way
- * into each of their accounts.
- */
 export default function SubAdminsList() {
-    const [data, setData] = useState<AdminAllResponse>([]);
-    const [loading, setLoading] = useState(true);
-    const router = useRouter();
+  const router = useRouter();
+  const [data, setData] = useState<SubAdminAllResponse>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
+  const [search, setSearch] = useState("");
 
-    useEffect(() => {
-        let live = true;
-        adminApi
-            .getAll()
-            .then((rows) => {
-                if (live) setData(rows);
-            })
-            .catch((error) => {
-                console.error("Error fetching admins:", error);
-            })
-            .finally(() => {
-                if (live) setLoading(false);
-            });
-        return () => {
-            live = false;
-        };
-    }, []);
+  useEffect(() => {
+    let cancelled = false;
 
-    if (loading) {
-        return <PageLoading />;
-    }
+    subAdminApi
+      .getAll()
+      .then((rows) => {
+        if (!cancelled) {
+          setData(rows);
+          setError("");
+        }
+      })
+      .catch((fetchError) => {
+        if (!cancelled) setError(formatApiError(fetchError));
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
+
+  const addButton = (
+    <Button
+      onClick={() => router.push("/admin/users/subadmins/new")}
+      className="shrink-0"
+    >
+      <Plus className="size-4" aria-hidden="true" />
+      Add sub admin
+    </Button>
+  );
+
+  if (error) {
     return (
-        <div>
-            <div className="flex w-full justify-end px-0 mb-3 sm:px-4 sm:mb-4">
-                <StockFlowButton
-                    text="Add Sub Admin"
-                    variant="filled"
-                    icon={<Plus className="size-4" />}
-                    onClick={() => router.push("/admin/users/admins/new")}
-                    className="shadow-lg shadow-primary/20 ring-1 ring-primary/10"
-                />
-            </div>
-
-            {data.length === 0 ? (
-                <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4 px-0 sm:px-4">
-                    <ShieldCheck size={48} className="text-gray-300" />
-                    <h2 className="text-xl font-bold text-gray-400">
-                        No Sub Admins
-                    </h2>
-                </div>
-            ) : (
-                <div className="px-0 space-y-2 pb-20 sm:px-4 sm:space-y-3">
-                    {data.map((admin) => (
-                        <div
-                            key={admin.id}
-                            onClick={() =>
-                                router.push(`/admin/users/admins/${admin.id}/`)
-                            }
-                            className="flex items-center gap-3 bg-white border border-gray-100 p-3 sm:gap-4 sm:p-4 hover:border-primary/30 hover:shadow-md transition-all rounded-2xl group cursor-pointer active:scale-[0.98]"
-                        >
-                            <StockflowAvatar user={admin} />
-
-                            <div className="flex-1 min-w-0 px-2">
-                                <h6 className="font-bold text-gray-900 text-base truncate leading-tight">
-                                    {admin.display_name || admin.username}
-                                </h6>
-                                <p className="text-xs text-gray-400 truncate mt-1 leading-tight font-medium">
-                                    {admin.email}
-                                </p>
-                            </div>
-
-                            <div className="text-gray-200 group-hover:text-primary/30 transition-colors pl-2">
-                                <Info size={18} />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
+      <EmptyState
+        title="Could not load sub admins"
+        description={error}
+        action={
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setError("");
+              setLoading(true);
+              setReloadKey((key) => key + 1);
+            }}
+          >
+            Try again
+          </Button>
+        }
+      />
     );
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-2" aria-busy="true" aria-live="polite">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <SkeletonRow key={index} />
+        ))}
+      </div>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <EmptyState
+        title="No sub admins yet"
+        description="Add a sub admin and choose exactly what they can access."
+        action={addButton}
+      />
+    );
+  }
+
+  const filtered = data.filter((row) => {
+    const name = row.display_name || row.username;
+    return `${name} ${row.email}`
+      .toLowerCase()
+      .includes(search.toLowerCase());
+  });
+
+  return (
+    <>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="app-section-title">Sub admins</h2>
+          <p className="app-secondary mt-1">
+            {data.length} {data.length === 1 ? "account" : "accounts"}
+          </p>
+        </div>
+        {addButton}
+      </div>
+
+      <SearchInput
+        value={search}
+        onChange={setSearch}
+        placeholder="Search sub admins..."
+        ariaLabel="Search sub admins"
+        className="mb-4"
+      />
+
+      {filtered.length === 0 ? (
+        <EmptyState
+          title="No matching sub admins"
+          description="Try a different name or email."
+        />
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((row) => (
+            <ListRow
+              key={row.id}
+              href={`/admin/users/subadmins/${row.id}/`}
+              leading={<StockflowAvatar user={row} tone="navy" />}
+              title={formatDisplayName(row.display_name || row.username)}
+              subtitle={row.is_active ? row.email : `${row.email} · Inactive`}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
 }

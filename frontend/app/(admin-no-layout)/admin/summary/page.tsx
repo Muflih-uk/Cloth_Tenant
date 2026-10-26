@@ -70,7 +70,7 @@ function SortIcon({ active }: { active: boolean }) {
 }
 
 const Summary: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, role } = useAuth();
   const router = useRouter();
 
   const [data, setData] = useState<Awaited<
@@ -133,6 +133,8 @@ const Summary: React.FC = () => {
       setSortAsc(false);
     }
   };
+
+  if (role !== "ADMIN") return null;
 
   if (loading) {
     return (

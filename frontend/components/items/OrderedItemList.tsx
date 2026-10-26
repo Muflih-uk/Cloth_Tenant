@@ -2,14 +2,14 @@
 
 import { useMemo } from "react";
 import { AlertTriangle, Info } from "lucide-react";
+
+import EmptyState from "@/components/ui/EmptyState";
 import { OutstandingDemandRow, formatMeters, toMeters } from "@/types/item";
 
 interface OutstandingFabricGroup {
   fabric: string;
   fabricId: number;
-  /** Metres still wanted across every open order line for this fabric. */
   outstandingMeters: number;
-  /** Metres on hand across the fabric's colours. */
   stockMeters: number;
   colours: OutstandingDemandRow[];
   backordered: boolean;
@@ -44,7 +44,6 @@ export default function OrderedItemList({
         });
       }
     }
-    // Shortest cover first: these are the rolls that need packing soonest.
     return Array.from(map.values()).sort((a, b) => {
       if (a.backordered !== b.backordered) return a.backordered ? -1 : 1;
       return b.outstandingMeters - a.outstandingMeters;
@@ -53,13 +52,11 @@ export default function OrderedItemList({
 
   if (grouped.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-gray-300">
-        <Info size={48} className="mb-4" />
-        <h2 className="text-lg font-bold text-gray-400">Nothing outstanding</h2>
-        <p className="text-sm text-gray-400 mt-1">
-          Every order has been fully packed
-        </p>
-      </div>
+      <EmptyState
+        icon={<Info className="size-5" aria-hidden="true" />}
+        title="Nothing outstanding"
+        description="Every order has been fully packed."
+      />
     );
   }
 
@@ -68,51 +65,61 @@ export default function OrderedItemList({
       {grouped.map((group) => (
         <button
           key={group.fabricId}
+          type="button"
           onClick={() => onItemClick?.(group.fabricId)}
-          className="w-full p-3 rounded-md border border-gray-300 bg-white hover:bg-gray-50/50 transition-colors text-left cursor-pointer"
+          className="app-focus app-card w-full p-4 text-left transition-colors hover:border-brand-navy/20"
         >
-          <div className="flex items-center gap-2 flex-wrap">
-            <h6 className="font-bold text-gray-900 text-sm truncate">{group.fabric}</h6>
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="truncate text-sm font-bold text-app-ink">
+              {group.fabric}
+            </h3>
             {group.backordered && (
-              <span className="inline-flex items-center gap-1 text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-md uppercase font-bold tracking-tighter border border-red-200">
-                <AlertTriangle size={9} />
+              <span className="inline-flex items-center gap-1 rounded-md border border-brand-red/20 bg-brand-red/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-tight text-brand-red">
+                <AlertTriangle className="size-2.5" aria-hidden="true" />
                 Oversubscribed
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-app-muted">
             <span>
-              <span className="font-bold text-gray-900">
+              <span className="font-bold text-app-ink">
                 {formatMeters(group.outstandingMeters)} m
               </span>{" "}
               owed
             </span>
-            <span className="text-gray-200">•</span>
+            <span aria-hidden="true" className="text-app-subtle">
+              •
+            </span>
             <span>
-              <span className="font-bold text-gray-900">
+              <span className="font-bold text-app-ink">
                 {formatMeters(group.stockMeters)} m
               </span>{" "}
               in stock
             </span>
-            <span className="text-gray-200">•</span>
+            <span aria-hidden="true" className="text-app-subtle">
+              •
+            </span>
             <span>
-              {group.colours.length} colour{group.colours.length !== 1 ? "s" : ""}
+              {group.colours.length} colour
+              {group.colours.length !== 1 ? "s" : ""}
             </span>
           </div>
 
-          <div className="flex flex-wrap gap-1.5 mt-2">
+          <div className="mt-2 flex flex-wrap gap-1.5">
             {group.colours.map((row) => (
               <span
                 key={row.variant}
-                className={`text-[11px] px-2 py-1 rounded-md border ${
+                className={`rounded-md border px-2 py-1 text-[11px] ${
                   row.is_backordered
-                    ? "bg-red-50 border-red-200 text-red-700"
-                    : "bg-gray-50 border-gray-200 text-gray-700"
+                    ? "border-brand-red/20 bg-brand-red/10 text-brand-red"
+                    : "border-app-line bg-app-soft text-app-muted"
                 }`}
               >
                 {row.display_order || `Variant #${row.variant}`}:{" "}
-                <span className="font-bold">{formatMeters(row.outstanding_meters)} m</span>{" "}
+                <span className="font-bold">
+                  {formatMeters(row.outstanding_meters)} m
+                </span>{" "}
                 owed
               </span>
             ))}

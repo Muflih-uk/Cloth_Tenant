@@ -3,6 +3,10 @@ import type {
   AdminResponse,
   AdminRequest,
   AdminUpdateRequest,
+  SubAdminAllResponse,
+  SubAdminRequest,
+  SubAdminResponse,
+  SubAdminUpdateRequest,
 } from "@/types/admin";
 import { api } from "./axios";
 
@@ -27,5 +31,38 @@ export const adminApi = {
 
   delete(id: number): Promise<void> {
     return api.delete(`/api/admins/${id}/`).then((r) => r.data);
+  },
+};
+
+export const subAdminApi = {
+  getAll(): Promise<SubAdminAllResponse> {
+    return api
+      .get<SubAdminAllResponse>("/api/admins/subadmins/")
+      .then((r) => r.data);
+  },
+
+  getOne(id: number): Promise<SubAdminResponse> {
+    return api
+      .get<SubAdminResponse>(`/api/admins/subadmins/${id}/`)
+      .then((r) => r.data);
+  },
+
+  create(data: SubAdminRequest): Promise<SubAdminResponse> {
+    return api
+      .post<SubAdminResponse>("/api/admins/subadmins/", data)
+      .then((r) => r.data);
+  },
+
+  update(
+    id: number,
+    data: SubAdminUpdateRequest,
+  ): Promise<SubAdminResponse> {
+    return api
+      .patch<SubAdminResponse>(`/api/admins/subadmins/${id}/`, data)
+      .then((r) => r.data);
+  },
+
+  deactivate(id: number): Promise<void> {
+    return api.delete(`/api/admins/subadmins/${id}/`).then((r) => r.data);
   },
 };

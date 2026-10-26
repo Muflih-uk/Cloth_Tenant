@@ -18,7 +18,8 @@ import { formatDisplayName } from "@/lib/displayName";
 import { formatApiError } from "@/lib/toast";
 
 const CustomerList: React.FC = () => {
-  const { isAuthenticated, business } = useAuth();
+  const { isAuthenticated, business, role } = useAuth();
+  const canWriteCustomers = role === "ADMIN";
 
   const [data, setData] = useState<CustomerAllResponse>([]);
   const [loading, setLoading] = useState(true);
@@ -143,7 +144,7 @@ const CustomerList: React.FC = () => {
     />
   );
 
-  const addCustomerButton = (
+  const addCustomerButton = canWriteCustomers ? (
     <Button
       onClick={() => router.push("/admin/users/customers/new")}
       className="shrink-0"
@@ -151,7 +152,7 @@ const CustomerList: React.FC = () => {
       <Plus className="size-4" aria-hidden="true" />
       Add customer
     </Button>
-  );
+  ) : null;
 
   if (error) {
     return (
@@ -198,12 +199,20 @@ const CustomerList: React.FC = () => {
         ) : totalCount === 0 && !debouncedSearch ? (
           <EmptyState
             title="No customers yet"
-            description="Add your first customer to start taking orders."
+            description={
+              canWriteCustomers
+                ? "Add your first customer to start taking orders."
+                : "No customers have been added yet."
+            }
             action={
-              <Button onClick={() => router.push("/admin/users/customers/new")}>
-                <Plus className="size-4" aria-hidden="true" />
-                Add customer
-              </Button>
+              canWriteCustomers ? (
+                <Button
+                  onClick={() => router.push("/admin/users/customers/new")}
+                >
+                  <Plus className="size-4" aria-hidden="true" />
+                  Add customer
+                </Button>
+              ) : undefined
             }
           />
         ) : data.length === 0 ? (
@@ -276,7 +285,11 @@ const CustomerList: React.FC = () => {
           {businessCustomers.length === 0 && otherCustomers.length === 0 && (
             <EmptyState
               title="No matching customers"
-              description="Try a different search or add a new customer."
+              description={
+                canWriteCustomers
+                  ? "Try a different search or add a new customer."
+                  : "Try a different search."
+              }
             />
           )}
         </>

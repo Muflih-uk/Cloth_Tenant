@@ -4,6 +4,9 @@ import { useRef, useState } from "react";
 import { Scanner } from "@yudiel/react-qr-scanner";
 import { X, Camera } from "lucide-react";
 
+import Button from "@/components/ui/app/Button";
+import { Input } from "@/components/ui/input";
+
 interface QRScanModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -25,7 +28,9 @@ export default function QRScanModal({
 
   const playBeep = () => {
     try {
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const ctx = new (window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext })
+          .webkitAudioContext)();
 
       // Low, punchy fundamental tone
       const osc1 = ctx.createOscillator();
@@ -75,7 +80,6 @@ export default function QRScanModal({
     }
   };
 
-
   const handleManualSubmit = () => {
     if (manualInput.trim()) {
       acceptScan(manualInput.trim());
@@ -85,25 +89,28 @@ export default function QRScanModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
-        className="absolute inset-0 bg-black/80"
+        className="absolute inset-0 bg-brand-navy/60 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className="relative w-full max-w-sm mx-4 bg-white rounded-3xl overflow-hidden shadow-2xl">
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <Camera className="text-primary" size={20} />
-            <span className="font-bold text-gray-900">Scan QR Code</span>
+      <div className="relative mx-4 w-full max-w-sm overflow-hidden rounded-card border border-app-line bg-app-card shadow-float">
+        <div className="flex items-center justify-between border-b border-app-line p-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Camera className="size-5 shrink-0 text-brand-navy" aria-hidden="true" />
+            <span className="truncate font-bold text-app-ink">Scan QR Code</span>
           </div>
-          <button
+          <Button
+            variant="secondary"
+            size="icon"
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+            aria-label="Close QR scanner"
+            className="rounded-full"
           >
-            <X size={20} className="text-gray-400" />
-          </button>
+            <X className="size-5" aria-hidden="true" />
+          </Button>
         </div>
 
         <div className="p-4">
-          <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-900 mb-4">
+          <div className="relative mb-4 aspect-square overflow-hidden rounded-control bg-brand-navy">
             <Scanner
               onScan={handleScan}
               constraints={{
@@ -119,29 +126,30 @@ export default function QRScanModal({
           </div>
 
           <button
+            type="button"
             onClick={() => setShowManualInput(!showManualInput)}
-            className="w-full text-center text-sm text-gray-500 hover:text-primary transition-colors py-2"
+            aria-expanded={showManualInput}
+            className="app-focus flex h-11 w-full items-center justify-center text-sm font-medium text-app-muted transition-colors hover:text-brand-navy"
           >
             {showManualInput ? "Hide manual input" : "Or enter QR manually"}
           </button>
 
           {showManualInput && (
-            <div className="mt-3 flex gap-2">
-              <input
+            <div className="mt-2 flex gap-2">
+              <Input
                 type="text"
                 placeholder="Enter QR code..."
                 value={manualInput}
                 onChange={(e) => setManualInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleManualSubmit()}
-                className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                aria-label="QR code"
               />
-              <button
+              <Button
                 onClick={handleManualSubmit}
                 disabled={!manualInput.trim()}
-                className="px-6 py-3 bg-primary text-white rounded-xl font-bold text-sm hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Go
-              </button>
+              </Button>
             </div>
           )}
         </div>

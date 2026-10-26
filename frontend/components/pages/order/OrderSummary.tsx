@@ -1,6 +1,10 @@
 "use client";
+
+import Card from "@/components/ui/app/Card";
 import StatusBadge from "@/components/ui/custom/StatusBadge";
-import { SimpleAgent, SimpleCustomer } from "@/types/order";
+import StockflowAvatar from "@/components/ui/custom/stockflowAvatar";
+import { DetailList, DetailRow } from "@/components/ui/app/DetailList";
+import type { SimpleAgent, SimpleCustomer } from "@/types/order";
 
 interface OrderSummaryProps {
   customer: SimpleCustomer;
@@ -13,58 +17,43 @@ interface OrderSummaryProps {
   notes?: string;
 }
 
-function DeliverySummary({
-  expectedDeliveryDate,
-  preferredTransport,
-  dispatchTransport,
-  notes,
+function PartyCard({
+  label,
+  name,
+  contact,
+  address,
+  gst,
+  tone,
 }: {
-  expectedDeliveryDate?: string;
-  preferredTransport?: string;
-  dispatchTransport?: string;
-  notes?: string;
+  label: string;
+  name: string;
+  contact?: string;
+  address?: string;
+  gst?: string;
+  tone: "green" | "purple";
 }) {
   return (
-    <div className="flex flex-col items-center gap-5 w-full">
-      {/* Delivery Info Row */}
-      <div className="w-full grid grid-cols-2 gap-y-4 gap-x-6">
-        <div className="flex flex-col gap-1">
-          <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-            Expected Delivery
+    <div className="rounded-control border border-app-line/60 bg-app-soft/50 p-3">
+      <div className="flex items-center gap-3">
+        <StockflowAvatar
+          user={{ id: 0, name, contact: contact ?? "", address: "", gst: "" }}
+          tone={tone}
+        />
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-app-muted">
+            {label}
           </p>
-          <h3 className="text-sm font-semibold text-gray-800">
-            {expectedDeliveryDate || "Not specified"}
-          </h3>
-        </div>
-        <div className="flex flex-col gap-1">
-          <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-            Preferred Transport
+          <p className="mt-0.5 truncate text-sm font-bold text-app-ink">
+            {name}
           </p>
-          <h3 className="text-sm font-semibold text-gray-800">
-            {preferredTransport || "Not specified"}
-          </h3>
         </div>
       </div>
-      {notes && (
-        <div className="w-full flex flex-col gap-1">
-          <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">
-            Notes
-          </p>
-          <h3 className="text-sm font-semibold text-gray-800 break-words whitespace-pre-wrap w-full">
-            {notes}
-          </h3>
-        </div>
-      )}
-      {dispatchTransport && (
-        <div className="w-full rounded-2xl border border-primary/20 bg-primary/5 px-3 py-4 sm:p-4">
-          <p className="text-[14px] text-gray-500 font-medium">
-            Transported by{" "}
-            <span className="text-[14px] font-semibold text-gray-800">
-              {dispatchTransport}
-            </span>
-          </p>
-        </div>
-      )}
+
+      <div className="mt-3 space-y-1 text-xs font-medium leading-relaxed text-app-muted">
+        {contact && <p>{contact}</p>}
+        {address && <p>{address}</p>}
+        {gst && <p>GST {gst}</p>}
+      </div>
     </div>
   );
 }
@@ -80,58 +69,57 @@ export default function OrderSummary({
   notes,
 }: OrderSummaryProps) {
   return (
-    <div className="flex flex-col bg-white border border-gray-100 rounded-2xl px-3 py-4 sm:p-5 mb-4 sm:mb-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] gap-y-3 sm:gap-y-4">
-      <h2 className="text-xl font-extrabold text-gray-900 mb-4">
-        Order Summary
-      </h2>
-      <div className="grid grid-cols-2 gap-y-4 gap-x-4 sm:gap-x-6 border-b pb-4">
-        <div>
-          <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">
-            Customer
-          </p>
-          <h3 className="text-sm font-semibold text-gray-800">
-            {customer.name}
-          </h3>
-          <h3 className="text-sm font-semibold text-gray-500">
-            {customer.address}
-          </h3>
-          <h3 className="text-sm font-semibold text-gray-500">
-            {customer.contact}
-          </h3>
-          <h3 className="text-sm font-semibold text-gray-500">
-            {customer.gst}
-          </h3>
-        </div>
-        <div>
-          <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">
-            Agent
-          </p>
-          <h3 className="text-sm font-semibold text-gray-800">
-            {agent.username}
-          </h3>
-          <h3 className="text-sm font-semibold text-gray-500">
-            {agent.contact}
-          </h3>
-        </div>
-        <div>
-          <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">
-            Order Date
-          </p>
-          <h3 className="text-sm font-semibold text-gray-800">{orderDate}</h3>
-        </div>
-        <div>
-          <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">
-            Current Status
-          </p>
-          <StatusBadge status={status} />
-        </div>
+    <Card
+      title="Order summary"
+      action={<StatusBadge status={status} />}
+      className="mb-4"
+    >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <PartyCard
+          label="Customer"
+          name={customer.name}
+          contact={customer.contact}
+          address={customer.address}
+          gst={customer.gst}
+          tone="green"
+        />
+        <PartyCard
+          label="Agent"
+          name={agent.username}
+          contact={agent.contact}
+          tone="purple"
+        />
       </div>
-      <DeliverySummary
-        expectedDeliveryDate={expectedDeliveryDate}
-        preferredTransport={preferredTransport}
-        dispatchTransport={dispatchTransport}
-        notes={notes}
-      />
-    </div>
+
+      <DetailList className="mt-4">
+        <DetailRow label="Order date">{orderDate}</DetailRow>
+        <DetailRow label="Expected delivery">
+          {expectedDeliveryDate || "Not specified"}
+        </DetailRow>
+        <DetailRow label="Preferred transport">
+          {preferredTransport || "Not specified"}
+        </DetailRow>
+      </DetailList>
+
+      {notes && (
+        <div className="mt-3 rounded-control border border-app-line/60 bg-app-soft/50 p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-app-muted">
+            Notes
+          </p>
+          <p className="mt-1 whitespace-pre-wrap break-words text-sm font-medium leading-relaxed text-app-ink">
+            {notes}
+          </p>
+        </div>
+      )}
+
+      {dispatchTransport && (
+        <div className="mt-3 flex items-center gap-2 rounded-control border border-brand-navy/15 bg-brand-navy/5 px-3 py-2.5 text-sm text-app-muted">
+          <span>Transported by</span>
+          <span className="font-semibold text-app-ink">
+            {dispatchTransport}
+          </span>
+        </div>
+      )}
+    </Card>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Step1CommonDetails from "./commonDetails";
 import Step2AddColor from "./addColor";
@@ -9,6 +9,7 @@ import { submitFabric } from "@/lib/submitItem";
 import { nextColorNumber } from "@/lib/color-number";
 import type { ColorVariant, FabricDetails, WizardStep } from "@/types/item";
 import { toastError, toastWarning } from "@/lib/toast";
+import { useAuth } from "@/context/AuthContext";
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 
@@ -24,6 +25,12 @@ function blankVariant(displayOrder: string): ColorVariant {
 
 export default function NewItemPage() {
   const router = useRouter();
+  const { role, permissions } = useAuth();
+  const canEdit = role === "ADMIN" || permissions.items_edit;
+
+  useEffect(() => {
+    if (!canEdit) router.replace("/admin/items");
+  }, [canEdit, router]);
 
   const [common, setCommon] = useState<FabricDetails>({
     name: "",

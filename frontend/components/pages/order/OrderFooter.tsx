@@ -1,6 +1,9 @@
 "use client";
+
 import { CheckCircle2, Info, PackageCheck, Truck } from "lucide-react";
+
 import { formatMeters } from "@/types/item";
+import { cn } from "@/lib/utils";
 
 interface OrderFooterProps {
   status?: string;
@@ -20,22 +23,43 @@ interface OrderFooterProps {
   fullyDispatched?: boolean;
 }
 
-/**
- * The order's next action, said plainly at the foot of the page.
- *
- * There is no "complete packing" button: allocation is what makes an order packed,
- * and the backend flips the status itself once every line is fully allocated.
- *
- * There is no "dispatch" button either, and deliberately so. A dispatch is a sealed
- * bundle leaving the warehouse, so it is done on the bundle itself -- one box at a
- * time, in the packing panel, where the slip for that same box is printed. An order
- * can go out over several loads, which a single button on the order cannot express:
- * the first two boxes on Monday's truck and the third on Friday's would leave no way
- * to record what happened.
- *
- * What is left here is a count of the boxes, and the note that the order still owes
- * cloth. Both are things an admin needs to see without hunting for them.
- */
+const TONES = {
+  success:
+    "border-brand-green/25 bg-brand-green/10 text-[color:var(--status-dispatched-text)]",
+  info: "border-brand-navy/15 bg-brand-navy/5 text-brand-navy",
+  warning:
+    "border-status-pending/30 bg-status-pending/10 text-[color:var(--status-pending-text)]",
+} as const;
+
+function FooterBanner({
+  icon,
+  tone = "info",
+  children,
+}: {
+  icon: React.ReactNode;
+  tone?: keyof typeof TONES;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom,0px)+5.75rem)] z-40 px-4">
+      <div
+        role="status"
+        className={cn(
+          "mx-auto flex max-w-2xl items-center gap-3 rounded-card border bg-app-card/95 p-3 shadow-float backdrop-blur-xl",
+          TONES[tone],
+        )}
+      >
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-control bg-app-card/70">
+          {icon}
+        </span>
+        <div className="min-w-0 text-xs font-semibold leading-relaxed">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function OrderFooter({
   status,
   fullyPacked,
@@ -46,42 +70,36 @@ export default function OrderFooter({
 }: OrderFooterProps) {
   if (fullyDispatched || status === "DISPATCHED") {
     return (
-      <div className="fixed bottom-6 left-0 right-0 px-4 max-w-4xl mx-auto flex justify-center">
-        <div className="bg-green-50 text-green-700 px-8 py-3 rounded-2xl border border-green-200 font-bold flex items-center gap-2">
-          <CheckCircle2 size={20} />
-          Order has been dispatched
-        </div>
-      </div>
+      <FooterBanner
+        tone="success"
+        icon={<CheckCircle2 size={18} aria-hidden="true" />}
+      >
+        Order has been dispatched
+      </FooterBanner>
     );
   }
 
   if (pendingBundles > 0) {
     return (
-      <div className="fixed bottom-6 left-0 right-0 px-4 max-w-4xl mx-auto">
-        <div
-          className={`rounded-2xl px-3 py-3 sm:px-5 flex items-center gap-2 text-sm font-bold ${
-            fullyPacked
-              ? "bg-blue-50 text-blue-800 border border-blue-200"
-              : "bg-amber-50 text-amber-800 border border-amber-200"
-          }`}
-        >
-          <PackageCheck size={18} className="flex-shrink-0" />
-          {pendingBundles} sealed bundle{pendingBundles === 1 ? "" : "s"} ready
-          to dispatch
-          {dispatchedBundles > 0 && (
-            <span className="font-semibold text-gray-600">
-              {" · "}
-              {dispatchedBundles} already gone
-            </span>
-          )}
-          {!fullyPacked && (
-            <span className="font-semibold text-gray-600">
-              {" · "}
-              {formatMeters(allocatedMeters)} m packed, rest is still owed
-            </span>
-          )}
-        </div>
-      </div>
+      <FooterBanner
+        tone={fullyPacked ? "info" : "warning"}
+        icon={<PackageCheck size={18} aria-hidden="true" />}
+      >
+        {pendingBundles} sealed bundle{pendingBundles === 1 ? "" : "s"} ready to
+        dispatch
+        {dispatchedBundles > 0 && (
+          <span className="font-medium text-app-muted">
+            {" · "}
+            {dispatchedBundles} already gone
+          </span>
+        )}
+        {!fullyPacked && (
+          <span className="font-medium text-app-muted">
+            {" · "}
+            {formatMeters(allocatedMeters)} m packed, rest is still owed
+          </span>
+        )}
+      </FooterBanner>
     );
   }
 
@@ -92,33 +110,33 @@ export default function OrderFooter({
     // stranding what is already packed with no indication of where it went.
     if (allocatedMeters > 0) {
       return (
-        <div className="fixed bottom-6 left-0 right-0 px-4 max-w-4xl mx-auto">
-          <div className="bg-amber-50 text-amber-800 border border-amber-200 rounded-2xl px-3 py-3 sm:px-5 flex items-center gap-2 text-sm font-bold">
-            <Info size={18} className="flex-shrink-0" />
-            {formatMeters(allocatedMeters)} m packed, rest is still owed
-          </div>
-        </div>
+        <FooterBanner
+          tone="warning"
+          icon={<Info size={18} aria-hidden="true" />}
+        >
+          {formatMeters(allocatedMeters)} m packed, rest is still owed
+        </FooterBanner>
       );
     }
 
     return (
-      <div className="fixed bottom-6 left-0 right-0 px-4 max-w-4xl mx-auto flex justify-center">
-        <div className="bg-yellow-50 text-yellow-700 px-8 py-3 rounded-2xl border border-yellow-200 font-bold flex items-center gap-2">
-          <Info size={20} />
-          Waiting on a packing round
-        </div>
-      </div>
+      <FooterBanner
+        tone="warning"
+        icon={<Info size={18} aria-hidden="true" />}
+      >
+        Waiting on a packing round
+      </FooterBanner>
     );
   }
 
   // Fully packed with no sealed bundle to send. Should not happen -- packing always
   // produces a bundle -- so it is reported rather than offered as an action.
   return (
-    <div className="fixed bottom-6 left-0 right-0 px-4 max-w-4xl mx-auto flex justify-center">
-      <div className="bg-blue-50 text-blue-800 px-8 py-3 rounded-2xl border border-blue-200 font-bold flex items-center gap-2">
-        <Truck size={20} />
-        All metres are packed and waiting to be sealed into a bundle
-      </div>
-    </div>
+    <FooterBanner
+      tone="info"
+      icon={<Truck size={18} aria-hidden="true" />}
+    >
+      All metres are packed and waiting to be sealed into a bundle
+    </FooterBanner>
   );
 }

@@ -39,6 +39,7 @@ services:
         env_file: .env
         environment:
             REDIS_URL: redis://redis:6379/0
+            CELERY_BROKER_URL: redis://redis:6379/0
             DB_HOST: db
             DB_PORT: 5432
         volumes:
@@ -56,6 +57,7 @@ services:
         env_file: .env
         environment:
             REDIS_URL: redis://redis:6379/0
+            CELERY_BROKER_URL: redis://redis:6379/0
             DB_HOST: db
             DB_PORT: 5432
         depends_on:
@@ -79,6 +81,7 @@ services:
             - "127.0.0.1:8000:8000"
         environment:
             REDIS_URL: redis://redis:6379/0
+            CELERY_BROKER_URL: redis://redis:6379/0
             DB_HOST: db
             DB_PORT: 5432
 

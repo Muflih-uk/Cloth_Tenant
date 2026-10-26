@@ -6,7 +6,6 @@ import {
   Plus,
   ShoppingBag,
   AlertTriangle,
-  X,
   Package,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
@@ -15,11 +14,12 @@ import { orderApi } from "@/lib/api/order";
 import { OrderResponse } from "@/types/order";
 import { formatMeters, toMeters } from "@/types/item";
 import { PageLoading } from "@/components/ui/Loading";
-import StockFlowButton from "@/components/ui/custom/stockFlowButton";
+import Button from "@/components/ui/app/Button";
 import { AxiosError } from "axios";
 import { OrderTotals } from "@/components/order";
 import { useEditGuard } from "@/lib/useEditGuard";
 import { transportApi } from "@/lib/api/transport";
+import { Modal, ModalButton } from "@/components/ui/custom/Modals";
 
 export default function EditOrderPage() {
   const params = useParams();
@@ -157,6 +157,7 @@ export default function EditOrderPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
 
     const fetchData = async () => {
@@ -201,7 +202,7 @@ export default function EditOrderPage() {
 
     fetchData();
     fetchTransports();
-  }, []);
+  }, [id]);
 
   useEffect(() => {
     if (loadError) {
@@ -213,68 +214,79 @@ export default function EditOrderPage() {
   if (loading) return <PageLoading />;
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-32">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 py-6 sticky top-0 z-10">
-        <div className="max-w-md mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={handleBack}
-              className="p-2 rounded-xl hover:bg-gray-50 text-gray-400 transition-colors"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <div className="flex flex-col">
-              <h1 className="text-xl font-black text-gray-900 leading-tight">
-                Edit Order
-              </h1>
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
-                Modify Items
-              </p>
-            </div>
+    <div className="min-h-screen bg-app-bg pb-32">
+      <header className="sticky top-0 z-10 border-b border-app-line/70 bg-app-card/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleBack}
+            aria-label="Back to order"
+            className="-ml-2 shrink-0"
+          >
+            <ChevronLeft className="size-5" aria-hidden="true" />
+          </Button>
+          <div className="flex min-w-0 flex-col">
+            <h1 className="truncate text-xl font-extrabold leading-tight text-app-ink">
+              Edit Order
+            </h1>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-app-muted">
+              Modify Items
+            </p>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-md mx-auto px-0 pt-8">
-        {/* Customer Card */}
+      <main className="mx-auto max-w-2xl space-y-6 px-4 pt-4 sm:pt-6">
         {orders && orders.items.length > 0 && (
-          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <Package size={16} className="text-primary" />
-              <h3 className="text-sm font-black text-gray-900">
+          <section className="app-card p-4 sm:p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <Package
+                size={16}
+                className="text-brand-navy"
+                aria-hidden="true"
+              />
+              <h2 className="text-sm font-bold text-app-ink">
                 Delivery Options
-              </h3>
+              </h2>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 block">
+                <label
+                  htmlFor="edit-delivery-date"
+                  className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-app-muted"
+                >
                   Expected Delivery Date
                 </label>
 
                 <input
+                  id="edit-delivery-date"
                   type="date"
                   value={expectedDeliveryDate}
                   onChange={(e) => setExpectedDeliveryDate(e.target.value)}
-                  className="w-full px-3 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/10 text-sm"
+                  className="app-focus h-12 w-full rounded-control border border-app-line bg-app-card px-2 text-base font-medium text-app-ink outline-none transition-colors focus:border-brand-navy sm:text-sm"
                 />
 
-                <p className="text-[9px] text-gray-400 mt-1">
-                  Leave empty for “Whenever”
+                <p className="mt-1 text-[10px] font-medium text-app-muted">
+                  Leave empty for &quot;Whenever&quot;
                 </p>
               </div>
 
               <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 block">
+                <label
+                  htmlFor="edit-transport"
+                  className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-app-muted"
+                >
                   Preferred Transport
                 </label>
 
                 <select
+                  id="edit-transport"
                   value={preferredTransport}
                   onChange={(e) => setPreferredTransport(e.target.value)}
                   disabled={loadingTransports}
-                  className="w-full px-3 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/10 text-sm appearance-none"
+                  className="app-focus h-12 w-full appearance-none rounded-control border border-app-line bg-app-card px-3 text-base font-medium text-app-ink outline-none transition-colors focus:border-brand-navy disabled:opacity-60 sm:text-sm"
                 >
                   <option value="">None</option>
 
@@ -287,154 +299,151 @@ export default function EditOrderPage() {
               </div>
             </div>
             <div className="mt-4">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 block">
+              <label
+                htmlFor="edit-notes"
+                className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-app-muted"
+              >
                 Notes
               </label>
               <textarea
+                id="edit-notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Any special instructions or remarks..."
                 rows={3}
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/10 text-sm resize-none"
+                className="app-focus w-full resize-none rounded-control border border-app-line bg-app-card px-3 py-3 text-base font-medium text-app-ink outline-none transition-colors placeholder:text-app-subtle focus:border-brand-navy sm:text-sm"
               />
             </div>
-          </div>
+          </section>
         )}
 
-        {/* Items Section Header */}
-        <div className="flex justify-between items-end mb-6">
-          <div className="flex flex-col">
-            <h2 className="text-xl font-black text-gray-900">Fabric Lines</h2>
-            <div className="flex gap-2 items-center mt-1">
-              <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">
-                Selected
-              </span>
-              <div className="bg-amber-100 text-amber-600 rounded-full py-0.5 px-3 border border-amber-200">
-                <span className="font-bold text-xs">
-                  {orders?.items.length || 0}
+        <section>
+          <div className="mb-3 flex items-end justify-between gap-3">
+            <div className="flex min-w-0 flex-col">
+              <h2 className="text-base font-bold text-app-ink">Fabric Lines</h2>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-app-muted">
+                  Selected
                 </span>
-              </div>
-            </div>
-          </div>
-          <StockFlowButton
-            text="Add Fabric"
-            variant="filled"
-            icon={<Plus className="size-4" />}
-            onClick={() => router.push(`/agent/order/edit/${id}/scanner`)}
-            className="shadow-lg shadow-primary/20 ring-1 ring-primary/10 transition-all active:scale-95"
-          />
-        </div>
-
-        {/* Items List */}
-        <div className="space-y-4">
-          {!orders || orders.items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 bg-white rounded-3xl border border-dashed border-gray-200">
-              <ShoppingBag size={48} className="text-gray-200 mb-4" />
-              <p className="text-gray-400 font-bold">No fabrics added yet</p>
-              <p className="text-[10px] text-gray-300 uppercase tracking-widest mt-1">
-                Scan a fabric QR to add metres
-              </p>
-            </div>
-          ) : (
-            <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
-              <OrderItem
-                orderId={orders.id}
-                items={orders.items}
-                isDeletable={true}
-                isEditable={true}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* Order Totals */}
-        {orders && orders.items.length > 0 && (
-          <div className="mt-8">
-            <OrderTotals
-              totalMetres={totalMetres}
-              totalLines={orders.items.length}
-              totalPrice={totalMoney}
-              onPlaceOrder={handleSaveChanges}
-              isLoading={placingOrder}
-              buttonText="Save Changes"
-            />
-          </div>
-        )}
-
-        {/* Merge Warning Modal */}
-        {showMergeWarning && (
-          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
-                    <AlertTriangle className="text-amber-500" size={20} />
-                  </div>
-                  <h3 className="text-lg font-black text-gray-900">
-                    Duplicate Fabrics
-                  </h3>
+                <div className="rounded-full border border-brand-navy/15 bg-brand-navy/8 px-3 py-0.5">
+                  <span className="text-xs font-bold text-brand-navy">
+                    {orders?.items.length || 0}
+                  </span>
                 </div>
-                <button
-                  onClick={() => setShowMergeWarning(false)}
-                  className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
-                >
-                  <X size={20} className="text-gray-400" />
-                </button>
-              </div>
-              <p className="text-sm text-gray-500 mb-4">
-                The same colour was scanned more than once. They will be
-                combined into one line with the total metres.
-              </p>
-              <div className="space-y-3 mb-6 max-h-48 overflow-y-auto">
-                {duplicateGroups.map((group, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-amber-50 rounded-xl p-3 border border-amber-200"
-                  >
-                    <p className="font-bold text-gray-900 text-sm">
-                      {group.fabric_name}
-                      {group.variant_display_order
-                        ? ` — ${group.variant_display_order}`
-                        : ""}
-                    </p>
-                    <p className="text-xs mt-1">
-                      {group.items.map((item, i) => (
-                        <span key={item.id}>
-                          <span className="font-semibold text-gray-700">
-                            {formatMeters(item.metres)} m
-                          </span>
-                          {i < group.items.length - 1 && (
-                            <span className="text-gray-400"> + </span>
-                          )}
-                        </span>
-                      ))}
-                      <span className="text-gray-400"> = </span>
-                      <span className="font-bold text-amber-600">
-                        {formatMeters(group.totalMetres)} m
-                      </span>
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowMergeWarning(false)}
-                  className="flex-1 py-3 rounded-xl border border-gray-200 text-gray-600 font-bold text-sm hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleProceedWithSave}
-                  disabled={placingOrder}
-                  className="flex-1 py-3 rounded-xl bg-primary text-white font-bold text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
-                >
-                  {placingOrder ? "Merging..." : "Proceed"}
-                </button>
               </div>
             </div>
+            <Button
+              onClick={() => router.push(`/agent/order/edit/${id}/scanner`)}
+              className="shrink-0"
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              Add Fabric
+            </Button>
           </div>
+
+          <div className="space-y-4">
+            {!orders || orders.items.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-card border-2 border-dashed border-app-line bg-app-card py-16 text-center">
+                <ShoppingBag
+                  size={48}
+                  className="mb-4 text-app-subtle"
+                  aria-hidden="true"
+                />
+                <p className="font-bold text-app-muted">
+                  No fabrics added yet
+                </p>
+                <p className="mt-1 text-[10px] font-semibold uppercase tracking-widest text-app-muted">
+                  Scan a fabric QR to add metres
+                </p>
+              </div>
+            ) : (
+              <div className="app-card overflow-hidden">
+                <OrderItem
+                  orderId={orders.id}
+                  items={orders.items}
+                  isDeletable={true}
+                  isEditable={true}
+                />
+              </div>
+            )}
+          </div>
+        </section>
+
+        {orders && orders.items.length > 0 && (
+          <OrderTotals
+            totalMetres={totalMetres}
+            totalLines={orders.items.length}
+            totalPrice={totalMoney}
+            onPlaceOrder={handleSaveChanges}
+            isLoading={placingOrder}
+            buttonText="Save Changes"
+          />
         )}
-      </div>
+      </main>
+
+      {showMergeWarning && (
+        <Modal
+          icon={
+            <AlertTriangle
+              size={18}
+              className="text-[color:var(--status-pending-text)]"
+            />
+          }
+          iconBg="bg-status-pending/15"
+          title="Duplicate Fabrics"
+          description="The same colour was scanned more than once. They will be combined into one line with the total metres."
+          onClose={() => setShowMergeWarning(false)}
+          actions={
+            <>
+              <ModalButton
+                variant="ghost"
+                onClick={() => setShowMergeWarning(false)}
+              >
+                Cancel
+              </ModalButton>
+              <ModalButton
+                variant="primary"
+                onClick={handleProceedWithSave}
+                disabled={placingOrder}
+              >
+                {placingOrder ? "Merging..." : "Proceed"}
+              </ModalButton>
+            </>
+          }
+        >
+          <div className="max-h-48 space-y-3 overflow-y-auto">
+            {duplicateGroups.map((group, idx) => (
+              <div
+                key={idx}
+                className="rounded-control border border-status-pending/20 bg-status-pending/10 p-3"
+              >
+                <p className="text-sm font-bold text-app-ink">
+                  {group.fabric_name}
+                  {group.variant_display_order
+                    ? ` — ${group.variant_display_order}`
+                    : ""}
+                </p>
+                <p className="mt-1 text-xs font-medium text-app-muted">
+                  {group.items.map((item, i) => (
+                    <span key={item.id}>
+                      <span className="font-semibold text-app-ink">
+                        {formatMeters(item.metres)} m
+                      </span>
+                      {i < group.items.length - 1 && (
+                        <span className="text-app-muted"> + </span>
+                      )}
+                    </span>
+                  ))}
+                  <span className="text-app-muted"> = </span>
+                  <span className="font-bold text-[color:var(--status-pending-text)]">
+                    {formatMeters(group.totalMetres)} m
+                  </span>
+                </p>
+              </div>
+            ))}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

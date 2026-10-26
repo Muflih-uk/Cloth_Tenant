@@ -41,7 +41,11 @@ export function proxy(request: NextRequest) {
     return response;
   }
 
-  if (pathname.startsWith("/admin") && role !== "ADMIN") {
+  if (
+    pathname.startsWith("/admin") &&
+    role !== "ADMIN" &&
+    role !== "SUBADMIN"
+  ) {
     return NextResponse.redirect(new URL("/agent", request.url));
   }
 

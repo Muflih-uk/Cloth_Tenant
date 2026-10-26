@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 type Status = "idle" | "parsing" | "ready" | "saving" | "success" | "error";
 type ToastType = "info" | "success" | "error";
@@ -277,8 +278,9 @@ const ResultModal: React.FC<{
 );
 
 // ── Main page ─────────────────────────────────────────────────────────────────
-export default function BulkImportPage(): React.ReactElement {
+export default function BulkImportPage(): React.ReactElement | null {
   const router = useRouter();
+  const { role } = useAuth();
   const [rows, setRows] = useState<CustomerRow[]>([]);
   const [status, setStatus] = useState<Status>("idle");
   const [toast, setToast] = useState<Toast | null>(null);
@@ -460,6 +462,8 @@ export default function BulkImportPage(): React.ReactElement {
 
   const errorCount = Object.keys(errors).length;
   const allSelected = rows.length > 0 && selected.size === rows.length;
+
+  if (role !== "ADMIN") return null;
 
   return (
     <div className="min-h-screen py-4 px-0 sm:py-10 sm:px-6">

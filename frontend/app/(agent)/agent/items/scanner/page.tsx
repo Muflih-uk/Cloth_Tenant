@@ -10,6 +10,8 @@ import { PageLoading } from "@/components/ui/Loading";
 import { toastError } from "@/lib/toast";
 import { createDraftOrder } from "@/lib/draftOrder";
 import { extractErrorMessage } from "@/lib/orderFlow";
+import Button from "@/components/ui/app/Button";
+import EmptyState from "@/components/ui/EmptyState";
 import {
   ArrowLeft,
   QrCode,
@@ -132,49 +134,54 @@ export default function PriceCheckScannerPage() {
 
   if (showCustomerSelect) {
     return (
-      <div className="min-h-screen bg-gray-50/50 pb-20">
-        <div className="bg-white border-b border-gray-100 px-0 py-3 sticky top-0 z-10 sm:px-6 sm:py-6">
-          <div className="max-w-md mx-auto flex items-center gap-4">
-            <button
+      <div className="min-h-full bg-app-bg pb-20">
+        <div className="sticky top-0 z-10 border-b border-app-line bg-app-card/95 backdrop-blur">
+          <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
+            <Button
+              variant="secondary"
+              size="icon"
               onClick={handleCloseCustomerSelect}
-              className="p-2 rounded-xl hover:bg-gray-50 text-gray-400 transition-colors"
+              aria-label="Back to scanned item"
             >
-              <ArrowLeft size={20} />
-            </button>
-            <div className="flex flex-col">
-              <h1 className="text-xl font-black text-gray-900 leading-tight">
+              <ArrowLeft className="size-5" aria-hidden="true" />
+            </Button>
+            <div className="min-w-0">
+              <h1 className="truncate text-xl font-bold leading-tight text-app-ink">
                 Select Customer
               </h1>
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-app-subtle">
                 For quick order
               </p>
             </div>
           </div>
         </div>
 
-        <div className="max-w-md mx-auto pt-6">
+        <div className="mx-auto max-w-3xl px-4 pt-4">
           {customers.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-gray-300">
-              <p className="text-sm text-gray-400">No customers found</p>
-            </div>
+            <EmptyState
+              title="No customers found"
+              description="Add a customer before placing a quick order."
+            />
           ) : (
             <div className="space-y-3">
               {customers.map((customer) => (
                 <button
                   key={customer.id}
+                  type="button"
                   onClick={() => handleSelectCustomer(customer.id)}
-                  className="w-full flex items-center gap-3 bg-white border border-gray-100 p-3 sm:gap-4 sm:p-4 hover:border-color-primary/30 hover:shadow-md transition-all rounded-2xl active:scale-[0.98] text-left"
+                  disabled={creating}
+                  className="app-focus flex w-full items-center gap-3 rounded-card border border-app-line bg-app-card p-3 text-left transition-colors hover:border-brand-navy/30 hover:bg-app-soft/50 active:scale-[0.99] disabled:opacity-60 sm:gap-4 sm:p-4"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-color-primary/5 flex items-center justify-center border border-color-primary/10 flex-shrink-0">
-                    <span className="text-lg font-black text-color-primary">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-control border border-brand-navy/10 bg-brand-navy/5">
+                    <span className="text-lg font-bold text-brand-navy">
                       {customer.name.charAt(0).toUpperCase()}
                     </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <h6 className="font-bold text-gray-900 text-[16px]">
+                  <div className="min-w-0 flex-1">
+                    <h2 className="truncate text-base font-bold text-app-ink">
                       {customer.name}
-                    </h6>
-                    <p className="text-xs text-gray-400 truncate mt-1 leading-tight font-medium">
+                    </h2>
+                    <p className="mt-1 truncate text-xs font-medium leading-tight text-app-muted">
                       {customer.address || "No address"}
                     </p>
                   </div>
@@ -189,53 +196,60 @@ export default function PriceCheckScannerPage() {
 
   if (scanResult) {
     return (
-      <div className="min-h-screen bg-gray-50/50 pb-20">
-        <div className="bg-white border-b border-gray-100 px-0 py-3 sticky top-0 z-10 sm:px-6 sm:py-6">
-          <div className="max-w-md mx-auto flex items-center justify-between">
-            <button
+      <div className="min-h-full bg-app-bg pb-20">
+        <div className="sticky top-0 z-10 border-b border-app-line bg-app-card/95 backdrop-blur">
+          <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3">
+            <Button
+              variant="secondary"
+              size="icon"
               onClick={() => router.push("/agent/items")}
-              className="p-2 rounded-xl hover:bg-gray-50 text-gray-400 transition-colors"
+              aria-label="Close price check"
             >
-              <X size={20} />
-            </button>
-            <div className="flex flex-col text-center">
-              <h1 className="text-lg font-black text-gray-900 leading-tight">
+              <X className="size-5" aria-hidden="true" />
+            </Button>
+            <div className="min-w-0 text-center">
+              <h1 className="truncate text-lg font-bold leading-tight text-app-ink">
                 Price Check
               </h1>
-              <p className="text-[10px] text-green-500 font-bold uppercase tracking-wider">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-green">
                 Item Details
               </p>
             </div>
-            <button
+            <Button
+              variant="secondary"
+              size="icon"
               onClick={handleScanAnother}
-              className="p-2 rounded-xl hover:bg-gray-50 text-gray-400 transition-colors"
+              aria-label="Scan another fabric"
             >
-              <QrCode size={20} />
-            </button>
+              <QrCode className="size-5" aria-hidden="true" />
+            </Button>
           </div>
         </div>
 
-        <div className="max-w-md mx-auto px-0 pt-3 sm:px-6 sm:pt-6">
-          <div className="bg-white rounded-[40px] overflow-hidden shadow-xl shadow-color-primary/5 border border-gray-100 mb-4 aspect-square relative">
+        <div className="mx-auto max-w-xl space-y-4 px-4 pt-4">
+          <div className="relative aspect-square overflow-hidden rounded-card border border-app-line bg-app-card">
             {selectedVariant?.image ? (
               <ImagePreview src={selectedVariant.image} alt={scanResult.name} />
             ) : (
-              <div className="w-full h-full bg-gray-50 flex items-center justify-center">
-                <Package size={64} className="text-gray-200" />
+              <div className="flex size-full items-center justify-center bg-app-soft">
+                <Package className="size-16 text-app-subtle" aria-hidden="true" />
               </div>
             )}
           </div>
 
-          <div className="mb-6">
-            <div className="flex p-2 gap-4 overflow-x-auto pb-2 scrollbar-none">
-              {scanResult.variants.map((v) => (
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+            {scanResult.variants.map((v) => {
+              const selected = selectedVariant?.id === v.id;
+              return (
                 <button
                   key={v.id}
+                  type="button"
                   onClick={() => setSelectedVariant(v)}
-                  className={`relative flex-shrink-0 w-20 h-20 rounded-3xl border-2 transition-all overflow-hidden ${
-                    selectedVariant?.id === v.id
-                      ? "border border-primary scale-105"
-                      : "border hover:border-gray-200"
+                  aria-pressed={selected}
+                  className={`app-focus relative size-20 shrink-0 overflow-hidden rounded-card border-2 transition-all ${
+                    selected
+                      ? "border-brand-navy ring-2 ring-brand-navy/20"
+                      : "border-app-line hover:border-brand-navy/30"
                   }`}
                 >
                   {v.image ? (
@@ -245,54 +259,58 @@ export default function PriceCheckScannerPage() {
                       enlargeDisabled={true}
                     />
                   ) : (
-                    <div className="w-full h-full bg-gray-100" />
+                    <div className="size-full bg-app-soft" />
                   )}
-                  {selectedVariant?.id === v.id && (
-                    <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                      <Check className="text-white" size={24} strokeWidth={4} />
+                  {selected && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-brand-navy/20">
+                      <Check
+                        className="size-6 text-white"
+                        strokeWidth={4}
+                        aria-hidden="true"
+                      />
                     </div>
                   )}
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
 
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-black text-gray-900 mb-1">
+          <div className="text-center">
+            <h2 className="mb-1 text-2xl font-bold text-app-ink">
               {scanResult.name}
             </h2>
             {selectedVariant?.display_order && (
-              <span className="inline-block px-3 py-1 bg-color-primary/10 text-color-primary rounded-full text-xs font-bold uppercase tracking-wider">
+              <span className="inline-block rounded-full bg-brand-navy/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-brand-navy">
                 {selectedVariant.display_order}
               </span>
             )}
           </div>
 
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-2xl p-4 mb-4 sm:rounded-3xl sm:p-6 sm:mb-6">
-            <p className="text-[10px] font-black uppercase tracking-widest text-green-600 mb-1">
+          <div className="rounded-card border border-brand-green/20 bg-brand-green/5 p-4 sm:p-6">
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-widest text-brand-green">
               Price
             </p>
-            <p className="text-4xl font-black text-green-700">
+            <p className="text-4xl font-bold text-brand-green">
               ₹{Number(scanResult.price_per_meter).toLocaleString("en-IN")}
-              <span className="text-lg text-green-600/70">/m</span>
+              <span className="text-lg text-brand-green/70">/m</span>
             </p>
           </div>
 
-          <div className="mb-6">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-3">
+          <div>
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-widest text-app-subtle">
               Availability
             </p>
             {available > 0 ? (
-              <div className="flex items-center justify-between px-4 py-3 bg-green-50 border border-green-100 rounded-xl">
-                <div>
-                  <span className="text-sm font-bold text-green-700">
+              <div className="flex items-center justify-between gap-3 rounded-control border border-brand-green/20 bg-brand-green/5 px-4 py-3">
+                <div className="min-w-0">
+                  <span className="text-sm font-bold text-brand-green">
                     {formatMeters(available)} m available
                   </span>
-                  <span className="block text-[11px] text-green-600/80 font-medium">
+                  <span className="block text-[11px] font-medium text-brand-green/80">
                     On hand: {formatMeters(onHand)} m
                   </span>
                 </div>
-                <span className="text-xs text-green-600 font-medium">
+                <span className="shrink-0 text-xs font-medium text-brand-green">
                   worth ₹
                   {(
                     available * Number(scanResult.price_per_meter)
@@ -300,68 +318,64 @@ export default function PriceCheckScannerPage() {
                 </span>
               </div>
             ) : (
-              <div className="px-4 py-3 bg-red-50 border border-red-100 rounded-xl">
-                <span className="font-bold text-sm text-red-500">
+              <div className="rounded-control border border-brand-red/20 bg-brand-red/5 px-4 py-3">
+                <span className="text-sm font-bold text-brand-red">
                   {available < 0
                     ? `Oversold by ${formatMeters(Math.abs(available))} m against existing orders`
                     : "Nothing available"}
                 </span>
-                <span className="block text-[11px] text-red-500/80 font-medium">
+                <span className="block text-[11px] font-medium text-brand-red/80">
                   On hand: {formatMeters(onHand)} m
                 </span>
               </div>
             )}
           </div>
 
-          <button
-            onClick={handleQuickOrder}
-            className="w-full mb-6 flex items-center justify-center gap-3 bg-linear-to-r from-primary to-primary/80 text-white py-4 px-6 rounded-2xl shadow-lg shadow-primary/25 active:scale-[0.98] transition-all"
-          >
-            <ShoppingCart size={20} strokeWidth={2.5} />
+          <Button size="lg" fullWidth onClick={handleQuickOrder}>
+            <ShoppingCart className="size-5" aria-hidden="true" />
             Order for Customer
-          </button>
+          </Button>
 
-          <button
-            onClick={handleScanAnother}
-            className="w-full mt-3 flex items-center justify-center gap-2 text-gray-400 border rounded-2xl border-gray-400 py-3 font-bold text-sm active:scale-[0.98] transition-all"
-          >
-            <QrCode size={16} />
+          <Button variant="secondary" fullWidth onClick={handleScanAnother}>
+            <QrCode className="size-4" aria-hidden="true" />
             Scan Another Fabric
-          </button>
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-20">
-      <div className="bg-white border-b border-gray-100 px-6 py-6 sticky top-0 z-10">
-        <div className="max-w-md mx-auto flex items-center gap-4">
-          <button
+    <div className="min-h-full bg-app-bg pb-20">
+      <div className="sticky top-0 z-10 border-b border-app-line bg-app-card/95 backdrop-blur">
+        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
+          <Button
+            variant="secondary"
+            size="icon"
             onClick={() => router.push("/agent/items")}
-            className="p-2 rounded-xl hover:bg-gray-50 text-gray-400 transition-colors"
+            aria-label="Back to items"
           >
-            <ArrowLeft size={20} />
-          </button>
-          <div className="flex flex-col">
-            <h1 className="text-xl font-black text-gray-900 leading-tight">
+            <ArrowLeft className="size-5" aria-hidden="true" />
+          </Button>
+          <div className="min-w-0">
+            <h1 className="truncate text-xl font-bold leading-tight text-app-ink">
               Scan Fabric
             </h1>
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-app-subtle">
               Check price
             </p>
           </div>
         </div>
       </div>
 
-      <div className="max-w-md mx-auto px-0 pt-3 flex flex-col items-center sm:px-6 sm:pt-4">
-        <div className="relative w-full aspect-square max-w-[280px]">
-          <div className="absolute -top-2 -left-2 w-8 h-8 border-t-4 border-l-4 border-color-primary rounded-tl-2xl z-20" />
-          <div className="absolute -top-2 -right-2 w-8 h-8 border-t-4 border-r-4 border-color-primary rounded-tr-2xl z-20" />
-          <div className="absolute -bottom-2 -left-2 w-8 h-8 border-b-4 border-l-4 border-color-primary rounded-bl-2xl z-20" />
-          <div className="absolute -bottom-2 -right-2 w-8 h-8 border-b-4 border-r-4 border-color-primary rounded-br-2xl z-20" />
+      <div className="mx-auto flex max-w-xl flex-col items-center px-4 pt-4">
+        <div className="relative aspect-square w-full max-w-[280px]">
+          <div className="absolute -left-2 -top-2 z-20 size-8 rounded-tl-2xl border-l-4 border-t-4 border-brand-navy" />
+          <div className="absolute -right-2 -top-2 z-20 size-8 rounded-tr-2xl border-r-4 border-t-4 border-brand-navy" />
+          <div className="absolute -bottom-2 -left-2 z-20 size-8 rounded-bl-2xl border-b-4 border-l-4 border-brand-navy" />
+          <div className="absolute -bottom-2 -right-2 z-20 size-8 rounded-br-2xl border-b-4 border-r-4 border-brand-navy" />
 
-          <div className="relative w-full h-full rounded-[32px] overflow-hidden bg-black shadow-2xl ring-8 ring-white/50">
+          <div className="relative size-full overflow-hidden rounded-card bg-brand-navy shadow-float ring-8 ring-app-card/50">
             <Scanner
               constraints={{
                 facingMode: "environment",
@@ -379,14 +393,14 @@ export default function PriceCheckScannerPage() {
         </div>
 
         <div className="mt-8 text-center">
-          <div className="inline-flex items-center gap-2 bg-color-primary/10 text-color-primary px-4 py-2 rounded-full border border-color-primary/20 mb-4">
-            <QrCode size={16} />
-            <span className="text-xs font-black uppercase tracking-widest">
+          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-brand-navy/20 bg-brand-navy/10 px-4 py-2 text-brand-navy">
+            <QrCode className="size-4" aria-hidden="true" />
+            <span className="text-xs font-bold uppercase tracking-widest">
               Price Check
             </span>
           </div>
-          <h2 className="text-lg font-bold text-gray-800">Scan Fabric QR</h2>
-          <p className="text-sm text-gray-400 mt-2 max-w-[200px] mx-auto leading-relaxed font-medium">
+          <h2 className="text-lg font-bold text-app-ink">Scan Fabric QR</h2>
+          <p className="mx-auto mt-2 max-w-[220px] text-sm font-medium leading-relaxed text-app-muted">
             Scan a fabric QR to see its rate and stock
           </p>
         </div>

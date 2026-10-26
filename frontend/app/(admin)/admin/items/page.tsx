@@ -8,7 +8,7 @@ export default async function ItemsPage({
   const { tab } = await searchParams;
 
   return (
-    <div className="min-h-screen min-w-full">
+    <div className="min-h-full min-w-full bg-app-bg">
       <ListItems
         initialTab={tab === "ordered" ? "ordered" : undefined}
       />

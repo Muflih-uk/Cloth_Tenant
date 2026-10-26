@@ -15,7 +15,18 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/context/AuthContext", () => ({
-  useAuth: () => ({ isSuperuser: true }),
+  useAuth: () => ({
+    role: "ADMIN",
+    permissions: {
+      orders_view: true,
+      orders_edit: true,
+      orders_delete: true,
+      items_view: true,
+      items_edit: true,
+      items_delete: true,
+      agents_view: true,
+    },
+  }),
 }));
 
 describe("AdminNavBar", () => {
@@ -55,5 +66,11 @@ describe("AdminNavBar", () => {
       const tab = screen.getByRole("button", { name: label }) as HTMLButtonElement;
       expect(tab.disabled).toBe(false);
     }
+  });
+
+  it("keeps settings out of the bottom bar", () => {
+    render(<AdminNavBar />);
+
+    expect(screen.queryByRole("button", { name: /settings/i })).toBeNull();
   });
 });

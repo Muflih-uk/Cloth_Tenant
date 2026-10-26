@@ -59,6 +59,7 @@ const [overriddenByVariant, setOverriddenByVariant] = useState<
   const isEditMode = existingLineId !== null;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     const fetchData = async () => {
       try {
@@ -255,10 +256,10 @@ const [overriddenByVariant, setOverriddenByVariant] = useState<
   if (loading) return <PageLoading />;
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-32">
+    <div className="min-h-screen bg-app-bg pb-32">
       <ProductHeader isEditMode={isEditMode} onBack={handleBack} />
 
-      <div className="max-w-md mx-auto px-6 pt-6">
+      <main className="mx-auto max-w-2xl px-4 pt-4 sm:pt-6">
         <ProductImage
           image={selectedVariant?.image}
           alt={data?.name || "Fabric"}
@@ -280,10 +281,10 @@ const [overriddenByVariant, setOverriddenByVariant] = useState<
           onHandLabel={
             selectedVariant?.is_roll_tracked ? "On rolls" : "Physical stock"
           }
-        availableMetres={availableMetres}
-        alreadyPackedMetres={
-          selectedVariant ? existingPacked[selectedVariant.id] ?? 0 : 0
-        }
+          availableMetres={availableMetres}
+          alreadyPackedMetres={
+            selectedVariant ? (existingPacked[selectedVariant.id] ?? 0) : 0
+          }
           isEditMode={isEditMode}
         />
 
@@ -296,8 +297,8 @@ const [overriddenByVariant, setOverriddenByVariant] = useState<
         />
 
         {validationError && (
-          <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-500">
-            <Info size={18} className="shrink-0" />
+          <div className="mb-4 flex items-center gap-3 rounded-control border border-brand-red/20 bg-brand-red/10 p-4 text-brand-red">
+            <Info size={18} className="shrink-0" aria-hidden="true" />
             <p className="text-xs font-bold uppercase tracking-wider">
               {validationError}
             </p>
@@ -310,7 +311,7 @@ const [overriddenByVariant, setOverriddenByVariant] = useState<
           disabled={loading || requested <= 0 || !!validationError}
           onClick={handleSubmit}
         />
-      </div>
+      </main>
     </div>
   );
 }

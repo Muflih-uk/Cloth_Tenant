@@ -19,7 +19,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
-from apps.accounts.permissions import IsAdmin, IsAgent, IsAgentOrAdmin, check_admin_pin
+from apps.accounts.permissions import (
+    CanDeleteOrders,
+    CanEditOrders,
+    CanViewOrders,
+    IsAgentOrAdmin,
+    check_admin_pin,
+    get_subadmin_flags,
+)
 from apps.agents.models import Agent, AgentItem
 from apps.notification.utils import notify_user_safely
 from apps.orders.pricing import (
@@ -147,11 +154,32 @@ def _is_creator(user, order):
     return bool(order.agent_id) and order.agent.user_id == user.id
 
 
-def _may_touch(user, order):
-    """Admins may act on any order; agents only on their own."""
+def _is_agent_owner(user, order):
+    return bool(order.agent_id) and order.agent.user_id == user.id
+
+
+def _may_read_order(user, order):
     if user.role == "ADMIN":
         return True
-    return bool(order.agent_id) and order.agent.user_id == user.id
+    if user.role == "SUBADMIN":
+        return get_subadmin_flags(user)["orders_view"]
+    return _is_agent_owner(user, order)
+
+
+def _may_edit_order(user, order):
+    if user.role == "ADMIN":
+        return True
+    if user.role == "SUBADMIN":
+        return get_subadmin_flags(user)["orders_edit"]
+    return _is_agent_owner(user, order)
+
+
+def _may_delete_order(user, order):
+    if user.role == "ADMIN":
+        return True
+    if user.role == "SUBADMIN":
+        return get_subadmin_flags(user)["orders_delete"]
+    return _is_agent_owner(user, order)
 
 
 def _reap_stale_drafts(user):
@@ -161,7 +189,7 @@ def _reap_stale_drafts(user):
     older than 15 minutes. Admins: drafts they created older than
     ``ADMIN_DRAFT_EXPIRY_HOURS``.
     """
-    if user.role == "ADMIN":
+    if user.role in ("ADMIN", "SUBADMIN"):
         cutoff = timezone.now() - timedelta(
             hours=getattr(settings, "ADMIN_DRAFT_EXPIRY_HOURS", 24)
         )
@@ -181,10 +209,8 @@ def _notify_admins(title, body, order_id=None, ids=None):
         ids
         if ids is not None
         else set(
-            User.objects.filter(role="ADMIN")
-            .values_list("id", flat=True)
+            User.objects.filter(role="ADMIN").values_list("id", flat=True)
         )
-        | set(User.objects.filter(is_superuser=True).values_list("id", flat=True))
     )
     for uid in recipients:
         transaction.on_commit(
@@ -200,7 +226,7 @@ def _notify_admins(title, body, order_id=None, ids=None):
 
 
 class PlaceOrderView(APIView):
-    permission_classes = [IsAgentOrAdmin]
+    permission_classes = [CanEditOrders]
 
     @extend_schema(
         summary="Place a DRAFT order (records its demand)",
@@ -295,7 +321,7 @@ class PlaceOrderView(APIView):
 
 
 class StartEditView(APIView):
-    permission_classes = [IsAgent]
+    permission_classes = [CanEditOrders]
 
     @extend_schema(
         summary="Start editing a PENDING order",
@@ -311,7 +337,7 @@ class StartEditView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if order.agent.user != request.user:
+        if not _may_edit_order(request.user, order):
             return Response({"error": "Unauthorized"}, status=403)
 
         if _has_allocations(order):
@@ -341,7 +367,7 @@ class StartEditView(APIView):
 
 
 class SaveEditView(APIView):
-    permission_classes = [IsAgent]
+    permission_classes = [CanEditOrders]
 
     @extend_schema(
         summary="Save edits made to a PENDING order",
@@ -351,7 +377,7 @@ class SaveEditView(APIView):
     def post(self, request, order_id):
         order = get_object_or_404(Order, id=order_id)
 
-        if order.agent.user != request.user:
+        if not _may_edit_order(request.user, order):
             return Response({"error": "Unauthorized"}, status=403)
 
         if order.status not in ("EDITING", "PENDING"):
@@ -421,7 +447,7 @@ class SetOrderPriceView(APIView):
     The reason is optional, but every change is logged either way.
     """
 
-    permission_classes = [IsAgentOrAdmin]
+    permission_classes = [CanEditOrders]
 
     @extend_schema(
         summary="Set or clear an order's final total",
@@ -430,7 +456,7 @@ class SetOrderPriceView(APIView):
     def post(self, request, order_id):
         order = get_object_or_404(Order, id=order_id)
 
-        if not _may_touch(request.user, order):
+        if not _may_edit_order(request.user, order):
             return Response({"error": "Unauthorized"}, status=403)
 
         if order.status != "DRAFT":
@@ -492,8 +518,17 @@ class SetOrderPriceView(APIView):
 
 class OrderViewSet(ModelViewSet):
     serializer_class = OrderSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [CanViewOrders]
     pagination_class = OrderPagination
+
+    def get_permissions(self):
+        if self.action == "create":
+            return [IsAgentOrAdmin()]
+        if self.action in ("update", "partial_update", "cancel_edit"):
+            return [CanEditOrders()]
+        if self.action == "destroy":
+            return [CanDeleteOrders()]
+        return [CanViewOrders()]
 
     def get_queryset(self):
         user = self.request.user
@@ -536,15 +571,17 @@ class OrderViewSet(ModelViewSet):
             qs = qs.filter(created_at__date__lte=to_date)
 
         agent_id = self.request.query_params.get("agent")
-        if agent_id and user.role == "ADMIN":
+        if agent_id and user.role in ("ADMIN", "SUBADMIN"):
             qs = qs.filter(agent_id=agent_id)
 
         statuses = self.request.query_params.getlist("status")
         if statuses:
             qs = qs.filter(status__in=[s.upper() for s in statuses])
 
-        if user.role == "ADMIN":
-            # An admin only sees their own drafts; everything else is shared.
+        if user.role in ("ADMIN", "SUBADMIN"):
+            # Admins and sub-admins only see their own drafts; everything else is
+            # shared. Sub-admins cannot create drafts, so in practice they see all
+            # placed orders.
             #
             # No `.distinct()` anywhere here: every join this queryset uses is
             # many-to-one (`customer`, `agent__user`, and the `icontains` filters
@@ -624,8 +661,12 @@ class OrderViewSet(ModelViewSet):
         return super().update(request, *args, **kwargs)
 
     def destroy(self, request, pk=None):
+        pin_error = check_admin_pin(request, action="delete this order")
+        if pin_error:
+            return pin_error
+
         order = self.get_object()
-        if not _may_touch(request.user, order):
+        if not _may_delete_order(request.user, order):
             return Response({"error": "Unauthorized"}, status=403)
 
         # Cloth that has left the warehouse cannot be put back on its roll by
@@ -726,7 +767,7 @@ class OrderViewSet(ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if order.agent.user != request.user:
+        if not _may_edit_order(request.user, order):
             return Response({"error": "Unauthorized"}, status=403)
 
         _restore_snapshot(order)
@@ -759,11 +800,11 @@ class OrderViewSet(ModelViewSet):
     def order_ids(self, request):
         user = self.request.user
         qs = Order.objects.all()
-        if user.role != "ADMIN":
-            qs = qs.filter(agent__user=user)
-        # Admin clients hide DRAFTs entirely, so omit them for consistent badges.
-        else:
+        if user.role in ("ADMIN", "SUBADMIN"):
+            # The shared order screens hide DRAFTs entirely.
             qs = qs.exclude(status="DRAFT")
+        else:
+            qs = qs.filter(agent__user=user)
         qs = qs.values_list("id", "status")
         return Response([{"id": oid, "status": stat} for oid, stat in qs])
 
@@ -782,7 +823,7 @@ class OrderViewSet(ModelViewSet):
         )
 
         user = self.request.user
-        if user.role != "ADMIN":
+        if user.role not in ("ADMIN", "SUBADMIN"):
             qs = qs.filter(agent__user=user)
 
         page = self.paginate_queryset(qs)
@@ -794,7 +835,7 @@ class OrderViewSet(ModelViewSet):
 
 
 class AddOrderItemView(APIView):
-    permission_classes = [IsAgentOrAdmin]
+    permission_classes = [CanEditOrders]
 
     @extend_schema(
         summary="Add a fabric line to a DRAFT/EDITING/PENDING order",
@@ -818,9 +859,9 @@ class AddOrderItemView(APIView):
         # Ownership is unconditional. This used to be skipped for EDITING
         # orders, which let any agent append lines to another agent's order the
         # moment its owner opened it for editing.
-        if not _may_touch(request.user, order):
+        if not _may_edit_order(request.user, order):
             return Response(
-                {"error": "You can only add items to your own orders"},
+                {"error": "You are not allowed to edit this order"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
@@ -904,7 +945,13 @@ def _remove_order_line(request, order, order_item):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    if not _may_touch(request.user, order):
+    if request.user.role == "SUBADMIN":
+        return Response(
+            {"error": "Sub-admins cannot delete order lines."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    if not _may_edit_order(request.user, order):
         return Response(
             {"error": "You can only edit your own orders"},
             status=status.HTTP_403_FORBIDDEN,
@@ -981,7 +1028,7 @@ class MergeOrderItemsView(APIView):
     the group's metres twice while the agent was told placement had failed.
     """
 
-    permission_classes = [IsAgentOrAdmin]
+    permission_classes = [CanEditOrders]
 
     @extend_schema(
         summary="Merge duplicate lines of an order into one",
@@ -1010,9 +1057,9 @@ class MergeOrderItemsView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            if not _may_touch(request.user, order):
+            if not _may_edit_order(request.user, order):
                 return Response(
-                    {"error": "You can only edit your own orders"},
+                    {"error": "You are not allowed to edit this order"},
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
@@ -1121,7 +1168,7 @@ class DeleteOrderItemView(APIView):
 
 
 class InvoiceView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [CanViewOrders]
 
     @extend_schema(
         summary="Get the invoice for an order",
@@ -1135,14 +1182,14 @@ class InvoiceView(APIView):
         # An invoice carries the customer's name, address and GSTIN, so it follows
         # the same ownership rule as the order logs and the price override: an
         # admin may read any, an agent only their own.
-        if not _may_touch(request.user, order):
+        if not _may_read_order(request.user, order):
             return Response({"error": "Unauthorized"}, status=403)
 
         return Response(InvoiceSerializer(order, context={"request": request}).data)
 
 
 class OrderLogsView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [CanViewOrders]
 
     @extend_schema(
         summary="Get the audit log for an order",
@@ -1151,7 +1198,7 @@ class OrderLogsView(APIView):
     def get(self, request, order_id):
         order = get_object_or_404(Order, id=order_id)
 
-        if not _may_touch(request.user, order):
+        if not _may_read_order(request.user, order):
             return Response({"error": "Unauthorized"}, status=403)
 
         return Response(
@@ -1171,14 +1218,21 @@ class OrderLogsView(APIView):
 class OrderItemViewSet(ModelViewSet):
     queryset = OrderItem.objects.all()
     serializer_class = OrderItemSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [CanViewOrders]
+
+    def get_permissions(self):
+        if self.action in ("update", "partial_update"):
+            return [CanEditOrders()]
+        if self.action == "destroy":
+            return [IsAgentOrAdmin()]
+        return [CanViewOrders()]
 
     def get_queryset(self):
         user = self.request.user
         qs = OrderItem.objects.select_related("order", "variant", "fabric")
-        if user.role != "ADMIN":
-            return qs.filter(order__agent__user=user)
-        return qs
+        if user.role in ("ADMIN", "SUBADMIN"):
+            return qs
+        return qs.filter(order__agent__user=user)
 
     def create(self, request, *args, **kwargs):
         # Lines are born through AddOrderItemView, which derives the fabric from
@@ -1207,9 +1261,9 @@ class OrderItemViewSet(ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if not _may_touch(request.user, order):
+        if not _may_edit_order(request.user, order):
             return Response(
-                {"error": "You can only edit your own orders"},
+                {"error": "You are not allowed to edit this order"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 

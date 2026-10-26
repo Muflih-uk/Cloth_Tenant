@@ -14,6 +14,8 @@ import {
 import { rollApi } from "@/lib/api/item";
 import { toastError, toastSuccess } from "@/lib/toast";
 import { formatMeters } from "@/types/item";
+import Button from "@/components/ui/app/Button";
+import { Input } from "@/components/ui/input";
 import type {
   FabricRoll,
   VariantRollDraft,
@@ -219,8 +221,8 @@ export default function PhysicalRollsPanel({
 
   if (shownVariant !== variantId) {
     return (
-      <div className="flex items-center gap-2 text-xs text-gray-400 px-1 py-2">
-        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+      <div className="flex items-center gap-2 px-1 py-2 text-xs text-app-muted">
+        <Loader2 className="size-3.5 animate-spin" aria-hidden="true" />
         Loading rolls…
       </div>
     );
@@ -235,62 +237,60 @@ export default function PhysicalRollsPanel({
     <div
       className={
         embedded
-          ? "border-t border-gray-200 bg-white/70"
-          : "border border-gray-100 rounded-2xl bg-white overflow-hidden"
+          ? "border-t border-app-line bg-app-soft/60"
+          : "overflow-hidden rounded-card border border-app-line bg-app-card"
       }
     >
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className={`flex w-full items-center gap-2.5 text-left transition-colors hover:bg-gray-50 sm:gap-3 ${
+        className={`app-focus flex min-h-11 w-full items-center gap-2.5 text-left transition-colors hover:bg-app-soft sm:gap-3 ${
           embedded ? "px-3 py-2.5" : "px-3 py-2.5 sm:px-4 sm:py-3"
         }`}
         aria-expanded={expanded}
       >
-        <Package className="w-4 h-4 text-primary flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
+        <Package className="size-4 shrink-0 text-brand-navy" aria-hidden="true" />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold uppercase tracking-widest text-app-subtle">
             Physical Rolls
           </p>
-          <p className="truncate text-[13px] font-semibold text-gray-700 sm:text-sm">
+          <p className="truncate text-[13px] font-semibold text-app-ink sm:text-sm">
             {hasRolls
               ? `Total: ${formatMeters(data.roll_stock_meters)} m · ${data.roll_count} roll${data.roll_count === 1 ? "" : "s"}`
               : "No rolls received yet"}
           </p>
         </div>
         {expanded ? (
-          <ChevronUp className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          <ChevronUp className="size-4 shrink-0 text-app-muted" aria-hidden="true" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          <ChevronDown className="size-4 shrink-0 text-app-muted" aria-hidden="true" />
         )}
       </button>
 
       {expanded && (
         <div
-          className={`space-y-3 border-t border-gray-100 pb-3 sm:pb-4 ${
+          className={`space-y-3 border-t border-app-line pb-3 sm:pb-4 ${
             embedded ? "px-3" : "px-3 sm:px-4"
           }`}
         >
           {hasRolls &&
             Number(data.stock_meters) !== Number(data.roll_stock_meters) && (
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
-                <p className="text-xs text-amber-800">
+              <div className="flex items-center justify-between gap-3 rounded-control border border-status-pending/20 bg-status-pending/10 px-3 py-2">
+                <p className="text-xs text-[color:var(--status-pending-text)]">
                   Inventory on hand ({formatMeters(data.stock_meters)} m) does
                   not match these rolls ({formatMeters(data.roll_stock_meters)} m).
                 </p>
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
                   onClick={syncStock}
-                  disabled={syncingStock}
-                  className="flex shrink-0 items-center gap-1 rounded-lg bg-white px-2.5 py-1.5 text-xs font-semibold text-amber-800 disabled:opacity-50"
+                  loading={syncingStock}
+                  className="shrink-0 border-status-pending/20 bg-app-card text-[color:var(--status-pending-text)]"
                 >
-                  {syncingStock ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-3 w-3" />
+                  {!syncingStock && (
+                    <RefreshCw className="size-3" aria-hidden="true" />
                   )}
                   Sync on hand
-                </button>
+                </Button>
               </div>
             )}
           {hasRolls && (
@@ -313,18 +313,18 @@ export default function PhysicalRollsPanel({
               {rolls.map((roll) => (
                 <div
                   key={roll.id}
-                  className="rounded-xl border border-gray-100 px-2.5 py-2 sm:px-3"
+                  className="rounded-control border border-app-line bg-app-card px-2.5 py-2 sm:px-3"
                 >
                   <div className="flex items-center gap-1.5 sm:gap-2">
                     <RollSummary roll={roll} />
                     <button
                       type="button"
                       onClick={() => setLabelFor(roll)}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-primary/5 hover:text-primary sm:h-8 sm:w-8"
+                      className="app-focus flex size-11 shrink-0 items-center justify-center rounded-control text-app-muted transition-colors hover:bg-app-soft hover:text-brand-navy"
                       aria-label={`Print label for ${roll.roll_number}`}
                       title="View/print label"
                     >
-                      <Printer className="w-3.5 h-3.5" />
+                      <Printer className="size-4" aria-hidden="true" />
                     </button>
                     <button
                       type="button"
@@ -332,40 +332,35 @@ export default function PhysicalRollsPanel({
                         setAdjusting(adjusting === roll.id ? null : roll.id);
                         setAdjustValue("");
                       }}
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-primary/5 hover:text-primary sm:h-8 sm:w-8"
+                      className="app-focus flex size-11 shrink-0 items-center justify-center rounded-control text-app-muted transition-colors hover:bg-app-soft hover:text-brand-navy"
                       aria-label={`Adjust ${roll.roll_number}`}
                       title="Adjust metres"
                     >
-                      <Scale className="w-3.5 h-3.5" />
+                      <Scale className="size-4" aria-hidden="true" />
                     </button>
                   </div>
 
                   {adjusting === roll.id && (
-                    <div className="mt-2 flex items-center gap-1.5 border-t border-dashed border-gray-100 pt-2 sm:gap-2">
-                      <input
+                    <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-dashed border-app-line pt-2">
+                      <Input
                         type="number"
                         step="0.001"
                         inputMode="decimal"
                         placeholder="e.g. -12.5 to correct, 10 to add"
                         value={adjustValue}
                         onChange={(e) => setAdjustValue(e.target.value)}
-                        className="h-9 min-w-0 flex-1 rounded-lg border border-gray-200 px-2.5 text-xs outline-none focus:border-primary sm:px-3"
+                        className="min-w-0 flex-1 text-xs"
                         aria-label={`Adjustment for ${roll.roll_number}`}
                       />
-                      <button
-                        type="button"
-                        onClick={() => handleAdjust(roll)}
-                        className="h-9 shrink-0 rounded-lg bg-primary px-2.5 text-xs font-bold text-white disabled:opacity-40 sm:px-3"
-                      >
+                      <Button onClick={() => handleAdjust(roll)}>
                         Apply
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        variant="secondary"
                         onClick={() => setAdjusting(null)}
-                        className="h-9 shrink-0 rounded-lg border border-gray-200 px-2.5 text-xs font-semibold text-gray-500 sm:px-3"
                       >
                         Cancel
-                      </button>
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -374,22 +369,21 @@ export default function PhysicalRollsPanel({
           ) : null}
 
           <div className="flex gap-2 pt-1">
-            <button
-              type="button"
+            <Button
               onClick={() => setReceiveOpen(true)}
-              className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary text-xs font-bold text-white shadow-lg shadow-primary/20"
+              className="flex-1"
             >
-              <Plus className="w-3.5 h-3.5" />
+              <Plus className="size-4" aria-hidden="true" />
               Receive Rolls
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="secondary"
+              size="icon"
               onClick={load}
-              className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-500"
               aria-label="Refresh rolls"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
-            </button>
+              <RefreshCw className="size-4" aria-hidden="true" />
+            </Button>
           </div>
         </div>
       )}
@@ -415,14 +409,14 @@ export default function PhysicalRollsPanel({
 
 function Stat({ label, metres, hint }: { label: string; metres: string; hint: string }) {
   return (
-    <div className="min-w-0 rounded-xl bg-gray-50 px-1.5 py-2 sm:px-2">
-      <p className="truncate text-[8px] uppercase tracking-wide text-gray-400 sm:text-[9px] sm:tracking-widest">
+    <div className="min-w-0 rounded-control bg-app-soft px-1.5 py-2 sm:px-2">
+      <p className="truncate text-[8px] uppercase tracking-wide text-app-subtle sm:text-[9px] sm:tracking-widest">
         {label}
       </p>
-      <p className="truncate text-[13px] font-black text-gray-700 sm:text-sm">
+      <p className="truncate text-[13px] font-bold text-app-ink sm:text-sm">
         {formatMeters(metres)}
       </p>
-      <p className="truncate text-[9px] text-gray-400 sm:text-[10px]">{hint}</p>
+      <p className="truncate text-[9px] text-app-muted sm:text-[10px]">{hint}</p>
     </div>
   );
 }

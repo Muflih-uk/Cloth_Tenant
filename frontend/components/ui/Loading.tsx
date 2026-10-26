@@ -1,16 +1,22 @@
 import { Spinner } from "./spinner";
 
 interface PageLoadingProps {
-    text?: string;
+  text?: string;
 }
 
 export function PageLoading({ text = "Loading…" }: PageLoadingProps) {
-    return (
-        <div className="flex flex-col items-center justify-center min-h-screen gap-3">
-            <Spinner className="h-12 w-12 text-primary" />
-            {text && (
-                <p className="text-lg text-gray-700 animate-pulse">{text}</p>
-            )}
-        </div>
-    );
+  return (
+    <div
+      className="flex min-h-[50vh] flex-col items-center justify-center gap-3 text-app-muted"
+      role="status"
+      aria-live="polite"
+    >
+      <Spinner className="size-8 text-brand-navy" />
+      {text && (
+        <p className="animate-pulse text-sm font-medium text-app-muted">
+          {text}
+        </p>
+      )}
+    </div>
+  );
 }

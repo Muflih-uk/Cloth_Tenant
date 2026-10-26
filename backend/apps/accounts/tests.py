@@ -57,14 +57,13 @@ class VerifyPinTests(TestCase):
         resp = self.client.post(URL, {}, format="json")
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_superuser_skips_pin(self):
+    def test_superuser_has_no_pin_shortcut(self):
         admin = User.objects.create_superuser(
             username="vsuper", email="vsuper@test.com", password="pass1234"
         )
         self.client.credentials(**get_auth_header(admin))
         resp = self.client.post(URL, {}, format="json")
-        self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertTrue(resp.data.get("ok"))
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
 
 
 class ProfileEditTests(TestCase):

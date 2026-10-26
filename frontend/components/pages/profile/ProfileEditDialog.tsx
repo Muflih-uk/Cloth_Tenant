@@ -24,7 +24,7 @@ interface ProfileEditDialogProps {
   open: boolean;
   onClose: () => void;
   profile: UserProfile;
-  isSuperuser: boolean;
+  canEditCompanyLogo: boolean;
   /** Hands the refreshed account back so the page can redraw without a refetch. */
   onSaved: (updated: UserProfile) => void;
 }
@@ -38,14 +38,13 @@ interface ProfileEditDialogProps {
  * prints on the order form, the invoice and every bundle slip.
  *
  * Because the logo is shared paperwork rather than a personal detail, the server
- * wants the admin's PIN for it. Superusers are exempt, so the PIN field only
- * appears when it will actually be asked for.
+ * wants the admin's PIN for it.
  */
 export default function ProfileEditDialog({
   open,
   onClose,
   profile,
-  isSuperuser,
+  canEditCompanyLogo,
   onSaved,
 }: ProfileEditDialogProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -65,7 +64,7 @@ export default function ProfileEditDialog({
   // The dialog is mounted fresh every time it is opened, so the fields start
   // from the account as it is and a cancelled edit leaves nothing behind.
   useEffect(() => {
-    if (!open) return;
+    if (!open || !canEditCompanyLogo) return;
     let live = true;
     brandApi
       .getAll()
@@ -79,7 +78,7 @@ export default function ProfileEditDialog({
     return () => {
       live = false;
     };
-  }, [open]);
+  }, [open, canEditCompanyLogo]);
 
   useEffect(() => {
     return () => {
@@ -118,7 +117,7 @@ export default function ProfileEditDialog({
   const handleSubmit = async () => {
     if (!validate()) return;
 
-    const needsPin = !!logoFile && !isSuperuser;
+    const needsPin = !!logoFile && canEditCompanyLogo;
     if (needsPin && pin.trim().length !== 6) {
       setErrors({ pin: "Enter your 6-digit PIN to change the company logo." });
       return;
@@ -177,8 +176,9 @@ export default function ProfileEditDialog({
             Edit profile
           </DialogTitle>
           <DialogDescription>
-            Your own details, and the company logo that prints on order forms,
-            invoices and bundle slips.
+            {canEditCompanyLogo
+              ? "Your own details, and the company logo that prints on order forms, invoices and bundle slips."
+              : "Your own account details."}
           </DialogDescription>
         </DialogHeader>
 
@@ -241,6 +241,7 @@ export default function ProfileEditDialog({
             </div>
           </div>
 
+          {canEditCompanyLogo && (
           <div>
             <p className="mb-2 text-[10px] font-black uppercase tracking-wider text-gray-400">
               Company logo
@@ -298,7 +299,7 @@ export default function ProfileEditDialog({
               </div>
             </div>
 
-            {!isSuperuser && logoFile && (
+            {logoFile && (
               <Field className="mt-3 max-w-[180px]">
                 <FieldLabel className="text-xs font-bold uppercase tracking-widest text-gray-400">
                   Admin PIN
@@ -325,6 +326,7 @@ export default function ProfileEditDialog({
               </Field>
             )}
           </div>
+          )}
         </FieldGroup>
 
         <div className="flex gap-3">

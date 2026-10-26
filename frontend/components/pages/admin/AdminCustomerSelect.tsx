@@ -3,13 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AxiosError } from "axios";
-import { ArrowLeft, ArrowRight, MapPin, Plus, Search, User } from "lucide-react";
+import { ArrowLeft, ArrowRight, MapPin, Plus, User } from "lucide-react";
+
 import { customerApi } from "@/lib/api/customer";
 import { createDraftOrder } from "@/lib/draftOrder";
 import { extractErrorMessage } from "@/lib/orderFlow";
 import { toastError } from "@/lib/toast";
 import type { CustomerAllResponse } from "@/types/customer";
-import { PageLoading } from "@/components/ui/Loading";
+import Button from "@/components/ui/app/Button";
+import SearchInput from "@/components/ui/app/SearchInput";
+import EmptyState from "@/components/ui/EmptyState";
+import { SkeletonCard } from "@/components/ui/app/Skeleton";
 import StockflowAvatar from "@/components/ui/custom/stockflowAvatar";
 
 const PAGE_SIZE = 20;
@@ -107,126 +111,141 @@ export default function AdminCustomerSelect() {
   const hasMore = customers.length < totalCount;
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-32">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-0 py-3 sticky top-0 z-10 sm:px-6 sm:py-6">
-        <div className="max-w-md mx-auto flex items-center gap-4">
-          <button
+    <div className="min-h-screen bg-app-bg pb-32">
+      <header className="sticky top-0 z-10 border-b border-app-line/70 bg-app-card/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => router.push("/admin")}
-            className="p-2 rounded-xl hover:bg-gray-50 text-gray-400 transition-colors"
+            aria-label="Back to orders"
+            className="-ml-2 shrink-0"
           >
-            <ArrowLeft size={20} />
-          </button>
-          <div className="flex flex-col">
-            <h1 className="text-xl font-black text-gray-900 leading-tight">
+            <ArrowLeft className="size-5" aria-hidden="true" />
+          </Button>
+          <div className="min-w-0">
+            <h1 className="truncate text-xl font-extrabold leading-tight text-app-ink">
               Create Order
             </h1>
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-app-muted">
               Step 1: Select Customer
             </p>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-md mx-auto py-3 px-0 sm:py-6 sm:px-6">
-        {/* Preselected customer */}
+      <main className="mx-auto max-w-2xl px-4 py-4">
         {presetCustomer && (
           <button
-            onClick={() => handleSelect(presetCustomer.id, presetCustomer.agent)}
+            type="button"
+            onClick={() =>
+              handleSelect(presetCustomer.id, presetCustomer.agent)
+            }
             disabled={creating}
-            className="w-full mb-4 flex items-center gap-3 bg-primary/5 border border-primary/20 p-3 sm:gap-4 sm:p-4 rounded-3xl text-left hover:border-primary/40 hover:shadow-md transition-all active:scale-[0.98] disabled:opacity-60"
+            className="app-focus app-card mb-4 flex w-full items-center gap-3 border-brand-navy/15 bg-brand-navy/5 p-4 text-left transition-all hover:border-brand-navy/30 active:scale-[0.99] disabled:opacity-60"
           >
             <StockflowAvatar user={presetCustomer} />
-            <div className="flex-1 min-w-0">
-              <p className="text-[9px] font-black uppercase tracking-widest text-primary/60">
+            <div className="min-w-0 flex-1">
+              <p className="text-[9px] font-semibold uppercase tracking-widest text-brand-navy/60">
                 Continue with
               </p>
-              <h6 className="font-semibold text-gray-900 text-sm truncate">
+              <h2 className="truncate text-sm font-bold text-app-ink">
                 {presetCustomer.name}
-              </h6>
-              <p className="text-xs text-gray-400 truncate">
+              </h2>
+              <p className="truncate text-xs font-medium text-app-muted">
                 Agent: {presetCustomer.agent_name || "—"}
               </p>
             </div>
-            <div className="text-primary/50">
-              <ArrowRight size={20} />
-            </div>
+            <ArrowRight
+              size={20}
+              className="shrink-0 text-brand-navy/50"
+              aria-hidden="true"
+            />
           </button>
         )}
 
-        {/* Search Bar */}
-        <div className="relative mb-4">
-          <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-400">
-            <Search size={18} />
-          </div>
-          <input
-            type="text"
-            placeholder="Search customer..."
-            className="w-full bg-white border border-gray-100 rounded-2xl py-3 pl-12 pr-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all shadow-sm"
+        <div className="mb-4">
+          <SearchInput
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={setSearch}
+            placeholder="Search customer..."
+            ariaLabel="Search customers"
           />
         </div>
 
         {loading ? (
-          <PageLoading />
-        ) : customers.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-300">
-            <User size={40} className="mb-4 opacity-20" />
-            <h2 className="text-xl font-bold">No Customers Found</h2>
+          <div className="space-y-3" aria-busy="true" aria-label="Loading customers">
+            {[0, 1, 2, 3].map((index) => (
+              <SkeletonCard key={index} />
+            ))}
           </div>
+        ) : customers.length === 0 ? (
+          <EmptyState
+            icon={<User className="size-5" aria-hidden="true" />}
+            title="No customers found"
+            description="Try a different search, or add a customer from the Users screen."
+          />
         ) : (
           <div className="space-y-3">
             {customers.map((customer) => (
               <button
+                type="button"
                 onClick={() => handleSelect(customer.id, customer.agent)}
                 key={customer.id}
                 disabled={creating}
-                className="flex w-full items-center gap-3 bg-white border border-gray-100 p-3 sm:gap-4 sm:p-4 hover:border-primary/30 hover:shadow-md transition-all rounded-3xl group text-left active:scale-[0.98] disabled:opacity-60"
+                className="app-focus app-card group flex w-full items-center gap-3 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-brand-navy/20 active:translate-y-0 disabled:opacity-60"
               >
                 <StockflowAvatar user={customer} />
-                <div className="flex-1 min-w-0">
-                  <h6 className="font-semibold text-gray-900 text-sm">
+                <div className="min-w-0 flex-1">
+                  <h2 className="truncate text-sm font-bold text-app-ink">
                     {customer.name}
-                  </h6>
-                  <div className="flex items-center gap-1 mt-1">
-                    <User size={10} className="text-gray-300" />
-                    <p className="text-xs text-gray-400 truncate leading-tight font-medium">
+                  </h2>
+                  <div className="mt-1 flex items-center gap-1">
+                    <User
+                      size={11}
+                      className="shrink-0 text-app-subtle"
+                      aria-hidden="true"
+                    />
+                    <p className="truncate text-xs font-medium leading-tight text-app-muted">
                       Agent: {customer.agent_name || "—"}
                     </p>
                   </div>
                   {customer.address && (
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <MapPin size={10} className="text-gray-300" />
-                      <p className="text-xs text-gray-400 truncate leading-tight font-medium">
+                    <div className="mt-0.5 flex items-center gap-1">
+                      <MapPin
+                        size={11}
+                        className="shrink-0 text-app-subtle"
+                        aria-hidden="true"
+                      />
+                      <p className="truncate text-xs font-medium leading-tight text-app-muted">
                         {customer.address}
                       </p>
                     </div>
                   )}
                 </div>
-                <div className="text-gray-200 group-hover:text-primary/40 transition-colors">
-                  <ArrowRight size={20} />
-                </div>
+                <ArrowRight
+                  size={20}
+                  className="shrink-0 text-app-subtle transition-colors group-hover:text-brand-navy/50"
+                  aria-hidden="true"
+                />
               </button>
             ))}
 
             {hasMore && (
-              <button
-                onClick={() => setPage((p) => p + 1)}
+              <Button
+                variant="secondary"
+                onClick={() => setPage((current) => current + 1)}
                 disabled={loadingMore}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-gray-200 text-gray-600 font-bold text-sm hover:bg-gray-100 transition-colors disabled:opacity-60"
+                loading={loadingMore}
+                fullWidth
               >
-                {loadingMore ? (
-                  <span className="w-4 h-4 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
-                ) : (
-                  <Plus size={16} />
-                )}
+                <Plus size={16} aria-hidden="true" />
                 Show more
-              </button>
+              </Button>
             )}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

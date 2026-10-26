@@ -1,20 +1,20 @@
-import json
-
 from django.db.models import Count, DecimalField, IntegerField, OuterRef, Subquery, Sum
 from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
 from rest_framework import status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.filters import SearchFilter
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from apps.accounts.permissions import check_admin_pin
+from apps.accounts.permissions import (
+    CanReadCustomers,
+    CanWriteCustomers,
+    IsAdmin,
+    check_admin_pin,
+)
 from apps.agents.models import Agent
 from apps.orders.models import Order
 from apps.notification.utils import admin_user_ids, notify_user_safely
@@ -32,10 +32,15 @@ class CustomerPagination(PageNumberPagination):
 
 class CustomerViewSet(ModelViewSet):
     serializer_class = CustomerSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [CanReadCustomers]
     pagination_class = CustomerPagination
     filter_backends = [SearchFilter]
     search_fields = ["name", "address", "contact"]
+
+    def get_permissions(self):
+        if self.action in ("create", "update", "partial_update", "destroy"):
+            return [CanWriteCustomers()]
+        return [CanReadCustomers()]
 
     def get_queryset(self):
         user = self.request.user
@@ -71,7 +76,7 @@ class CustomerViewSet(ModelViewSet):
             )
             .order_by("-id")
         )
-        if user.role == "ADMIN":
+        if user.role in ("ADMIN", "SUBADMIN"):
             return qs
         return qs.filter(agent__user=user)
 
@@ -113,11 +118,11 @@ class CustomerViewSet(ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-@csrf_exempt
-@require_POST
+@api_view(["POST"])
+@permission_classes([IsAdmin])
 def bulk_import_customers(request):
     try:
-        customers = json.loads(request.body).get("customers", [])
+        customers = request.data.get("customers", [])
         if not customers:
             return JsonResponse({"error": "No data provided."}, status=400)
 
@@ -207,7 +212,5 @@ def bulk_import_customers(request):
             },
             status=207 if errors else 201,
         )
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON."}, status=400)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)

@@ -39,6 +39,11 @@ export default function SegmentedControl<T extends string = string>({
           <button
             key={option.value}
             type="button"
+            aria-label={
+              typeof option.count === "number"
+                ? `${option.label} (${option.count})`
+                : option.label
+            }
             aria-pressed={selected}
             onClick={() => onChange(option.value)}
             className={cn(

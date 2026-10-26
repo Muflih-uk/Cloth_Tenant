@@ -10,7 +10,6 @@ import {
   User,
   ShoppingBag,
   AlertTriangle,
-  X,
   MapPin,
   Package,
 } from "lucide-react";
@@ -20,7 +19,7 @@ import { orderApi } from "@/lib/api/order";
 import { OrderResponse, PlaceOrderResponse, PlaceOrderShortfall } from "@/types/order";
 import { formatMeters, toMeters } from "@/types/item";
 import { PageLoading } from "@/components/ui/Loading";
-import StockFlowButton from "@/components/ui/custom/stockFlowButton";
+import Button from "@/components/ui/app/Button";
 import { AxiosError } from "axios";
 import { OrderTotals } from "@/components/order";
 import PriceOverrideDialog from "@/components/order/PriceOverrideDialog";
@@ -259,6 +258,7 @@ export default function OrderDetailsPage() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     // Drop the previous order before fetching. Without this, `orders` keeps the
     // last order's value for the whole fetch, so any non-happy path renders
@@ -371,36 +371,39 @@ export default function OrderDetailsPage() {
       ? `/admin/order/new?customer=${id}`
       : `${basePath}`;
     return (
-      <div className="min-h-screen flex items-center justify-center px-6">
-        <div className="text-center max-w-sm">
-          <div className="w-14 h-14 rounded-2xl bg-amber-100 flex items-center justify-center mx-auto mb-4">
-            <AlertTriangle size={26} className="text-amber-500" />
+      <div className="flex min-h-screen items-center justify-center bg-app-bg px-6">
+        <div className="w-full max-w-sm text-center">
+          <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-status-pending/15">
+            <AlertTriangle
+              size={26}
+              className="text-[color:var(--status-pending-text)]"
+            />
           </div>
-          <h1 className="text-lg font-black text-gray-900">
+          <h1 className="text-xl font-extrabold text-app-ink">
             {isNotFound ? "Order unavailable" : "Something went wrong"}
           </h1>
-          <p className="text-sm text-gray-500 mt-2 mb-6">
+          <p className="mt-2 mb-6 text-sm font-medium text-app-muted">
             {isNotFound
               ? "This order draft has expired or was removed. You can start a new order for this customer."
               : loadError.message}
           </p>
           {isNotFound ? (
-            <StockFlowButton
-              text="Start new order"
-              variant="filled"
+            <Button
               onClick={() => router.push(startOverPath)}
-              className="w-full h-12 rounded-2xl"
-            />
+              className="w-full"
+            >
+              Start new order
+            </Button>
           ) : (
-            <StockFlowButton
-              text="Retry"
-              variant="filled"
+            <Button
               onClick={() => {
                 setLoadError(null);
                 setReloadKey((k) => k + 1);
               }}
-              className="w-full h-12 rounded-2xl"
-            />
+              className="w-full"
+            >
+              Retry
+            </Button>
           )}
         </div>
       </div>
@@ -408,113 +411,127 @@ export default function OrderDetailsPage() {
   }
 
   return (
-    <div className="min-h-screen pb-36">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-0 py-3 sticky top-0 z-20 sm:px-4 sm:py-4">
-        <div className="max-w-lg mx-auto flex items-center gap-3">
-          <button
+    <div className="min-h-screen bg-app-bg pb-36">
+      <header className="sticky top-0 z-20 border-b border-app-line/70 bg-app-card/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-2xl items-center gap-3 px-4 py-3">
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setShowLeaveConfirm(true)}
-            className="p-2 -ml-1 rounded-xl hover:bg-gray-50 text-gray-400 transition-colors"
+            aria-label="Leave order"
+            className="-ml-2 shrink-0"
           >
-            <ChevronLeft size={22} />
-          </button>
-          <div className="flex-1">
-            <h1 className="text-lg font-black text-gray-900 leading-none">
+            <ChevronLeft className="size-5" aria-hidden="true" />
+          </Button>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-xl font-extrabold leading-tight text-app-ink">
               Order Details
             </h1>
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">
+            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-widest text-app-muted">
               Step 2 — Add Fabrics
             </p>
           </div>
-          {/* Item count pill in header */}
           {orders && orders.items.length > 0 && (
-            <div className="flex items-center gap-1.5 bg-primary/8 border border-primary/15 rounded-full px-3 py-1">
-              <Package size={12} className="text-primary" />
-              <span className="text-xs font-black text-primary">
+            <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-brand-navy/15 bg-brand-navy/8 px-3 py-1.5">
+              <Package
+                size={12}
+                className="text-brand-navy"
+                aria-hidden="true"
+              />
+              <span className="text-xs font-bold text-brand-navy">
                 {orders.items.length}
               </span>
             </div>
           )}
         </div>
-      </div>
+      </header>
 
       {isAdmin && (
-        <div className="bg-primary/5 border-b border-primary/10 px-0 py-2 sm:px-4">
-          <div className="max-w-lg mx-auto flex items-center justify-between gap-3 text-[11px]">
-            <span className="font-bold text-gray-700 truncate">
+        <div className="border-b border-brand-navy/10 bg-brand-navy/5 px-4 py-2">
+          <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 text-[11px]">
+            <span className="truncate font-semibold text-app-ink">
               Order for {data?.name ?? "—"}
             </span>
-            <span className="text-gray-400 font-medium shrink-0">
+            <span className="shrink-0 font-medium text-app-muted">
               Agent: {data?.agent_name || "—"}
             </span>
           </div>
         </div>
       )}
 
-      <div className="max-w-lg mx-auto px-0 pt-3 space-y-3 sm:px-4 sm:pt-6 sm:space-y-6">
+      <main className="mx-auto max-w-2xl space-y-4 px-4 pt-4 sm:space-y-6 sm:pt-6">
         {/* Customer Card */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="items-center gap-3 p-3 sm:gap-4 sm:p-4">
-            <div className="flex pb-3 items-center gap-3 sm:pb-4 sm:gap-4">
-              <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <User size={20} className="text-primary" />
+        <div className="app-card overflow-hidden">
+          <div className="p-4">
+            <div className="flex items-center gap-3 pb-4">
+              <div className="flex size-11 shrink-0 items-center justify-center rounded-control bg-brand-navy/10">
+                <User
+                  size={20}
+                  className="text-brand-navy"
+                  aria-hidden="true"
+                />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 leading-none mb-1">
+              <div className="min-w-0 flex-1">
+                <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-app-muted">
                   Customer
                 </p>
-                <h3 className="text-base font-black text-gray-900 truncate">
+                <h3 className="truncate text-base font-bold text-app-ink">
                   {data?.name}
                 </h3>
               </div>
             </div>
             {data?.address && (
-              <div className="flex items-start gap-2 px-3 py-2.5 bg-gray-50 border-t border-gray-100 sm:px-4">
+              <div className="flex items-start gap-2 rounded-control border border-app-line/60 bg-app-soft/60 px-3 py-2.5">
                 <MapPin
                   size={12}
-                  className="text-gray-400 mt-0.5 flex-shrink-0"
+                  className="mt-0.5 shrink-0 text-app-muted"
+                  aria-hidden="true"
                 />
-                <p className="text-xs text-gray-500 leading-relaxed">
+                <p className="text-xs leading-relaxed text-app-muted">
                   {data.address}
                 </p>
               </div>
             )}
           </div>
 
-          <div className="bg-white border-t border-gray-100 p-3 space-y-3 sm:p-4 sm:space-y-4">
-            <h3 className="text-sm font-bold text-gray-900">
-              Delivery Options
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-4 border-t border-app-line/70 p-4">
+            <h3 className="text-sm font-bold text-app-ink">Delivery Options</h3>
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <label className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 block">
+                <label
+                  htmlFor="expected-delivery-date"
+                  className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-app-muted"
+                >
                   Expected Delivery Date
                 </label>
-                <div className="relative">
-                  <input
-                    type="date"
-                    value={expectedDeliveryDate}
-                    onChange={(e) => setExpectedDeliveryDate(e.target.value)}
-                    min={new Date().toISOString().split("T")[0]}
-                    className="w-full px-2 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/10 text-sm"
-                  />
-                </div>
-                <p className="text-[8px] text-gray-400 mt-1">
+                <input
+                  id="expected-delivery-date"
+                  type="date"
+                  value={expectedDeliveryDate}
+                  onChange={(e) => setExpectedDeliveryDate(e.target.value)}
+                  min={new Date().toISOString().split("T")[0]}
+                  className="app-focus h-12 w-full rounded-control border border-app-line bg-app-card px-2 text-base font-medium text-app-ink outline-none transition-colors focus:border-brand-navy sm:text-sm"
+                />
+                <p className="mt-1 text-[10px] font-medium text-app-muted">
                   Leave empty for &quot;Whenever&quot;
                 </p>
               </div>
 
               <div>
-                <label className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 block">
+                <label
+                  htmlFor="preferred-transport"
+                  className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-app-muted"
+                >
                   Preferred Transport
                 </label>
                 <select
+                  id="preferred-transport"
                   value={preferredTransportID || ""}
                   onChange={(e) =>
                     setPreferredTransportID(Number(e.target.value))
                   }
                   disabled={loadingTransports}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/10 text-sm appearance-none"
+                  className="app-focus h-12 w-full appearance-none rounded-control border border-app-line bg-app-card px-3 text-base font-medium text-app-ink outline-none transition-colors focus:border-brand-navy disabled:opacity-60 sm:text-sm"
                 >
                   <option value="">None</option>
                   {transports.map((t) => (
@@ -526,64 +543,66 @@ export default function OrderDetailsPage() {
               </div>
             </div>
             <div>
-              <label className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1.5 block">
+              <label
+                htmlFor="order-notes"
+                className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-app-muted"
+              >
                 Notes
               </label>
               <textarea
+                id="order-notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Any special instructions or remarks..."
                 rows={3}
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-100 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/10 text-sm resize-none"
+                className="app-focus w-full resize-none rounded-control border border-app-line bg-app-card px-3 py-3 text-base font-medium text-app-ink outline-none transition-colors placeholder:text-app-subtle focus:border-brand-navy sm:text-sm"
               />
             </div>
           </div>
         </div>
 
         {/* Items Section */}
-        <div>
-          {/* Section header */}
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="text-base font-black text-gray-900">
-                Fabric Lines
-              </h2>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-0.5">
+        <section>
+          <div className="mb-3 flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-base font-bold text-app-ink">Fabric Lines</h2>
+              <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-widest text-app-muted">
                 {orders?.items.length
                   ? `${orders.items.length} line${orders.items.length !== 1 ? "s" : ""} · ${formatMeters(totalMetres)} m`
                   : "No fabrics yet"}
               </p>
             </div>
-            <StockFlowButton
-              text="Add Fabric"
-              variant="filled"
-              icon={<Plus className="size-4" />}
+            <Button
               onClick={() => router.push(`${basePath}/${id}/scanner`)}
-              className="shadow-md shadow-primary/20 active:scale-95 transition-all text-sm h-10 px-4 rounded-xl"
-            />
+              className="shrink-0"
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              Add Fabric
+            </Button>
           </div>
 
-          {/* Empty state */}
           {!orders || orders.items.length === 0 ? (
-            <div
+            <button
+              type="button"
               onClick={() => router.push(`${basePath}/${id}/scanner`)}
-              className="flex flex-col items-center justify-center py-14 bg-white rounded-2xl border-2 border-dashed border-gray-200 cursor-pointer hover:border-primary/30 hover:bg-primary/2 transition-all group"
+              className="app-focus flex w-full flex-col items-center justify-center rounded-card border-2 border-dashed border-app-line bg-app-card py-14 text-center transition-all hover:border-brand-navy/30 hover:bg-brand-navy/5"
             >
-              <div className="w-14 h-14 rounded-2xl bg-gray-100 group-hover:bg-primary/10 flex items-center justify-center mb-3 transition-colors">
+              <div className="mb-3 flex size-14 items-center justify-center rounded-2xl bg-app-soft transition-colors">
                 <ShoppingBag
                   size={26}
-                  className="text-gray-300 group-hover:text-primary transition-colors"
+                  className="text-app-subtle"
+                  aria-hidden="true"
                 />
               </div>
-              <p className="text-gray-500 text-sm font-bold">
+              <p className="text-sm font-bold text-app-muted">
                 No fabrics added yet
               </p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="mt-1 text-xs font-medium text-app-muted">
                 Tap to scan or search fabrics
               </p>
-            </div>
+            </button>
           ) : (
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+            <div className="app-card overflow-hidden">
               <OrderItem
                 orderId={orders.id}
                 items={orders.items}
@@ -593,9 +612,8 @@ export default function OrderDetailsPage() {
               />
             </div>
           )}
-        </div>
+        </section>
 
-        {/* Order Totals */}
         {orders && orders.items.length > 0 && (
           <OrderTotals
             totalMetres={totalMetres}
@@ -609,7 +627,7 @@ export default function OrderDetailsPage() {
             onEditTotal={canSetTotal ? () => setShowPriceDialog(true) : undefined}
           />
         )}
-      </div>
+      </main>
 
       {/* ── Modals ── */}
 
@@ -629,8 +647,13 @@ export default function OrderDetailsPage() {
       {/* Shortfall report -- the order is placed, packing decides the split */}
       {showShortfallModal && (
         <Modal
-          icon={<AlertTriangle size={18} className="text-amber-500" />}
-          iconBg="bg-amber-100"
+          icon={
+            <AlertTriangle
+              size={18}
+              className="text-[color:var(--status-pending-text)]"
+            />
+          }
+          iconBg="bg-status-pending/15"
           title="Order placed"
           description={
             shortfallNotice ??
@@ -667,38 +690,38 @@ export default function OrderDetailsPage() {
             {shortfallLines.map((line) => (
               <div
                 key={line.order_item_id}
-                className="bg-amber-50 rounded-xl p-3 border border-amber-100"
+                className="rounded-control border border-status-pending/20 bg-status-pending/10 p-3"
               >
-                <p className="font-bold text-gray-900 text-sm">
+                <p className="text-sm font-bold text-app-ink">
                   {line.fabric_name}
                 </p>
                 {line.variant_display_order && (
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="mt-0.5 text-xs font-medium text-app-muted">
                     {line.variant_display_order}
                   </p>
                 )}
-                <div className="flex gap-4 mt-2 text-xs text-gray-500 flex-wrap">
+                <div className="mt-2 flex flex-wrap gap-4 text-xs font-medium text-app-muted">
                   <span>
                     You asked:{" "}
-                    <span className="font-bold text-gray-800">
+                    <span className="font-bold text-app-ink">
                       {formatMeters(line.required)} m
                     </span>
                   </span>
                   <span>
                     Everyone wants:{" "}
-                    <span className="font-bold text-gray-800">
+                    <span className="font-bold text-app-ink">
                       {formatMeters(line.total_demand)} m
                     </span>
                   </span>
                   <span>
                     We hold:{" "}
-                    <span className="font-bold text-amber-700">
+                    <span className="font-bold text-[color:var(--status-pending-text)]">
                       {formatMeters(line.available)} m
                     </span>
                   </span>
                   <span>
                     Short by:{" "}
-                    <span className="font-bold text-red-600">
+                    <span className="font-bold text-brand-red">
                       {formatMeters(line.shortfall)} m
                     </span>
                   </span>
@@ -712,8 +735,13 @@ export default function OrderDetailsPage() {
       {/* Merge Warning Modal */}
       {showMergeWarning && (
         <Modal
-          icon={<AlertTriangle size={18} className="text-amber-500" />}
-          iconBg="bg-amber-100"
+          icon={
+            <AlertTriangle
+              size={18}
+              className="text-[color:var(--status-pending-text)]"
+            />
+          }
+          iconBg="bg-status-pending/15"
           title="Duplicate Fabrics"
           description="The same colour was scanned more than once. They'll be combined into one line with the total metres."
           onClose={() => setShowMergeWarning(false)}
@@ -738,29 +766,29 @@ export default function OrderDetailsPage() {
           {duplicateGroups.map((group, idx) => (
             <div
               key={idx}
-              className="bg-amber-50 rounded-xl p-3 border border-amber-100"
+              className="rounded-control border border-status-pending/20 bg-status-pending/10 p-3"
             >
-              <p className="font-bold text-gray-900 text-sm">
+              <p className="text-sm font-bold text-app-ink">
                 {group.fabric_name}
               </p>
               {group.variant_display_order && (
-                <p className="text-xs text-gray-500 mt-0.5">
+                <p className="mt-0.5 text-xs font-medium text-app-muted">
                   {group.variant_display_order}
                 </p>
               )}
-              <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 {group.items.map((item, i) => (
                   <span key={item.id} className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold bg-white border border-amber-200 text-amber-700 rounded-lg px-2 py-0.5">
+                    <span className="rounded-lg border border-status-pending/20 bg-app-card px-2 py-1 text-xs font-bold text-[color:var(--status-pending-text)]">
                       {formatMeters(item.metres)} m
                     </span>
                     {i < group.items.length - 1 && (
-                      <span className="text-gray-400 text-xs">+</span>
+                      <span className="text-xs text-app-muted">+</span>
                     )}
                   </span>
                 ))}
-                <span className="text-gray-400 text-xs mx-0.5">=</span>
-                <span className="text-xs font-black text-amber-600 bg-amber-100 border border-amber-200 rounded-lg px-2 py-0.5">
+                <span className="mx-0.5 text-xs text-app-muted">=</span>
+                <span className="rounded-lg border border-status-pending/20 bg-status-pending/20 px-2 py-1 text-xs font-bold text-[color:var(--status-pending-text)]">
                   {formatMeters(group.totalMetres)} m
                 </span>
               </div>
@@ -772,8 +800,13 @@ export default function OrderDetailsPage() {
       {/* Leave Confirmation Modal */}
       {showLeaveConfirm && (
         <Modal
-          icon={<AlertTriangle size={18} className="text-amber-500" />}
-          iconBg="bg-amber-100"
+          icon={
+            <AlertTriangle
+              size={18}
+              className="text-[color:var(--status-pending-text)]"
+            />
+          }
+          iconBg="bg-status-pending/15"
           title="Leave Order?"
           description="Your current order progress may be lost if you go back."
           onClose={() => setShowLeaveConfirm(false)}
@@ -798,8 +831,8 @@ export default function OrderDetailsPage() {
             </>
           }
         >
-          <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
-            <p className="text-sm text-amber-800 font-medium">
+          <div className="rounded-control border border-status-pending/20 bg-status-pending/10 p-3">
+            <p className="text-sm font-medium text-[color:var(--status-pending-text)]">
               Are you sure you want to leave this page?
             </p>
           </div>

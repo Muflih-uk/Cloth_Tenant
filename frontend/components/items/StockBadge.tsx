@@ -41,12 +41,12 @@ export default function StockBadge({
   const isLow = orderable > 0 && orderable <= lowThreshold;
 
   const colorClass = isOversold
-    ? "text-red-600"
+    ? "text-brand-red"
     : isZero
-      ? "text-red-500"
+      ? "text-brand-red"
       : isLow
-        ? "text-amber-500"
-        : "text-green-600";
+        ? "text-[color:var(--status-pending-text)]"
+        : "text-[color:var(--status-dispatched-text)]";
 
   const sizeClasses = {
     sm: "text-xs",
@@ -63,21 +63,25 @@ export default function StockBadge({
   return (
     <div className="text-right">
       <div className="flex items-center justify-end gap-1">
-        <span className={`font-black ${sizeClasses[size]} ${colorClass}`}>
+        <span className={`font-extrabold ${sizeClasses[size]} ${colorClass}`}>
           {formatMeters(orderable)}
           {unit ? ` ${unit}` : ""}
         </span>
         {showLabel && (
-          <span className={`text-gray-400 ${labelSizeClasses[size]}`}>Available to order</span>
+          <span className={`text-app-muted ${labelSizeClasses[size]}`}>
+            Available to order
+          </span>
         )}
       </div>
       {/* The physical total remains visible beside the order balance. */}
-      <p className={`text-gray-400 ${labelSizeClasses[size]}`}>
+      <p className={`text-app-muted ${labelSizeClasses[size]}`}>
         {physicalLabel}: {formatMeters(total)}
         {unit ? ` ${unit}` : ""}
       </p>
       {untrackedPhysical > 0 && (
-        <p className={`text-amber-700 ${labelSizeClasses[size]}`}>
+        <p
+          className={`text-[color:var(--status-pending-text)] ${labelSizeClasses[size]}`}
+        >
           Untracked physical (not packable): {formatMeters(untrackedPhysical)}
           {unit ? ` ${unit}` : ""}
         </p>

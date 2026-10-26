@@ -11,7 +11,11 @@ class User(AbstractUser):
     (used for invoicing), not on the user. Admins see the whole catalogue.
     """
 
-    ROLE_CHOICES = (("ADMIN", "Admin"), ("AGENT", "Agent"))
+    ROLE_CHOICES = (
+        ("ADMIN", "Admin"),
+        ("SUBADMIN", "Sub Admin"),
+        ("AGENT", "Agent"),
+    )
 
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, blank=True)
@@ -31,6 +35,31 @@ class User(AbstractUser):
 
     def __str__(self):
         return f"{self.username} ({self.role})"
+
+
+class SubAdminPermission(models.Model):
+    """The parts of the admin area a sub-admin may use.
+
+    The account itself is still a :class:`User` with role ``SUBADMIN``. This row
+    only carries the switches an admin ticks, so every request can read the
+    current values from the database instead of trusting a stale token.
+    """
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="subadmin_permission",
+    )
+    orders_view = models.BooleanField(default=False)
+    orders_edit = models.BooleanField(default=False)
+    orders_delete = models.BooleanField(default=False)
+    items_view = models.BooleanField(default=False)
+    items_edit = models.BooleanField(default=False)
+    items_delete = models.BooleanField(default=False)
+    agents_view = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"SubAdminPermission({self.user.username})"
 
 
 class PasswordResetToken(models.Model):

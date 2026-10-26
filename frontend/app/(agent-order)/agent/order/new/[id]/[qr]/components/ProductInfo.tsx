@@ -6,10 +6,10 @@ interface ProductInfoProps {
 
 export default function ProductInfo({ name }: ProductInfoProps) {
   return (
-    <div className="mb-8">
-      <h2 className="text-2xl font-black text-gray-900 mb-1">{name}</h2>
-      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-tight">
-        {"Premium Collection"}
+    <div className="mb-6">
+      <h2 className="mb-1 text-2xl font-extrabold text-app-ink">{name}</h2>
+      <p className="text-[10px] font-semibold uppercase leading-tight tracking-widest text-app-muted">
+        Premium Collection
       </p>
     </div>
   );

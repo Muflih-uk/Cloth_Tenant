@@ -30,8 +30,8 @@ function normalizeAgentItem(item: AssignedItem): UIItem {
 
 export default function MyItemsPage() {
     const { user } = useAuth();
+    const userId = user?.id;
     const [items, setItems] = useState<UIItem[]>([]);
-    const [loading, setLoading] = useState(true);
     const router = useRouter();
     const [initialLoading, setInitialLoading] = useState(true);
 
@@ -42,20 +42,21 @@ export default function MyItemsPage() {
     });
 
     const fetchData = useCallback(async () => {
-        if (!user?.id) return;
+        if (!userId) return;
 
         try {
-            const agent = await agentApi.getProfile(user.id);
+            const agent = await agentApi.getProfile(userId);
             setItems((agent.assigned_items || []).map(normalizeAgentItem));
         } catch (error) {
             console.error("Error fetching items:", error);
         } finally {
             setInitialLoading(false);
         }
-    }, [user?.id]);
+    }, [userId]);
 
     useEffect(() => {
-        if (!user?.id) return;
+        if (!userId) return;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchData();
         const handleFocus = () => fetchData();
         window.addEventListener("focus", handleFocus);
@@ -64,7 +65,7 @@ export default function MyItemsPage() {
             window.removeEventListener("focus", handleFocus);
             clearInterval(interval);
         };
-    }, [user?.id, fetchData]);
+    }, [userId, fetchData]);
 
     const handleOrder = useCallback(() => {
         router.push("/agent/order/new");

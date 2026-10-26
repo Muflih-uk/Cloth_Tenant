@@ -2,41 +2,48 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { customerApi } from "@/lib/api/customer";
-import { agentApi } from "@/lib/api/agents";
-import { orderApi } from "@/lib/api/order";
-import { toastSuccess, toastError } from "@/lib/toast";
-import { CustomerResponse, CustomerUpdateRequest } from "@/types/customer";
-import type { OrderResponse } from "@/types/order";
-import { formatMeters } from "@/types/item";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import StockFlowButton from "@/components/ui/custom/stockFlowButton";
-import StockFlowSelect from "@/components/ui/custom/stockFlowSelect";
 import {
-  Trash2,
   ArrowLeft,
-  User,
-  Pencil,
   Eye,
   Package,
+  Pencil,
   Plus,
+  Trash2,
 } from "lucide-react";
+
+import Button from "@/components/ui/app/Button";
+import Card from "@/components/ui/app/Card";
+import { DetailList, DetailRow } from "@/components/ui/app/DetailList";
+import ListRow from "@/components/ui/app/ListRow";
+import PageHeader from "@/components/ui/app/PageHeader";
+import { SkeletonCard } from "@/components/ui/app/Skeleton";
+import EmptyState from "@/components/ui/EmptyState";
 import Pagination from "@/components/ui/Pagination";
 import DeleteWithTransferDialog from "@/components/ui/deleteWithTransferDialog";
+import FormField from "@/components/ui/custom/FormField";
+import StockFlowSelect from "@/components/ui/custom/stockFlowSelect";
+import StatusBadge from "@/components/ui/custom/StatusBadge";
+import StockflowAvatar from "@/components/ui/custom/stockflowAvatar";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
-
-function getColorFromId(id: number): string {
-  if (!id) return "hsl(0, 0%, 85%)";
-  const hue = (id * 137.508) % 360;
-  return `hsl(${hue}, 65%, 85%)`;
-}
+import { agentApi } from "@/lib/api/agents";
+import { customerApi } from "@/lib/api/customer";
+import { orderApi } from "@/lib/api/order";
+import { toastError, toastSuccess } from "@/lib/toast";
+import { formatMeters } from "@/types/item";
+import type { OrderResponse } from "@/types/order";
+import { CustomerResponse, CustomerUpdateRequest } from "@/types/customer";
 
 export default function CustomerDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { isSuperuser } = useAuth();
+  const { role, permissions } = useAuth();
+  const canWriteCustomers = role === "ADMIN";
+  const canSeeOrders =
+    role === "ADMIN" || role === "AGENT" || permissions.orders_view;
+  const canSeeAgents =
+    role === "ADMIN" || role === "AGENT" || permissions.agents_view;
 
   const [customer, setCustomer] = useState<CustomerResponse | null>(null);
   const [agents, setAgents] = useState<{ value: string; label: string }[]>([]);
@@ -63,13 +70,16 @@ export default function CustomerDetailPage() {
     const fetchData = async () => {
       try {
         const numericId = parseInt(id as string, 10);
+        const emptyOrders = { results: [] as OrderResponse[], count: 0 };
         const [customerData, agentsData, ordersData] = await Promise.all([
           customerApi.getOne(numericId),
-          agentApi.getAll(),
-          orderApi.getByCustomer(numericId, {
-            page: currentPage,
-            page_size: pageSize,
-          }),
+          canSeeAgents ? agentApi.getAll() : Promise.resolve([]),
+          canSeeOrders
+            ? orderApi.getByCustomer(numericId, {
+                page: currentPage,
+                page_size: pageSize,
+              })
+            : Promise.resolve(emptyOrders),
         ]);
         const filteredOrders = ordersData.results.filter(
           (eachOrder) => eachOrder.status !== "DRAFT",
@@ -86,9 +96,9 @@ export default function CustomerDetailPage() {
           gst: customerData.gst,
         });
         setAgents(
-          agentsData.map((a) => ({
-            value: a.id.toString(),
-            label: a.user.username,
+          agentsData.map((agent) => ({
+            value: agent.id.toString(),
+            label: agent.user.username,
           })),
         );
       } catch (error) {
@@ -98,7 +108,7 @@ export default function CustomerDetailPage() {
       }
     };
     fetchData();
-  }, [id, currentPage, pageSize]);
+  }, [id, currentPage, pageSize, canSeeAgents, canSeeOrders]);
 
   const handleChange = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -139,15 +149,13 @@ export default function CustomerDetailPage() {
       toastSuccess("Customer updated successfully");
       setIsEditing(false);
       router.push("/admin/users/");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating customer:", error);
       toastError("Failed to update customer", error);
     } finally {
       setSaving(false);
     }
   };
-
-  // ── Delete ────────────────────────────────────────────────────────────────
 
   const handleDeleteClick = () => {
     setDeleteDialogOpen(true);
@@ -172,8 +180,6 @@ export default function CustomerDetailPage() {
     }
   };
 
-  // ── Pagination ────────────────────────────────────────────────────────────
-
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -184,19 +190,33 @@ export default function CustomerDetailPage() {
     setCurrentPage(1);
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="mx-auto min-h-screen w-full max-w-2xl space-y-3 px-2 pb-32 pt-4">
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
+    );
+  }
 
-  if (loading)
+  if (!customer) {
     return (
-      <div className="p-8 text-center text-gray-400">Loading details...</div>
+      <div className="mx-auto min-h-screen w-full max-w-2xl px-2 pb-32 pt-4">
+        <EmptyState
+          title="Customer not found"
+          description="This customer may have been deleted or is no longer available."
+          action={
+            <Button onClick={() => router.push("/admin/users/")}>
+              Back to users
+            </Button>
+          }
+        />
+      </div>
     );
-  if (!customer)
-    return (
-      <div className="p-8 text-center text-red-400">Customer not found.</div>
-    );
+  }
 
   return (
-    <div className="w-full px-0 py-4 flex flex-col min-h-screen bg-white sm:px-4 sm:py-8">
+    <div className="mx-auto min-h-screen w-full max-w-2xl px-2 pb-32 pt-2">
       <DeleteWithTransferDialog
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
@@ -205,290 +225,223 @@ export default function CustomerDetailPage() {
         entityName={customer.name}
         onFetchDeleteInfo={customerApi.getDeleteInfo}
         onDelete={handleDeleteConfirm}
-        isSuperuser={isSuperuser}
       />
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <button
+      <div className="mb-4 flex items-start gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={() => router.back()}
-          className="p-2 -ml-2 rounded-full hover:bg-gray-50 transition-colors"
+          aria-label="Go back"
+          className="-ml-2"
         >
-          <ArrowLeft size={24} className="text-gray-900" />
-        </button>
-        <div className="text-center flex-1">
-          <h1 className="text-xl font-black text-gray-900 tracking-tight">
-            Customer Profile
-          </h1>
-          <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">
-            Manage client records
-          </p>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() =>
-              router.push(`/admin/order/new?customer=${id}`)
-            }
-            className="p-2 rounded-xl text-primary hover:bg-primary/10 transition-colors"
-            title="Create order"
-          >
-            <Plus size={20} />
-          </button>
-          <button
-            onClick={() => setIsEditing(!isEditing)}
-            className="p-2 rounded-xl hover:bg-gray-50 transition-colors"
-            title={isEditing ? "View details" : "Edit details"}
-          >
-            {isEditing ? (
-              <Eye size={20} className="text-gray-700" />
-            ) : (
-              <Pencil size={20} className="text-gray-700" />
-            )}
-          </button>
-          <button
-            onClick={handleDeleteClick}
-            disabled={deleting}
-            className="p-2 rounded-xl text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
-          >
-            {deleting ? (
-              <span className="w-5 h-5 border-2 border-red-300 border-t-red-500 rounded-full animate-spin block" />
-            ) : (
-              <Trash2 size={20} />
-            )}
-          </button>
+          <ArrowLeft className="size-5" aria-hidden="true" />
+        </Button>
+        <PageHeader
+          title="Customer profile"
+          subtitle="Manage client details and order history."
+          className="flex-1"
+        />
+      </div>
+
+      <div className="mb-5 flex items-center gap-3">
+        <StockflowAvatar
+          user={customer}
+          size="lg"
+          className="size-20 text-2xl"
+        />
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-xl font-bold text-app-ink">
+            {customer.name}
+          </h2>
+          <p className="app-secondary mt-1">Customer ID #{id}</p>
         </div>
       </div>
 
-      {/* Avatar Section */}
-      <div className="flex flex-col items-center mb-6">
-        <div
-          className="w-20 h-20 rounded-3xl flex items-center justify-center mb-4 shadow-sm"
-          style={{
-            backgroundColor: isEditing
-              ? "hsl(150, 65%, 92%)"
-              : getColorFromId(customer.id),
-          }}
-        >
-          <User
-            size={40}
-            className={isEditing ? "text-primary" : "text-gray-600"}
-          />
-        </div>
-        <h2 className="text-2xl font-black text-gray-900">{customer.name}</h2>
-        <span className="text-xs font-bold text-gray-400 mt-1">ID: #{id}</span>
+      <div className="mb-5 flex items-center gap-2">
+        {canWriteCustomers && (
+          <>
+            <Button
+              onClick={() => router.push(`/admin/order/new?customer=${id}`)}
+              className="flex-1"
+            >
+              <Plus className="size-4" aria-hidden="true" />
+              New order
+            </Button>
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={() => setIsEditing((value) => !value)}
+              aria-label={isEditing ? "View customer details" : "Edit customer"}
+              aria-pressed={isEditing}
+            >
+              {isEditing ? (
+                <Eye className="size-5" aria-hidden="true" />
+              ) : (
+                <Pencil className="size-5" aria-hidden="true" />
+              )}
+            </Button>
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={handleDeleteClick}
+              loading={deleting}
+              aria-label="Delete customer"
+              className="text-brand-red hover:bg-brand-red/10"
+            >
+              <Trash2 className="size-5" aria-hidden="true" />
+            </Button>
+          </>
+        )}
       </div>
 
-      {/* User Details Section */}
       {isEditing ? (
-        <>
-          <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-3 space-y-4 mb-4 sm:rounded-[2rem] sm:p-6 sm:space-y-6 sm:mb-6">
-            <FieldGroup className="space-y-6">
-              <Field>
-                <FieldLabel className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">
-                  Customer name
-                </FieldLabel>
-                <Input
-                  value={formData.name}
-                  onChange={(e) => handleChange("name", e.target.value)}
-                  className="bg-white border-gray-100 rounded-xl h-12 font-bold"
-                />
-                {errors.name && (
-                  <p className="text-[10px] text-red-500 font-bold mt-1">
-                    {errors.name}
-                  </p>
-                )}
-              </Field>
+        <Card>
+          <div className="space-y-5">
+            <FormField
+              label="Customer name"
+              htmlFor="customer-edit-name"
+              error={errors.name}
+            >
+              <Input
+                id="customer-edit-name"
+                value={formData.name}
+                onChange={(event) =>
+                  handleChange("name", event.target.value)
+                }
+                aria-invalid={Boolean(errors.name)}
+              />
+            </FormField>
 
-              <Field>
-                <FieldLabel className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">
-                  Assigned Agent
-                </FieldLabel>
-                <StockFlowSelect
-                  value={formData.agent}
-                  onChange={(val) => handleChange("agent", val)}
-                  options={agents}
-                  className="bg-white"
-                />
-              </Field>
+            <FormField label="Assigned agent" htmlFor="customer-edit-agent">
+              <StockFlowSelect
+                value={formData.agent}
+                onChange={(value) => handleChange("agent", value)}
+                options={agents}
+                disabled={saving}
+              />
+            </FormField>
 
-              <Field>
-                <FieldLabel className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">
-                  Shipping Address
-                </FieldLabel>
-                <Textarea
-                  rows={3}
-                  value={formData.address}
-                  onChange={(e) => handleChange("address", e.target.value)}
-                  className="bg-white border-gray-100 rounded-xl font-bold"
-                />
-                {errors.address && (
-                  <p className="text-[10px] text-red-500 font-bold mt-1">
-                    {errors.address}
-                  </p>
-                )}
-              </Field>
+            <FormField
+              label="Shipping address"
+              htmlFor="customer-edit-address"
+              error={errors.address}
+            >
+              <Textarea
+                id="customer-edit-address"
+                rows={3}
+                value={formData.address}
+                onChange={(event) =>
+                  handleChange("address", event.target.value)
+                }
+                aria-invalid={Boolean(errors.address)}
+              />
+            </FormField>
 
-              <Field>
-                <FieldLabel className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">
-                  Contact detail
-                </FieldLabel>
-                <Input
-                  value={formData.contact}
-                  onChange={(e) => handleChange("contact", e.target.value)}
-                  className="bg-white border-gray-100 rounded-xl h-12 font-bold"
-                />
-                {errors.contact && (
-                  <p className="text-[10px] text-red-500 font-bold mt-1">
-                    {errors.contact}
-                  </p>
-                )}
-              </Field>
-              <Field>
-                <FieldLabel className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">
-                  GST
-                </FieldLabel>
-                <Input
-                  value={formData.gst}
-                  onChange={(e) =>
-                    handleChange("gst", e.target.value.toUpperCase())
-                  }
-                  className="bg-white border-gray-100 rounded-xl h-12 font-bold"
-                />
-                {errors.gst && (
-                  <p className="text-[10px] text-red-500 font-bold mt-1">
-                    {errors.gst}
-                  </p>
-                )}
-              </Field>
-            </FieldGroup>
+            <FormField
+              label="Contact detail"
+              htmlFor="customer-edit-contact"
+              error={errors.contact}
+            >
+              <Input
+                id="customer-edit-contact"
+                inputMode="tel"
+                value={formData.contact}
+                onChange={(event) =>
+                  handleChange("contact", event.target.value)
+                }
+                aria-invalid={Boolean(errors.contact)}
+              />
+            </FormField>
+
+            <FormField
+              label="GST number"
+              htmlFor="customer-edit-gst"
+              error={errors.gst}
+            >
+              <Input
+                id="customer-edit-gst"
+                value={formData.gst}
+                onChange={(event) =>
+                  handleChange("gst", event.target.value.toUpperCase())
+                }
+                aria-invalid={Boolean(errors.gst)}
+              />
+            </FormField>
           </div>
 
-          <div className="mb-20 px-0 sm:px-4">
-            <StockFlowButton
-              variant="filled"
-              text={saving ? "Saving Changes..." : "Save Changes"}
-              onClick={handleUpdate}
-              disabled={saving}
-              className="w-full h-14 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 active:scale-95 transition-all"
-            />
-          </div>
-        </>
+          <Button
+            size="lg"
+            onClick={handleUpdate}
+            loading={saving}
+            loadingText="Saving changes..."
+            className="mt-6 w-full"
+          >
+            Save Changes
+          </Button>
+        </Card>
       ) : (
         <>
-          {/* View Mode */}
-          <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 mb-6 w-full">
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-gray-400 uppercase">
-                  Contact
-                </span>
-                <span className="text-sm font-medium text-gray-900">
-                  {customer.contact || "—"}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-gray-400 uppercase">
-                  Address
-                </span>
-                <span className="text-sm font-medium text-gray-900 text-right max-w-[60%]">
-                  {customer.address || "—"}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-gray-400 uppercase">
-                  GST
-                </span>
-                <span className="text-sm font-medium text-gray-900 text-right max-w-[60%]">
+          <Card title="Contact details" className="mb-4">
+            <DetailList>
+              <DetailRow label="Contact">
+                {customer.contact ? (
+                  <a
+                    href={`tel:${customer.contact}`}
+                    className="app-focus rounded-sm text-brand-navy underline-offset-2 hover:underline"
+                  >
+                    {customer.contact}
+                  </a>
+                ) : (
+                  "—"
+                )}
+              </DetailRow>
+              <DetailRow label="Address">{customer.address || "—"}</DetailRow>
+              <DetailRow label="GST">
+                <span className="font-mono text-[13px]">
                   {customer.gst || "—"}
                 </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-gray-400 uppercase">
-                  Agent
-                </span>
-                <span className="text-sm font-medium text-gray-900">
-                  {customer.agent_name || "—"}
-                </span>
-              </div>
-            </div>
-          </div>
+              </DetailRow>
+              <DetailRow label="Agent">{customer.agent_name || "—"}</DetailRow>
+            </DetailList>
+          </Card>
 
-            {/* Order History Section */}
-            <div className="mt-6">
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <div className="flex items-center gap-2">
-                  <Package size={16} className="text-gray-400" />
-                  <span className="text-xs font-black uppercase tracking-widest text-gray-400">
-                    Order History
-                  </span>
-                </div>
-                <button
-                  onClick={() =>
-                    router.push(`/admin/order/new?customer=${id}`)
-                  }
-                  className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-primary text-white text-[11px] font-black shadow-sm shadow-primary/20 active:scale-95 transition-all"
-                >
-                  <Plus size={14} />
-                  Create Order
-                </button>
-              </div>
+          <Card
+            title="Order history"
+            subtitle={`${totalOrders} ${totalOrders === 1 ? "order" : "orders"}`}
+            action={
+              <Button
+                variant="secondary"
+                size="icon"
+                onClick={() =>
+                  router.push(`/admin/order/new?customer=${id}`)
+                }
+                aria-label="Create order"
+              >
+                <Plus className="size-4" aria-hidden="true" />
+              </Button>
+            }
+          >
             {orders.length === 0 ? (
-              <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 text-center">
-                <span className="text-sm font-medium text-gray-400">
-                  No orders yet
-                </span>
-              </div>
+              <EmptyState
+                title="No orders yet"
+                description="Create the first order for this customer."
+                icon={<Package className="size-5" aria-hidden="true" />}
+              />
             ) : (
               <div className="space-y-2">
                 {orders.map((order) => (
-                  <button
+                  <ListRow
                     key={order.id}
-                    onClick={() =>
-                      router.push(`/admin/order/status/${order.id}`)
-                    }
-                    className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 flex items-center justify-between hover:bg-gray-100 transition-colors text-left"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-2 h-2 rounded-full ${
-                          order.status === "DISPATCHED"
-                            ? "bg-green-500"
-                            : order.status === "PACKED"
-                              ? "bg-blue-500"
-                              : order.status === "PENDING"
-                                ? "bg-yellow-500"
-                                : "bg-gray-300"
-                        }`}
-                      />
-                      <div>
-                        <span className="text-sm font-bold text-gray-900">
-                          Order #{order.id}
-                        </span>
-                        <span className="text-xs text-gray-400 ml-2">
-                          {formatMeters(order.totals?.total_ordered_meters)} m
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span
-                        className={`text-xs font-bold px-2 py-1 rounded-full ${
-                          order.status === "DISPATCHED"
-                            ? "bg-green-100 text-green-700"
-                            : order.status === "PACKED"
-                              ? "bg-blue-100 text-blue-700"
-                              : order.status === "PENDING"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-gray-100 text-gray-600"
-                        }`}
-                      >
-                        {order.status}
-                      </span>
-                    </div>
-                  </button>
+                    href={`/admin/order/status/${order.id}`}
+                    title={`Order #${order.id}`}
+                    subtitle={`${formatMeters(order.totals?.total_ordered_meters)} m`}
+                    trailing={<StatusBadge status={order.status} />}
+                  />
                 ))}
               </div>
             )}
-          </div>
+          </Card>
 
           <Pagination
             currentPage={currentPage}
@@ -500,8 +453,6 @@ export default function CustomerDetailPage() {
           />
         </>
       )}
-
-      <div className="h-20"></div>
     </div>
   );
 }

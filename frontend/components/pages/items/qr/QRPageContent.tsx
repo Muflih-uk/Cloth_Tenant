@@ -14,6 +14,7 @@ import QRCode from "qrcode";
 import Image from "next/image";
 import { ChevronLeft, Download, Printer, Share2 } from "lucide-react";
 import { PageLoading } from "@/components/ui/Loading";
+import Button from "@/components/ui/app/Button";
 import { variantColorLabel } from "@/lib/colorLabel";
 
 type QRPrintItem = {
@@ -45,51 +46,6 @@ export default function QRPrintPageContent() {
     const isMobile =
         typeof window !== "undefined" &&
         /Mobi|Android/i.test(navigator.userAgent);
-
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                if (itemId) {
-                    const data = await fabricApi.getOne(Number(itemId));
-                    const parsedItem: QRPrintItem = {
-                        id: data.id,
-                        name: data.name,
-                        design_number: data.design_number,
-                        price_per_meter: data.price_per_meter,
-                        image: data.variants[0]?.image || null,
-                        variants: data.variants,
-                    };
-                    await prepareItem(parsedItem);
-                } else if (qrId) {
-                    const data: FabricQRResponse = await fabricApi.byQr(qrId);
-                    const matchedVariant =
-                        data.variants.find((v) => v.qr_code === qrId) ||
-                        data.variants[0];
-                    const parsedItem: QRPrintItem = {
-                        id: data.id,
-                        name: data.name,
-                        design_number: data.design_number,
-                        price_per_meter: data.price_per_meter,
-                        image: matchedVariant?.image || null,
-                        variants: matchedVariant ? [matchedVariant] : [],
-                    };
-                    await prepareItem(parsedItem);
-                }
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
-    }, [itemId, qrId]);
-
-    useEffect(() => {
-        return () => {
-            if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
-        };
-    }, [pdfBlobUrl]);
 
     const prepareItem = useCallback(
         async (parsedItem: QRPrintItem) => {
@@ -128,8 +84,53 @@ export default function QRPrintPageContent() {
                 setPdfBlobUrl(URL.createObjectURL(blob));
             }
         },
-        [isMobile],
+        [isMobile, variantId],
     );
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                if (itemId) {
+                    const data = await fabricApi.getOne(Number(itemId));
+                    const parsedItem: QRPrintItem = {
+                        id: data.id,
+                        name: data.name,
+                        design_number: data.design_number,
+                        price_per_meter: data.price_per_meter,
+                        image: data.variants[0]?.image || null,
+                        variants: data.variants,
+                    };
+                    await prepareItem(parsedItem);
+                } else if (qrId) {
+                    const data: FabricQRResponse = await fabricApi.byQr(qrId);
+                    const matchedVariant =
+                        data.variants.find((v) => v.qr_code === qrId) ||
+                        data.variants[0];
+                    const parsedItem: QRPrintItem = {
+                        id: data.id,
+                        name: data.name,
+                        design_number: data.design_number,
+                        price_per_meter: data.price_per_meter,
+                        image: matchedVariant?.image || null,
+                        variants: matchedVariant ? [matchedVariant] : [],
+                    };
+                    await prepareItem(parsedItem);
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [itemId, qrId, prepareItem]);
+
+    useEffect(() => {
+        return () => {
+            if (pdfBlobUrl) URL.revokeObjectURL(pdfBlobUrl);
+        };
+    }, [pdfBlobUrl]);
 
     const handleDownload = () => {
         if (!pdfBlob || !item) return;
@@ -201,37 +202,37 @@ export default function QRPrintPageContent() {
     }
 
     return (
-        <main className="h-screen flex flex-col">
+        <main className="flex h-screen flex-col bg-app-bg">
             {/* Header */}
-            <header className="w-full flex items-center p-4">
-                <button
+            <header className="flex w-full items-center border-b border-app-line bg-app-card p-3">
+                <Button
+                    variant="ghost"
                     onClick={() => router.push("/admin/items")}
-                    className="flex items-center gap-1.5"
                 >
-                    <ChevronLeft className="w-7 h-7" />
+                    <ChevronLeft className="size-5" aria-hidden="true" />
                     Back
-                </button>
+                </Button>
             </header>
 
             {/* Preview Area */}
             <div className="flex-1 overflow-y-auto p-4">
                 {isMobile ? (
                     // Mobile — iframe doesn't work, show card preview instead
-                    <div className="flex flex-col gap-3 items-center pb-4">
+                    <div className="flex flex-col items-center gap-3 pb-4">
                         {item.variants.map((variant, index) => (
                             <div
                                 key={variant.id}
-                                className="gap-4 bg-white border shadow-sm flex flex-col items-center justify-center w-full max-w-sm min-h-[150mm] px-4 py-6"
+                                className="flex min-h-[150mm] w-full max-w-sm flex-col items-center justify-center gap-4 rounded-card border border-app-line bg-app-card px-4 py-6 shadow-card"
                             >
-                                <p className="text-[24px] font-bold text-center">
+                                <p className="text-center text-[24px] font-bold text-app-ink">
                                     {item.name}
                                 </p>
                                 {item.design_number && (
-                                    <p className="text-[16px] text-gray-600 text-center">
+                                    <p className="text-center text-[16px] text-app-muted">
                                         Design: {item.design_number}
                                     </p>
                                 )}
-                                <p className="text-[18px] bg-gray-100 px-2 py-1 rounded">
+                                <p className="rounded-control bg-app-soft px-2 py-1 text-[18px]">
                                     {variantColorLabel(variant.display_order, index + 1)}
                                 </p>
                                 <Image
@@ -242,7 +243,7 @@ export default function QRPrintPageContent() {
                                     height={150}
                                     className="mt-3"
                                 />
-                                <p className="text-[24px] font-extrabold">
+                                <p className="text-[24px] font-bold text-app-ink">
                                     Rs. {Number(item.price_per_meter).toFixed(2)}/m
                                 </p>
                             </div>
@@ -251,46 +252,52 @@ export default function QRPrintPageContent() {
                 ) : (
                     <iframe
                         src={pdfBlobUrl ?? undefined}
-                        className="w-full h-full border-0 bg-white"
+                        className="h-full w-full border-0 bg-app-card"
                         title="QR Labels PDF Preview"
                     />
                 )}
             </div>
 
             {/* Action Bar */}
-            <div className="sticky bottom-0 p-4 bg-white border-t">
-                <div className="flex gap-3 max-w-md mx-auto">
+            <div className="sticky bottom-0 border-t border-app-line bg-app-card p-4">
+                <div className="mx-auto flex max-w-md gap-3">
                     {/* Print — hidden on mobile since it opens a new tab */}
 
-                    <button
+                    <Button
+                        variant="secondary"
                         onClick={handlePrint}
                         disabled={printing || !pdfBlob}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-gray-200 text-gray-700 rounded-2xl font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                        loading={printing}
+                        loadingText="Opening..."
+                        className="flex-1"
                     >
-                        <Printer size={18} />
-                        {printing ? "Opening..." : "Print"}
-                    </button>
+                        <Printer className="size-4" aria-hidden="true" />
+                        Print
+                    </Button>
 
                     {isMobile && (
-                        <button
+                        <Button
+                            variant="secondary"
                             onClick={handleShare}
                             disabled={sharing || !pdfBlob}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-gray-200 text-gray-700 rounded-2xl font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                            loading={sharing}
+                            loadingText="Sharing..."
+                            className="flex-1"
                         >
-                            <Share2 size={18} />
-                            {sharing ? "Sharing..." : "Share"}
-                        </button>
+                            <Share2 className="size-4" aria-hidden="true" />
+                            Share
+                        </Button>
                     )}
 
                     {/* Download */}
-                    <button
+                    <Button
                         onClick={handleDownload}
                         disabled={!pdfBlob}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-white rounded-2xl font-medium disabled:opacity-50 transition-colors"
+                        className="flex-1"
                     >
-                        <Download size={18} />
+                        <Download className="size-4" aria-hidden="true" />
                         Download
-                    </button>
+                    </Button>
                 </div>
             </div>
         </main>

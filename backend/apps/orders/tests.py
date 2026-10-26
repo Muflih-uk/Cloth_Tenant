@@ -1842,12 +1842,14 @@ class EditFlowTests(OrderTestBase):
         self.assertEqual(self.order.status, "PENDING")
         self.assertEqual(self.order.items.count(), 1)
 
-    def test_admin_cannot_start_edit(self):
+    def test_admin_can_start_edit(self):
         self.auth(self.admin)
         resp = self.client.post(
             f"/api/orders/{self.order.pk}/start-edit/", {}, format="json"
         )
-        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, "EDITING")
 
     def test_cannot_edit_once_any_metre_is_packed(self):
         """A partial allocation is enough to freeze the order against edits."""
@@ -1916,6 +1918,14 @@ class OrderDeletionTests(OrderTestBase):
         # Dispatch needs a transport on the order, chosen once and then reused, so
         # these tests carry one rather than re-deciding it per case.
         self.transport = Transport.objects.create(name="VRL Logistics")
+        self.admin.set_pin("1234")
+        self.admin.save(update_fields=["pin"])
+
+    def delete_order(self, order):
+        self.auth(self.admin)
+        return self.client.delete(
+            f"/api/orders/{order.pk}/", {"pin": "1234"}, format="json"
+        )
 
     def roll_backed_order(self, metres=1000):
         """A placed order on a colour tracked by two real rolls."""
@@ -1990,8 +2000,7 @@ class OrderDeletionTests(OrderTestBase):
         self.assertEqual(self.variant.stock_meters, Decimal("1400.000"))
         self.assertEqual(self.variant.available_to_order, Decimal("1400.000"))
 
-        self.auth(self.admin)
-        resp = self.client.delete(f"/api/orders/{order.pk}/")
+        resp = self.delete_order(order)
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
 
         self.variant.refresh_from_db()
@@ -2039,7 +2048,7 @@ class OrderDeletionTests(OrderTestBase):
         )
         order.refresh_from_db()
         self.assertEqual(order.status, "DISPATCHED")
-        resp = self.client.delete(f"/api/orders/{order.pk}/")
+        resp = self.delete_order(order)
 
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertTrue(Order.objects.filter(pk=order.pk).exists())
@@ -2065,7 +2074,7 @@ class OrderDeletionTests(OrderTestBase):
         )
         self.assertEqual(dispatched.status_code, status.HTTP_200_OK, dispatched.data)
 
-        resp = self.client.delete(f"/api/orders/{order.pk}/")
+        resp = self.delete_order(order)
 
         # Refused with a reason, rather than deleted with the cloth quietly lost.
         self.assertEqual(resp.status_code, status.HTTP_400_BAD_REQUEST)
@@ -2111,8 +2120,7 @@ class OrderDeletionTests(OrderTestBase):
         self.scan_into(order, bundle, self.rolls[0])
         self.seal(order, bundle)
 
-        self.auth(self.admin)
-        resp = self.client.delete(f"/api/orders/{order.pk}/")
+        resp = self.delete_order(order)
 
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT, resp.data)
         self.rolls[0].refresh_from_db()
@@ -2128,8 +2136,7 @@ class OrderDeletionTests(OrderTestBase):
         self.assertEqual(self.rolls[0].remaining_meters, ZERO)
         self.assertFalse(self.rolls[0].is_active)
 
-        self.auth(self.admin)
-        resp = self.client.delete(f"/api/orders/{order.pk}/")
+        resp = self.delete_order(order)
 
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
         # Both rolls are whole again, and the colour's stock is back to the total
@@ -2160,7 +2167,7 @@ class OrderDeletionTests(OrderTestBase):
         )
         self.assertEqual(sealed.status_code, status.HTTP_200_OK, sealed.data)
 
-        resp = self.client.delete(f"/api/orders/{order.pk}/")
+        resp = self.delete_order(order)
 
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
         self.rolls[0].refresh_from_db()
@@ -2175,8 +2182,7 @@ class OrderDeletionTests(OrderTestBase):
         open_bundle = self.open_bundle(order)
         self.scan_into(order, open_bundle, self.rolls[0])
 
-        self.auth(self.admin)
-        resp = self.client.delete(f"/api/orders/{order.pk}/")
+        resp = self.delete_order(order)
 
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
         # The bundle went with its order, so it can never be left open on an order
@@ -2193,8 +2199,7 @@ class OrderDeletionTests(OrderTestBase):
         self.place(order)
         line_pk = order.items.get().pk
 
-        self.auth(self.admin)
-        resp = self.client.delete(f"/api/orders/{order.pk}/")
+        resp = self.delete_order(order)
 
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Order.objects.filter(pk=order.pk).exists())
@@ -2216,8 +2221,7 @@ class OrderDeletionTests(OrderTestBase):
             "apps.orders.views.OrderLog.record", side_effect=RuntimeError("boom")
         ):
             with self.assertRaises(RuntimeError):
-                self.auth(self.admin)
-                self.client.delete(f"/api/orders/{order.pk}/")
+                self.delete_order(order)
 
         # The order survives...
         self.assertTrue(Order.objects.filter(pk=order.pk).exists())
@@ -2235,8 +2239,7 @@ class OrderDeletionTests(OrderTestBase):
         self.add_line(order, 100)
         self.place(order)
 
-        self.auth(self.admin)
-        self.client.delete(f"/api/orders/{order.pk}/")
+        self.delete_order(order)
 
         self.assertFalse(Order.objects.filter(pk=order.pk).exists())
         logs = OrderLog.objects.filter(order_ref=order.pk)

@@ -31,29 +31,28 @@ export default function StockMetresRow({
 
   return (
     <div
-      className={`flex-shrink-0 px-3 py-2 rounded-lg min-w-[88px] ${
-        available < 0 ? "bg-red-100 border border-red-200" : "bg-gray-50"
+      className={`min-w-[88px] flex-shrink-0 rounded-control border px-3 py-2 ${
+        available < 0
+          ? "border-brand-red/20 bg-brand-red/5"
+          : "border-app-line/60 bg-app-soft/70"
       }`}
     >
-      <span className="text-[10px] uppercase tracking-wider font-bold block text-gray-400">
+      <span className="block text-[10px] font-bold uppercase tracking-wider text-app-muted">
         Available to order
       </span>
       <span
-        className={`text-sm font-black block ${
-          isNonPositive
-            ? "text-red-600"
-            : "text-gray-900"
+        className={`block text-sm font-extrabold ${
+          isNonPositive ? "text-brand-red" : "text-app-ink"
         }`}
       >
         {formatMeters(available)} m
       </span>
-      {/* Keep on-hand stock visible alongside the independent order balance. */}
-      <span className="text-[10px] text-gray-400 block">
+      <span className="block text-[10px] text-app-muted">
         {isRollTracked ? "On rolls" : "Physical stock"}:{" "}
         {formatMeters(toMeters(stockMeters))} m
       </span>
       {toMeters(untrackedStockMeters ?? "0") > 0 && (
-        <span className="text-[10px] text-amber-700 block">
+        <span className="block text-[10px] text-[color:var(--status-pending-text)]">
           Untracked physical (not packable):{" "}
           {formatMeters(toMeters(untrackedStockMeters ?? "0"))} m
         </span>

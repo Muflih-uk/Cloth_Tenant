@@ -3,9 +3,10 @@
 import { useState, useCallback } from "react";
 import Cropper from "react-easy-crop";
 import type { Area } from "react-easy-crop";
-import { X, Check } from "lucide-react";
+import { X, Check, Minus, Plus } from "lucide-react";
 import { getCroppedFile, getFitFile } from "@/lib/crop-utils";
 import Image from "next/image";
+import Button from "@/components/ui/app/Button";
 
 interface Props {
     src: string;
@@ -43,30 +44,26 @@ export default function CropModal({ src, onConfirm, onCancel }: Props) {
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex flex-col bg-white overflow-hidden">
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 pt-12 pb-4 flex-shrink-0">
-                <button
-                    type="button"
+        <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-app-bg">
+            <div className="flex flex-shrink-0 items-center justify-between px-4 pb-4 pt-12">
+                <Button
+                    variant="secondary"
+                    size="icon"
                     onClick={onCancel}
-                    className="w-12 h-12 flex items-center justify-center rounded-full bg-black/10 text-black"
+                    aria-label="Cancel cropping"
+                    className="rounded-full"
                 >
-                    <X size={24} />
-                </button>
-                <button
-                    type="button"
-                    onClick={handleConfirm}
-                    className="flex items-center gap-1.5 bg-black text-white rounded-md px-4 py-1.5 text-lg font-bold"
-                >
-                    <Check size={24} />
+                    <X className="size-5" aria-hidden="true" />
+                </Button>
+                <Button onClick={handleConfirm}>
+                    <Check className="size-4" aria-hidden="true" />
                     Use Photo
-                </button>
+                </Button>
             </div>
 
-            {/* Crop area */}
-            <div className="relative flex-1 min-h-0 w-full">
+            <div className="relative min-h-0 w-full flex-1">
                 {aspect === null ? (
-                    <div className="relative w-full h-full flex items-center justify-center">
+                    <div className="relative flex h-full w-full items-center justify-center">
                         <Image
                             src={src}
                             alt="Preview"
@@ -83,16 +80,18 @@ export default function CropModal({ src, onConfirm, onCancel }: Props) {
                         onCropChange={setCrop}
                         onZoomChange={setZoom}
                         onCropComplete={onCropComplete}
-                        style={{ containerStyle: { background: "#ffffff" } }}
+                        style={{
+                            containerStyle: {
+                                background: "var(--app-bg)",
+                            },
+                        }}
                     />
                 )}
             </div>
 
-            {/* Aspect ratio picker + zoom */}
-            <div className="flex flex-col gap-3 px-6 py-8">
-                {/* Zoom slider — only when cropping */}
+            <div className="flex flex-col gap-3 border-t border-app-line bg-app-card px-6 py-6">
                 {aspect !== null && (
-                    <div className="flex items-center gap-3 py-2">
+                    <div className="flex items-center gap-2 py-1">
                         <button
                             type="button"
                             onClick={() =>
@@ -100,9 +99,10 @@ export default function CropModal({ src, onConfirm, onCancel }: Props) {
                                     Math.max(1, +(z - 0.1).toFixed(2)),
                                 )
                             }
-                            className="text-black/60 active:text-black"
+                            aria-label="Zoom out"
+                            className="app-focus flex size-11 items-center justify-center rounded-control text-app-muted transition-colors hover:bg-app-soft hover:text-app-ink"
                         >
-                            <span className="text-lg leading-none">−</span>
+                            <Minus className="size-4" aria-hidden="true" />
                         </button>
                         <input
                             type="range"
@@ -111,7 +111,8 @@ export default function CropModal({ src, onConfirm, onCancel }: Props) {
                             step={0.05}
                             value={zoom}
                             onChange={(e) => setZoom(Number(e.target.value))}
-                            className="flex-1 accent-black h-1"
+                            aria-label="Zoom"
+                            className="h-1 flex-1 accent-brand-navy"
                         />
                         <button
                             type="button"
@@ -120,29 +121,33 @@ export default function CropModal({ src, onConfirm, onCancel }: Props) {
                                     Math.min(3, +(z + 0.1).toFixed(2)),
                                 )
                             }
-                            className="text-black/60 active:text-black"
+                            aria-label="Zoom in"
+                            className="app-focus flex size-11 items-center justify-center rounded-control text-app-muted transition-colors hover:bg-app-soft hover:text-app-ink"
                         >
-                            <span className="text-lg leading-none">+</span>
+                            <Plus className="size-4" aria-hidden="true" />
                         </button>
                     </div>
                 )}
 
-                {/* Aspect buttons */}
                 <div className="flex items-center justify-center gap-2">
-                    {ASPECTS.map((a) => (
-                        <button
-                            key={a.label}
-                            type="button"
-                            onClick={() => setAspect(a.value)}
-                            className={`px-4 py-1.5 rounded-md text-lg font-semibold transition-colors ${
-                                aspect === a.value
-                                    ? "bg-black text-white"
-                                    : "bg-black/10 text-black/60"
-                            }`}
-                        >
-                            {a.label}
-                        </button>
-                    ))}
+                    {ASPECTS.map((a) => {
+                        const selected = aspect === a.value;
+                        return (
+                            <button
+                                key={a.label}
+                                type="button"
+                                onClick={() => setAspect(a.value)}
+                                aria-pressed={selected}
+                                className={`app-focus inline-flex h-11 min-w-16 items-center justify-center rounded-control px-4 text-sm font-semibold transition-colors ${
+                                    selected
+                                        ? "bg-brand-navy text-white"
+                                        : "border border-app-line bg-app-soft text-app-muted hover:text-app-ink"
+                                }`}
+                            >
+                                {a.label}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
         </div>

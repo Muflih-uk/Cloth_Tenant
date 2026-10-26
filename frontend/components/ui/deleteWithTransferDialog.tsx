@@ -71,7 +71,6 @@ interface DeleteWithTransferDialogProps {
             transfer_to_id?: number;
         },
     ) => Promise<void>;
-    isSuperuser?: boolean;
 }
 
 export default function DeleteWithTransferDialog({

@@ -91,7 +91,7 @@ describe("ItemList mobile inventory", () => {
   it("keeps the existing stock filters and their active state", () => {
     render(<ItemList items={ITEMS} loading={false} context="admin" />);
 
-    const inStock = screen.getByRole("button", { name: "In Stock (2)" });
+    const inStock = screen.getByRole("button", { name: "In stock (2)" });
     const out = screen.getByRole("button", { name: "Out (0)" });
 
     expect(inStock.getAttribute("aria-pressed")).toBe("true");

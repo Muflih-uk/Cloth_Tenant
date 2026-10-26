@@ -7,8 +7,6 @@ notifications should go through :func:`notify_user_safely`.
 """
 import logging
 
-from django.db.models import Q
-
 from apps.notification.tasks import send_fcm_to_user, send_push_to_user
 
 logger = logging.getLogger(__name__)
@@ -42,12 +40,12 @@ def notify_user_safely(user_id, title, body, urgency="high", ttl=86400, task=Non
 
 
 def admin_user_ids():
-    """All active ADMIN-role users plus superusers."""
+    """All active ADMIN-role users."""
     from django.contrib.auth import get_user_model
 
     User = get_user_model()
     return list(
-        User.objects.filter(is_active=True)
-        .filter(Q(role="ADMIN") | Q(is_superuser=True))
-        .values_list("id", flat=True)
+        User.objects.filter(is_active=True, role="ADMIN").values_list(
+            "id", flat=True
+        )
     )

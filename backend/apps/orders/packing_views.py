@@ -24,7 +24,7 @@ from rest_framework import serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from apps.accounts.permissions import IsAdmin
+from apps.accounts.permissions import CanEditPacking, CanViewPacking
 from apps.items.models import FabricVariant
 from apps.items.rolls import (
     consume_for_allocation,
@@ -212,7 +212,7 @@ class _CreateRoundSerializer(serializers.Serializer):
     summary="Outstanding demand for a fabric variant, ranked by customer priority",
 )
 @api_view(["GET"])
-@permission_classes([IsAdmin])
+@permission_classes([CanViewPacking])
 def queue(request):
     """The packing board for one fabric variant.
 
@@ -287,7 +287,7 @@ def queue(request):
     request=_PreviewRequestSerializer,
 )
 @api_view(["POST"])
-@permission_classes([IsAdmin])
+@permission_classes([CanViewPacking])
 def preview(request):
     """Dry-run the allocation engine.
 
@@ -318,7 +318,7 @@ def preview(request):
     request=_CreateRoundSerializer,
 )
 @api_view(["POST"])
-@permission_classes([IsAdmin])
+@permission_classes([CanEditPacking])
 def create_round(request):
     """Create a DRAFT round holding the metres to hand to each order line."""
     serializer = _CreateRoundSerializer(data=request.data)
@@ -351,7 +351,7 @@ def create_round(request):
     summary="Confirm a draft round: move the stock and record the allocations",
 )
 @api_view(["POST"])
-@permission_classes([IsAdmin])
+@permission_classes([CanEditPacking])
 def confirm(request, pk):
     """Apply a round's frozen plan.
 
@@ -493,7 +493,7 @@ def _apply_plan(packing_round, stored, user, note=""):
     methods=["POST"], summary="Cancel a confirmed round and return its metres"
 )
 @api_view(["POST"])
-@permission_classes([IsAdmin])
+@permission_classes([CanEditPacking])
 def cancel(request, pk):
     packing_round = get_object_or_404(PackingRound, pk=pk)
     try:
@@ -513,7 +513,7 @@ def cancel(request, pk):
 
 @extend_schema(methods=["GET"], summary="List recent packing rounds")
 @api_view(["GET"])
-@permission_classes([IsAdmin])
+@permission_classes([CanViewPacking])
 def list_rounds(request):
     qs = PackingRound.objects.select_related("variant__fabric", "created_by").all()
     variant = request.query_params.get("variant")

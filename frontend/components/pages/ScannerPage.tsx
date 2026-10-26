@@ -1,9 +1,9 @@
 "use client";
 import { fabricApi } from "@/lib/api/item";
 import { toMeters } from "@/types/item";
-import { toastError, toastSuccess } from "@/lib/toast";
+import { toastError } from "@/lib/toast";
 import { Scanner } from "@yudiel/react-qr-scanner";
-import { AlertTriangle, ArchiveX, QrCode, Sparkles, X } from "lucide-react";
+import { ArchiveX, QrCode, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Modal, ModalButton } from "../ui/custom/Modals";
@@ -23,16 +23,16 @@ const ScannerPage: React.FC<ScannerPageProps> = ({
   const router = useRouter();
 
   return (
-    <div className="w-full max-w-sm flex flex-col items-center">
+    <div className="w-full max-w-md flex flex-col items-center">
       <div className="relative w-full aspect-square max-w-[280px]">
         {/* Corner Brackets */}
-        <div className="absolute -top-2 -left-2 w-8 h-8 border-t-4 border-l-4 border-primary rounded-tl-2xl z-20" />
-        <div className="absolute -top-2 -right-2 w-8 h-8 border-t-4 border-r-4 border-primary rounded-tr-2xl z-20" />
-        <div className="absolute -bottom-2 -left-2 w-8 h-8 border-b-4 border-l-4 border-primary rounded-bl-2xl z-20" />
-        <div className="absolute -bottom-2 -right-2 w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-2xl z-20" />
+        <div className="absolute -top-2 -left-2 w-8 h-8 border-t-4 border-l-4 border-brand-navy rounded-tl-2xl z-20" />
+        <div className="absolute -top-2 -right-2 w-8 h-8 border-t-4 border-r-4 border-brand-navy rounded-tr-2xl z-20" />
+        <div className="absolute -bottom-2 -left-2 w-8 h-8 border-b-4 border-l-4 border-brand-navy rounded-bl-2xl z-20" />
+        <div className="absolute -bottom-2 -right-2 w-8 h-8 border-b-4 border-r-4 border-brand-navy rounded-br-2xl z-20" />
 
         {/* Scanner Container */}
-        <div className="relative w-full h-full rounded-[32px] overflow-hidden bg-black shadow-2xl ring-8 ring-white/50">
+        <div className="relative w-full h-full rounded-[32px] overflow-hidden bg-black shadow-2xl ring-8 ring-app-line/30">
           <Scanner
             constraints={{
               facingMode: "environment",
@@ -76,20 +76,20 @@ const ScannerPage: React.FC<ScannerPageProps> = ({
       </div>
 
       <div className="mt-12 text-center">
-        <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full border border-primary/20 mb-4">
+        <div className="inline-flex items-center gap-2 bg-brand-navy/10 text-brand-navy px-4 py-2 rounded-full border border-brand-navy/20 mb-4">
           <QrCode size={16} />
-          <span className="text-xs font-black uppercase tracking-widest">
+          <span className="text-xs font-semibold uppercase tracking-widest">
             {validating ? "Checking..." : "Awaiting Scan"}
           </span>
         </div>
-        <h2 className="text-lg font-bold text-gray-800">Align QR Code</h2>
-        <p className="text-sm text-gray-400 mt-2 max-w-[200px] mx-auto leading-relaxed font-medium">
+        <h2 className="text-lg font-bold text-app-ink">Align QR Code</h2>
+        <p className="text-sm text-app-muted mt-2 max-w-[200px] mx-auto leading-relaxed font-medium">
           Position the fabric roll&apos;s QR code within the frame to add it to
           the order
         </p>
       </div>
 
-      <div className="mt-8 flex items-center justify-center gap-2 text-primary/40 animate-pulse">
+      <div className="mt-8 flex items-center justify-center gap-2 text-brand-navy/40 animate-pulse">
         <Sparkles size={16} />
         <span className="text-[10px] font-bold uppercase tracking-widest">
           Auto-detecting
@@ -98,8 +98,8 @@ const ScannerPage: React.FC<ScannerPageProps> = ({
 
       {showLeaveConfirm && (
         <Modal
-          icon={<ArchiveX size={18} className="text-red-500" />}
-          iconBg="bg-red-100"
+          icon={<ArchiveX size={18} className="text-brand-red" />}
+          iconBg="bg-brand-red/10"
           title="Out of Stock"
           description={
             outOfStockFabric
@@ -128,8 +128,8 @@ const ScannerPage: React.FC<ScannerPageProps> = ({
             </>
           }
         >
-          <div className="bg-red-50 rounded-xl p-3 border border-amber-100">
-            <p className="text-sm text-red-600 font-medium">
+          <div className="rounded-control border border-brand-red/20 bg-brand-red/10 p-3">
+            <p className="text-sm font-medium text-brand-red">
               Continue adding other fabrics?
             </p>
           </div>
@@ -140,3 +140,4 @@ const ScannerPage: React.FC<ScannerPageProps> = ({
 };
 
 export default ScannerPage;
+

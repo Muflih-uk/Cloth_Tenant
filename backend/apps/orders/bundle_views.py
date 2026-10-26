@@ -1,4 +1,4 @@
-"""Order-level packing bundles.
+﻿"""Order-level packing bundles.
 
 A :class:`~apps.orders.models.PackingBundle` is the unit of handover: a box that
 leaves the warehouse carrying metres cut from scanned rolls, possibly of different
@@ -27,7 +27,7 @@ from rest_framework import serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from apps.accounts.permissions import IsAdmin
+from apps.accounts.permissions import CanEditPacking, CanViewPacking
 from apps.items.models import FabricRoll, FabricVariant
 from apps.orders.allocation import (
     OPEN_STATUSES,
@@ -376,7 +376,7 @@ def _scan_payload(scan, roll, line):
     summary="List the packing bundles on an order",
 )
 @api_view(["GET"])
-@permission_classes([IsAdmin])
+@permission_classes([CanViewPacking])
 def list_bundles(request, order_id):
     """Every bundle on this order, sealed ones included, so a slip can be reprinted.
 
@@ -393,7 +393,7 @@ def list_bundles(request, order_id):
     summary="Open a new packing bundle on an order",
 )
 @api_view(["POST"])
-@permission_classes([IsAdmin])
+@permission_classes([CanEditPacking])
 def create_bundle(request, order_id):
     """Start a bundle.
 
@@ -456,7 +456,7 @@ def create_bundle(request, order_id):
     request=_ResolveScanSerializer,
 )
 @api_view(["POST"])
-@permission_classes([IsAdmin])
+@permission_classes([CanEditPacking])
 def resolve_scan(request, order_id, pk):
     """Check a scanned label and issue the short-lived token used to pack it.
 
@@ -516,7 +516,7 @@ def resolve_scan(request, order_id, pk):
     request=_ConfirmScanSerializer,
 )
 @api_view(["POST"])
-@permission_classes([IsAdmin])
+@permission_classes([CanEditPacking])
 def scan_into_bundle(request, order_id, pk):
     """Cut a chosen number of metres from the roll the admin scanned.
 
@@ -658,7 +658,7 @@ def scan_into_bundle(request, order_id, pk):
     summary="Take one roll back out of an open bundle",
 )
 @api_view(["POST"])
-@permission_classes([IsAdmin])
+@permission_classes([CanEditPacking])
 def remove_roll(request, order_id, pk, roll_allocation_id):
     """Give one roll back and take it off the bundle's list.
 
@@ -726,7 +726,7 @@ def remove_roll(request, order_id, pk, roll_allocation_id):
     summary="Close an open bundle, keeping it as a record",
 )
 @api_view(["POST"])
-@permission_classes([IsAdmin])
+@permission_classes([CanEditPacking])
 def seal_bundle(request, order_id, pk):
     """Seal a bundle so its contents become final.
 
@@ -787,7 +787,7 @@ def seal_bundle(request, order_id, pk):
     summary="Throw away an open bundle and return every roll in it",
 )
 @api_view(["POST"])
-@permission_classes([IsAdmin])
+@permission_classes([CanEditPacking])
 def cancel_bundle(request, order_id, pk):
     """Cancel an open bundle, undoing every scan in it.
 
@@ -861,7 +861,7 @@ class _DispatchBundleSerializer(serializers.Serializer):
     request=_DispatchBundleSerializer,
 )
 @api_view(["POST"])
-@permission_classes([IsAdmin])
+@permission_classes([CanEditPacking])
 def dispatch_bundle(request, order_id, pk):
     """Mark one sealed bundle as having left the warehouse.
 

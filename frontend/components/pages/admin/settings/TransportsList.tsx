@@ -5,12 +5,17 @@ import { transportApi } from "@/lib/api/transport";
 import { TransportAllResponse } from "@/types/transport";
 import { Plus, Truck, Pencil, Trash2 } from "lucide-react";
 import StockFlowButton from "@/components/ui/custom/stockFlowButton";
+import PinDeleteDialog from "@/components/ui/pinDeleteDialog";
 import { toastSuccess, toastError } from "@/lib/toast";
 import { PageLoading } from "@/components/ui/Loading";
 
 export default function TransportsList() {
     const [data, setData] = useState<TransportAllResponse>([]);
     const [loading, setLoading] = useState(true);
+    const [deleteTarget, setDeleteTarget] = useState<{
+        id: number;
+        name: string;
+    } | null>(null);
     const router = useRouter();
 
     const fetchData = async () => {
@@ -29,14 +34,16 @@ export default function TransportsList() {
         fetchData();
     }, []);
 
-    const handleDelete = async (id: number, name: string) => {
-        if (!confirm(`Delete transport "${name}"?`)) return;
+    const handleDeleteConfirm = async (pin: string) => {
+        if (!deleteTarget) return;
         try {
-            await transportApi.delete(id);
+            await transportApi.delete(deleteTarget.id, pin);
             toastSuccess("Transport deleted successfully");
+            setDeleteTarget(null);
             fetchData();
         } catch (error) {
-            toastError("Failed to delete transport");
+            toastError("Failed to delete transport", error);
+            throw error;
         }
     };
 
@@ -46,13 +53,20 @@ export default function TransportsList() {
 
     return (
         <div>
+            <PinDeleteDialog
+                open={deleteTarget !== null}
+                onClose={() => setDeleteTarget(null)}
+                onConfirm={handleDeleteConfirm}
+                title="Delete Transport"
+                description={`Delete ${deleteTarget?.name ?? "this transport"}? This cannot be undone.`}
+            />
             <div className="flex w-full justify-end px-0 mb-3 sm:px-4 sm:mb-4">
                 <StockFlowButton
                     text="Add Transport"
                     variant="filled"
                     icon={<Plus className="size-4" />}
                     onClick={() =>
-                        router.push("/admin/settings/transports/new")
+                        router.push("/admin/profile/settings/transports/new")
                     }
                     className="shadow-lg shadow-primary/20 ring-1 ring-primary/10"
                 />
@@ -97,7 +111,7 @@ export default function TransportsList() {
                                 <button
                                     onClick={() =>
                                         router.push(
-                                            `/admin/settings/transports/${transport.id}/edit`,
+                                            `/admin/profile/settings/transports/${transport.id}/edit`,
                                         )
                                     }
                                     className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
@@ -109,10 +123,10 @@ export default function TransportsList() {
                                 </button>
                                 <button
                                     onClick={() =>
-                                        handleDelete(
-                                            transport.id,
-                                            transport.name,
-                                        )
+                                        setDeleteTarget({
+                                            id: transport.id,
+                                            name: transport.name,
+                                        })
                                     }
                                     className="p-2 hover:bg-red-50 rounded-xl transition-colors"
                                 >

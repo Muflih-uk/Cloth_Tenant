@@ -1,13 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import StockFlowButton from "@/components/ui/custom/stockFlowButton";
-import { agentApi } from "@/lib/api/agents";
-import { toastSuccess, toastError } from "@/lib/toast";
-import { deriveUsername } from "@/lib/utils/deriveUsername";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+
+import Button from "@/components/ui/app/Button";
+import Card from "@/components/ui/app/Card";
+import PageHeader from "@/components/ui/app/PageHeader";
+import FormField from "@/components/ui/custom/FormField";
+import { Input } from "@/components/ui/input";
+import { agentApi } from "@/lib/api/agents";
+import { toastError, toastSuccess } from "@/lib/toast";
+import { deriveUsername } from "@/lib/utils/deriveUsername";
 
 export default function NewAgentPage() {
   const [formData, setFormData] = useState({
@@ -26,7 +30,7 @@ export default function NewAgentPage() {
     agentApi
       .getAll()
       .then((agents) => {
-        setExistingUsernames(new Set(agents.map((a) => a.user.username)));
+        setExistingUsernames(new Set(agents.map((agent) => agent.user.username)));
       })
       .catch(() => {});
   }, []);
@@ -84,129 +88,140 @@ export default function NewAgentPage() {
       const newAgent = await agentApi.create(payload);
       toastSuccess("Agent created successfully");
       router.push(`/admin/users/agents/${newAgent.id}`);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toastError(error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
-    <div className="w-full px-0 py-4 flex flex-col min-h-screen bg-white sm:px-4 sm:py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-          New Agent
-        </h1>
-        <p className="text-sm text-gray-400 font-medium">
-          Create a new field agent account
-        </p>
-      </div>
+  const derivedUsername = formData.displayName.trim()
+    ? deriveUsername(formData.displayName, existingUsernames)
+    : "";
 
-      <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-3 mb-4 sm:rounded-3xl sm:p-6 sm:mb-8">
-        <FieldGroup className="space-y-6 flex-1">
-          <Field>
-            <div className="flex justify-between items-center mb-1.5">
-              <FieldLabel className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                Display Name
-              </FieldLabel>
-              {errors.displayName && (
-                <span className="text-[10px] text-red-500 font-bold">
-                  {errors.displayName}
-                </span>
-              )}
-            </div>
+  return (
+    <div className="mx-auto min-h-screen w-full max-w-2xl px-2 pb-32 pt-2">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => router.back()}
+        aria-label="Go back"
+        className="-ml-2 mb-2"
+      >
+        <ArrowLeft className="size-5" aria-hidden="true" />
+      </Button>
+
+      <PageHeader
+        title="New agent"
+        subtitle="Create a new field agent account."
+        className="mb-4"
+      />
+
+      <Card className="mb-5">
+        <div className="space-y-5">
+          <FormField
+            label="Display name"
+            htmlFor="agent-display-name"
+            error={errors.displayName}
+            required
+            hint={
+              derivedUsername ? (
+                <>
+                  Username:{" "}
+                  <span className="font-mono font-semibold text-app-ink">
+                    {derivedUsername}
+                  </span>
+                </>
+              ) : undefined
+            }
+          >
             <Input
+              id="agent-display-name"
               placeholder="e.g. John Doe"
               value={formData.displayName}
-              onChange={(e) => handleChange("displayName", e.target.value)}
-              className={`bg-white border-gray-100 rounded-xl h-12 focus:ring-primary/10 ${errors.displayName ? "border-red-200 focus:border-red-300" : "focus:border-primary"}`}
+              onChange={(event) =>
+                handleChange("displayName", event.target.value)
+              }
+              aria-invalid={Boolean(errors.displayName)}
             />
-            {formData.displayName.trim() && (
-              <p className="mt-1.5 text-[11px] text-gray-400">
-                Username:{" "}
-                <span className="font-mono font-medium text-gray-600">
-                  {deriveUsername(formData.displayName, existingUsernames)}
-                </span>
-              </p>
-            )}
-          </Field>
+          </FormField>
 
-          <Field>
-            <div className="flex justify-between items-center mb-1.5">
-              <FieldLabel className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                Email Address
-              </FieldLabel>
-              {errors.email && (
-                <span className="text-[10px] text-red-500 font-bold">
-                  {errors.email}
-                </span>
-              )}
-            </div>
+          <FormField
+            label="Email address"
+            htmlFor="agent-email"
+            error={errors.email}
+            required
+          >
             <Input
+              id="agent-email"
               type="email"
+              inputMode="email"
               placeholder="agent@example.com"
               value={formData.email}
-              onChange={(e) => handleChange("email", e.target.value)}
-              className={`bg-white border-gray-100 rounded-xl h-12 focus:ring-primary/10 ${errors.email ? "border-red-200 focus:border-red-300" : "focus:border-primary"}`}
+              onChange={(event) => handleChange("email", event.target.value)}
+              aria-invalid={Boolean(errors.email)}
             />
-          </Field>
+          </FormField>
 
-          <Field>
-            <div className="flex justify-between items-center mb-1.5">
-              <FieldLabel className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                Secure Password
-              </FieldLabel>
-              {errors.password && (
-                <span className="text-[10px] text-red-500 font-bold">
-                  {errors.password}
-                </span>
-              )}
-            </div>
+          <FormField
+            label="Secure password"
+            htmlFor="agent-password"
+            error={errors.password}
+            required
+            hint="Use at least 6 characters."
+          >
             <Input
+              id="agent-password"
               type="password"
+              autoComplete="new-password"
               placeholder="Minimum 6 characters"
               value={formData.password}
-              onChange={(e) => handleChange("password", e.target.value)}
-              className={`bg-white border-gray-100 rounded-xl h-12 focus:ring-primary/10 ${errors.password ? "border-red-200 focus:border-red-300" : "focus:border-primary"}`}
+              onChange={(event) =>
+                handleChange("password", event.target.value)
+              }
+              aria-invalid={Boolean(errors.password)}
             />
-          </Field>
+          </FormField>
 
-          <Field>
-            <div className="flex justify-between items-center mb-1.5">
-              <FieldLabel className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                Contact detail
-              </FieldLabel>
-              {errors.contactNumber && (
-                <span className="text-[10px] text-red-500 font-bold">
-                  {errors.contactNumber}
-                </span>
-              )}
-            </div>
+          <FormField
+            label="Contact detail"
+            htmlFor="agent-contact"
+            error={errors.contactNumber}
+            required
+          >
             <Input
+              id="agent-contact"
+              inputMode="tel"
               placeholder="+91 xxxxx xxxxx"
               value={formData.contactNumber}
-              onChange={(e) => handleChange("contactNumber", e.target.value)}
-              className={`bg-white border-gray-100 rounded-xl h-12 focus:ring-primary/10 ${errors.contactNumber ? "border-red-200 focus:border-red-300" : "focus:border-primary"}`}
+              onChange={(event) =>
+                handleChange("contactNumber", event.target.value)
+              }
+              aria-invalid={Boolean(errors.contactNumber)}
             />
-          </Field>
-        </FieldGroup>
-      </div>
+          </FormField>
+        </div>
+      </Card>
 
-      <div className="flex gap-3 items-center mt-auto pb-6 sm:gap-4 sm:pb-10">
-        <StockFlowButton
-          variant="outline"
-          text="Cancel"
+      <div className="flex items-center gap-3">
+        <Button
+          variant="secondary"
+          size="lg"
           onClick={() => router.back()}
-          className="flex-1 h-14 rounded-2xl border-gray-200 font-bold text-gray-500 active:scale-95 transition-all text-sm"
-        />
-
-        <StockFlowButton
-          variant="filled"
-          text={isSubmitting ? "Creating..." : "Create Agent"}
-          onClick={handleSubmit}
           disabled={isSubmitting}
-          className="flex-[2] h-14 rounded-2xl bg-primary shadow-lg shadow-primary/20 font-bold text-white active:scale-95 transition-all text-sm"
-        />
+          className="flex-1"
+        >
+          Cancel
+        </Button>
+        <Button
+          size="lg"
+          onClick={handleSubmit}
+          loading={isSubmitting}
+          loadingText="Creating..."
+          className="flex-[2]"
+        >
+          Create Agent
+        </Button>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { formatMeters, toMeters } from "@/types/item";
+import Button from "@/components/ui/app/Button";
 import { EditTotalButton } from "./PriceOverrideDialog";
 
 interface OrderTotalsProps {
@@ -34,36 +35,40 @@ export default function OrderTotals({
   isEditTotalDisabled = false,
 }: OrderTotalsProps) {
   return (
-    <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-2xl p-3 sm:rounded-3xl sm:p-4 border border-primary/20">
-      <p className="text-[10px] text-primary/60 uppercase font-black tracking-widest mb-2">
+    <div className="rounded-card border border-brand-navy/15 bg-brand-navy/5 p-4">
+      <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-app-muted">
         Order Summary
       </p>
 
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 flex-wrap min-w-0">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
           <div className="flex items-baseline gap-1">
-            <span className="text-lg font-black text-gray-900 leading-none">
+            <span className="text-lg font-extrabold leading-none text-app-ink">
               {formatMeters(totalMetres)}
             </span>
-            <span className="text-xs text-gray-400">m</span>
+            <span className="text-xs font-medium text-app-muted">m</span>
           </div>
-          <span className="text-gray-300 text-sm">|</span>
+
+          <span className="text-app-line">|</span>
+
           <div className="flex items-baseline gap-1">
-            <span className="text-lg font-black text-gray-900 leading-none">
+            <span className="text-lg font-extrabold leading-none text-app-ink">
               {totalLines}
             </span>
-            <span className="text-xs text-gray-400">
+            <span className="text-xs font-medium text-app-muted">
               {totalLines === 1 ? "line" : "lines"}
             </span>
           </div>
-          <span className="text-gray-300 text-sm">|</span>
+
+          <span className="text-app-line">|</span>
+
           <div className="flex items-baseline gap-2">
             {isPriceOverridden && computedTotal !== undefined && (
-              <span className="text-sm font-bold text-gray-400 line-through">
+              <span className="text-sm font-semibold text-app-subtle line-through">
                 ₹{Number(computedTotal).toLocaleString("en-IN")}
               </span>
             )}
-            <span className="text-xl font-black text-primary leading-none">
+            <span className="text-xl font-extrabold leading-none text-brand-navy">
               ₹{Number(totalPrice || 0).toLocaleString("en-IN")}
             </span>
             {onEditTotal && (
@@ -77,17 +82,14 @@ export default function OrderTotals({
         </div>
 
         {showButton && onPlaceOrder && (
-          <button
+          <Button
             onClick={onPlaceOrder}
             disabled={isLoading || toMeters(totalMetres) === 0}
-            className="shrink-0 flex items-center justify-center gap-2 bg-primary text-white font-bold py-2.5 px-4 rounded-2xl shadow-lg shadow-primary/30 hover:opacity-90 transition-all active:scale-95 disabled:opacity-50 text-sm whitespace-nowrap"
+            loading={isLoading}
+            className="shrink-0 whitespace-nowrap"
           >
-            {isLoading ? (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              <span>{buttonText}</span>
-            )}
-          </button>
+            {buttonText}
+          </Button>
         )}
       </div>
     </div>

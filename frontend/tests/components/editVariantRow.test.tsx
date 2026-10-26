@@ -102,7 +102,7 @@ describe("EditVariantRow stock figures", () => {
     );
 
     const panel = screen.getByTestId("physical-roll-panel");
-    expect(panel.closest(".rounded-2xl.border")).not.toBeNull();
+    expect(panel.closest(".rounded-card.border")).not.toBeNull();
   });
 
   it("changes the opening base through the stock adjustment dialog", async () => {

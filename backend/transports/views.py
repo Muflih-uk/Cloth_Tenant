@@ -14,8 +14,8 @@ class TransportViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         # Anyone may read the list -- an order has to be able to offer the
-        # transports a customer can pick from. Writing it is an admin action and,
-        # for a non-superuser, needs the PIN like every other admin write.
+        # transports a customer can pick from. Writing it is an admin action and
+        # needs the PIN like every other admin write.
         if self.action in ["create", "update", "partial_update", "destroy"]:
             return [IsAdminWithPin()]
         return [permissions.AllowAny()]

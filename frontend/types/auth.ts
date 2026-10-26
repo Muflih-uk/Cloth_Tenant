@@ -1,5 +1,15 @@
-export type Role = "ADMIN" | "AGENT";
+export type Role = "ADMIN" | "SUBADMIN" | "AGENT";
 export type Business = "gents" | "kids";
+
+export interface PermissionFlags {
+  orders_view: boolean;
+  orders_edit: boolean;
+  orders_delete: boolean;
+  items_view: boolean;
+  items_edit: boolean;
+  items_delete: boolean;
+  agents_view: boolean;
+}
 
 export interface LoginRequest {
   username?: string;
@@ -7,7 +17,7 @@ export interface LoginRequest {
   password: string;
 }
 
-export interface LoginResponse {
+export interface LoginResponse extends PermissionFlags {
   access: string;
   refresh: string;
   role: Role;
@@ -18,7 +28,7 @@ export interface LoginResponse {
   is_superuser: boolean;
 }
 
-export interface AuthUser {
+export interface AuthUser extends PermissionFlags {
   id: number;
   role: Role;
   username?: string;
@@ -28,7 +38,7 @@ export interface AuthUser {
   is_superuser: boolean;
 }
 
-export interface UserProfile {
+export interface UserProfile extends PermissionFlags {
   id: number;
   username: string;
   display_name?: string;

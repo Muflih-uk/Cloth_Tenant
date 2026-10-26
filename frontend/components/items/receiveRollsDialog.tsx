@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Plus, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import Button from "@/components/ui/app/Button";
 import { formatMeters, roundMetres, type VariantRollDraft } from "@/types/item";
 
 /** One editable row: a length, and how many rolls of that length. */
@@ -191,16 +192,16 @@ export default function ReceiveRollsDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm px-4 pb-8 sm:items-center sm:pb-0"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-brand-navy/35 backdrop-blur-sm px-4 pb-8 sm:items-center sm:pb-0"
       onClick={(e) => {
         if (e.target === e.currentTarget && !saving) onClose();
       }}
     >
-      <div className="max-h-[calc(100dvh-3rem)] w-full overflow-y-auto rounded-3xl bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:max-w-md">
+      <div className="max-h-[calc(100dvh-3rem)] w-full overflow-y-auto rounded-card border border-app-line bg-app-card shadow-float sm:max-h-[calc(100dvh-2rem)] sm:max-w-md">
         <div className="flex items-start justify-between gap-3 px-4 pb-4 pt-5 sm:px-6 sm:pt-6">
-          <div>
-            <h2 className="text-base font-black">Receive Rolls</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
+          <div className="min-w-0">
+            <h2 className="text-base font-bold text-app-ink">Receive Rolls</h2>
+            <p className="mt-0.5 text-xs leading-relaxed text-app-muted">
               {label ? `${label} — ` : ""}one row per roll length, with how many
               rolls of it. Metres are added only to this colour&apos;s on-hand rolls as soon as
               they are received.
@@ -210,14 +211,14 @@ export default function ReceiveRollsDialog({
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors"
+            className="app-focus -mr-1 flex size-11 shrink-0 items-center justify-center rounded-full text-app-muted transition-colors hover:bg-app-soft hover:text-app-ink disabled:opacity-50"
             aria-label="Close"
           >
-            <X className="w-4 h-4" />
+            <X className="size-5" aria-hidden="true" />
           </button>
         </div>
 
-        <div className="h-px bg-gray-100" />
+        <div className="h-px bg-app-line" />
 
         <div className="max-h-[45vh] space-y-2 overflow-y-auto px-4 py-4 sm:max-h-[50vh] sm:px-6 sm:py-5">
           {rolls.map((roll, index) => {
@@ -225,10 +226,10 @@ export default function ReceiveRollsDialog({
             return (
               <div
                 key={index}
-                className="rounded-xl border border-gray-100 p-2 sm:rounded-none sm:border-0 sm:p-0"
+                className="rounded-control border border-app-line p-2 sm:rounded-none sm:border-0 sm:p-0"
               >
                 <div className="flex items-center gap-1.5 sm:gap-2">
-                  <span className="w-5 shrink-0 text-xs font-bold text-gray-300">
+                  <span className="w-5 shrink-0 text-xs font-bold text-app-subtle">
                     {index + 1}
                   </span>
                   <Input
@@ -241,10 +242,10 @@ export default function ReceiveRollsDialog({
                     onChange={(e) => setRoll(index, { meters: e.target.value })}
                     onFocus={(e) => e.target.select()}
                     disabled={saving}
-                    className="h-10 min-w-0 flex-1 text-sm"
+                    className="min-w-0 flex-1 text-sm"
                     aria-label={`Roll ${index + 1} metres`}
                   />
-                  <span className="shrink-0 text-xs text-gray-300">×</span>
+                  <span className="shrink-0 text-xs text-app-subtle">×</span>
                   <Input
                     type="number"
                     min={1}
@@ -254,22 +255,22 @@ export default function ReceiveRollsDialog({
                     onChange={(e) => setRoll(index, { count: e.target.value })}
                     onFocus={(e) => e.target.select()}
                     disabled={saving}
-                    className="h-10 w-14 shrink-0 text-sm sm:w-16"
+                    className="w-14 shrink-0 text-sm sm:w-16"
                     aria-label={`Roll ${index + 1} count`}
                   />
                   <button
                     type="button"
                     onClick={() => removeRoll(index)}
                     disabled={saving || rolls.length === 1}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-30 sm:h-8 sm:w-8"
+                    className="app-focus flex size-11 shrink-0 items-center justify-center rounded-control text-app-muted transition-colors hover:bg-brand-red/10 hover:text-brand-red disabled:opacity-30"
                     aria-label={`Remove roll ${index + 1}`}
                   >
-                    <X className="w-4 h-4" />
+                    <X className="size-4" aria-hidden="true" />
                   </button>
                 </div>
                 {count > 1 && (
                   // Only worth saying once a row really is several rolls.
-                  <p className="mt-1 pl-7 text-[10px] text-gray-400 sm:text-[11px]">
+                  <p className="mt-1 pl-7 text-[10px] text-app-muted sm:text-[11px]">
                     = {count} rolls
                   </p>
                 )}
@@ -281,53 +282,46 @@ export default function ReceiveRollsDialog({
             type="button"
             onClick={addRoll}
             disabled={saving}
-            className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl py-2.5 text-xs font-semibold text-gray-400 hover:border-primary hover:text-primary transition-colors"
+            className="app-focus flex h-12 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-app-line text-xs font-semibold text-app-muted transition-colors hover:border-brand-navy hover:text-brand-navy disabled:opacity-50"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="size-4" aria-hidden="true" />
             Add another length
           </button>
 
           <div className="flex items-center justify-between pt-1">
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-app-muted">
               {/* Rolls, not rows: one row can stand for several rolls. */}
               {expanded.length} roll{expanded.length === 1 ? "" : "s"}
             </p>
-            <p className="text-xs font-semibold text-gray-500">
+            <p className="text-xs font-semibold text-app-ink">
               {formatMeters(String(total))} m total
             </p>
           </div>
 
           {error && (
-            <p className="text-xs font-semibold text-red-500 bg-red-50 py-2 px-3 rounded-xl">
+            <p className="rounded-control bg-brand-red/10 px-3 py-2 text-xs font-semibold text-brand-red">
               {error}
             </p>
           )}
         </div>
 
         <div className="flex gap-2.5 px-4 pb-5 sm:gap-3 sm:px-6 sm:pb-6">
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             onClick={onClose}
             disabled={saving}
-            className="flex-1 h-12 rounded-2xl border-2 border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition-all active:scale-95 disabled:opacity-40"
+            className="flex-1"
           >
             Cancel
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
             onClick={handleConfirm}
-            disabled={saving}
-            className="flex-1 h-12 rounded-2xl bg-primary text-sm font-bold text-white flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-40 shadow-lg shadow-primary/20"
+            loading={saving}
+            className="flex-1"
           >
-            {saving ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                <Plus className="w-4 h-4" />
-                Receive
-              </>
-            )}
-          </button>
+            {!saving && <Plus className="size-4" aria-hidden="true" />}
+            {saving ? "Receiving…" : "Receive"}
+          </Button>
         </div>
       </div>
     </div>

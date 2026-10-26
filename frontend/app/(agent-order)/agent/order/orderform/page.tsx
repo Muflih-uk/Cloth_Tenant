@@ -11,6 +11,7 @@ import { useBackButton } from "@/util/useBackButton";
 import OrderForm from "@/components/pages/order-form/OrderFormView";
 import { AlertTriangle, Download, Printer, Share2 } from "lucide-react";
 import { PageLoading } from "@/components/ui/Loading";
+import Button from "@/components/ui/app/Button";
 
 const urlToDataUrl = async (url: string): Promise<string | null> => {
     try {
@@ -66,6 +67,7 @@ export default function InvoicePage() {
 
     const [isMobile, setIsMobile] = useState(false);
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsMobile(/Mobi|Android/i.test(navigator.userAgent));
     }, []);
 
@@ -98,6 +100,7 @@ export default function InvoicePage() {
         if (!invoice) return;
 
         let cancelled = false;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setPdfGenerating(true);
 
         const generatePdf = async () => {
@@ -261,20 +264,20 @@ export default function InvoicePage() {
     // ── Error / not found state ──
     if (!invoice) {
         return (
-            <main className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
+            <main className="flex min-h-screen items-center justify-center bg-app-bg px-4">
                 <div className="text-center">
-                    <p className="text-slate-500 mb-4">
+                    <p className="mb-4 text-sm font-medium text-app-muted">
                         Failed to load invoice.
                     </p>
-                    <button
+                    <Button
+                        variant="secondary"
                         onClick={() => {
                             localStorage.removeItem("orderKey");
                             router.push("/agent");
                         }}
-                        className="text-sm text-indigo-600 hover:underline"
                     >
                         ← Go home
-                    </button>
+                    </Button>
                 </div>
             </main>
         );
@@ -282,19 +285,20 @@ export default function InvoicePage() {
 
     // ── Main render ──
     return (
-        <main className="min-h-screen font-sans flex flex-col items-center py-10 px-4">
-            {/* ── Header ── */}
-            <header className="w-full flex items-center justify-between mb-6">
-                <button
+        <main className="flex min-h-screen flex-col items-center bg-app-bg px-4 py-6 font-sans">
+            <header className="mb-6 flex w-full max-w-5xl items-center justify-between">
+                <Button
+                    variant="ghost"
                     onClick={() => router.push("/agent")}
-                    className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 transition-colors"
+                    className="-ml-2"
                 >
                     <svg
-                        className="w-4 h-4"
+                        className="size-4"
                         fill="none"
                         stroke="currentColor"
                         strokeWidth={2}
                         viewBox="0 0 24 24"
+                        aria-hidden="true"
                     >
                         <path
                             strokeLinecap="round"
@@ -303,16 +307,15 @@ export default function InvoicePage() {
                         />
                     </svg>
                     Back
-                </button>
-                <span className="text-xs text-slate-400 tracking-widest uppercase">
+                </Button>
+                <span className="text-[10px] font-semibold uppercase tracking-widest text-app-muted">
                     Order Management
                 </span>
             </header>
 
-            {/* ── PDF Preview ── */}
-            <div className="flex flex-1 w-full overflow-y-auto">
+            <div className="flex w-full max-w-5xl flex-1 overflow-y-auto">
                 {isMobile ? (
-                    <div className="flex flex-col w-full gap-4">
+                    <div className="flex w-full flex-col gap-4">
                         <OrderForm
                             id={invoice.id}
                             customer={invoice.customer}
@@ -325,70 +328,78 @@ export default function InvoicePage() {
                         />
                     </div>
                 ) : pdfGenerating ? (
-                    <div className="flex flex-col items-center justify-center h-96 gap-3">
-                        <div className="w-10 h-10 rounded-full border-4 border-indigo-200 border-t-indigo-500 animate-spin" />
-                        <p className="text-sm text-slate-400">
+                    <div className="flex h-96 flex-col items-center justify-center gap-3">
+                        <div className="size-10 animate-spin rounded-full border-4 border-brand-navy/20 border-t-brand-navy" />
+                        <p className="text-sm font-medium text-app-muted">
                             Generating preview…
                         </p>
                     </div>
                 ) : pdfError ? (
-                    <div className="flex flex-col items-center justify-center h-96 gap-3 px-6 text-center">
-                        <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
-                            <AlertTriangle size={20} className="text-red-500" />
+                    <div className="flex h-96 flex-col items-center justify-center gap-3 px-6 text-center">
+                        <div className="flex size-10 items-center justify-center rounded-full bg-brand-red/10">
+                            <AlertTriangle
+                                size={20}
+                                className="text-brand-red"
+                                aria-hidden="true"
+                            />
                         </div>
-                        <p className="text-sm font-bold text-gray-900">
+                        <p className="text-sm font-bold text-app-ink">
                             The order form preview could not be generated
                         </p>
-                        <p className="text-xs text-gray-500 max-w-xs">{pdfError}</p>
-                        <button
+                        <p className="max-w-xs text-xs font-medium text-app-muted">
+                            {pdfError}
+                        </p>
+                        <Button
+                            variant="ghost"
                             onClick={() => window.location.reload()}
-                            className="mt-1 text-xs font-bold text-primary hover:underline"
+                            className="mt-1 text-brand-navy"
                         >
                             Try again
-                        </button>
+                        </Button>
                     </div>
                 ) : (
                     <iframe
                         src={pdfBlobUrl ?? undefined}
-                        className="w-full h-[650px] border-0"
+                        className="h-[650px] w-full border-0"
                         title="Order Form Preview"
                     />
                 )}
             </div>
 
-            <div className="sticky bottom-0 p-4 border-t">
-                <div className="flex gap-3 max-w-md mx-auto">
-                    {/* Print — hidden on mobile since it opens a new tab */}
-
-                    <button
+            <div className="sticky bottom-0 w-full border-t border-app-line/70 bg-app-card/95 p-4 backdrop-blur-md">
+                <div className="mx-auto flex max-w-md gap-3">
+                    <Button
+                        variant="secondary"
                         onClick={handlePrint}
                         disabled={printing || !pdfBlob}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-gray-200 text-gray-700 rounded-2xl font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                        loading={printing}
+                        fullWidth
                     >
-                        <Printer size={18} />
+                        <Printer size={18} aria-hidden="true" />
                         {printing ? "Opening..." : "Print"}
-                    </button>
+                    </Button>
 
                     {isMobile && (
-                        <button
+                        <Button
+                            variant="secondary"
                             onClick={handleShare}
                             disabled={sharing || !pdfBlob}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 border border-gray-200 text-gray-700 rounded-2xl font-medium hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                            loading={sharing}
+                            fullWidth
                         >
-                            <Share2 size={18} />
+                            <Share2 size={18} aria-hidden="true" />
                             {sharing ? "Sharing..." : "Share"}
-                        </button>
+                        </Button>
                     )}
 
-                    {/* Download */}
-                    <button
+                    <Button
                         onClick={handleDownload}
                         disabled={!pdfBlob}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary text-white rounded-2xl font-medium disabled:opacity-50 transition-colors"
+                        fullWidth
                     >
-                        <Download size={18} />
+                        <Download size={18} aria-hidden="true" />
                         Download
-                    </button>
+                    </Button>
                 </div>
             </div>
         </main>

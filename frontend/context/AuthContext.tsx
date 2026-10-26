@@ -1,16 +1,23 @@
 "use client";
 
-import { AuthUser, LoginResponse, Business } from "@/types/auth";
+import {
+  AuthUser,
+  LoginResponse,
+  Business,
+  PermissionFlags,
+} from "@/types/auth";
 import {
   createContext,
   useContext,
   useState,
   useEffect,
   useCallback,
+  useMemo,
 } from "react";
 import Cookies from "js-cookie";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "@/lib/api/axios";
+import { authApi } from "@/lib/api/auth";
 
 type AuthContextType = {
   user: AuthUser | null;
@@ -19,6 +26,7 @@ type AuthContextType = {
   role: string | null;
   business: Business | null;
   isSuperuser: boolean;
+  permissions: PermissionFlags;
   isAuthenticated: boolean;
 
   login: (data: LoginResponse) => void;
@@ -26,6 +34,29 @@ type AuthContextType = {
   /** Merge freshly edited profile fields into the signed-in user and its cookie. */
   updateUser: (data: Partial<AuthUser>) => void;
 };
+
+const ALL_PERMISSIONS: PermissionFlags = {
+  orders_view: true,
+  orders_edit: true,
+  orders_delete: true,
+  items_view: true,
+  items_edit: true,
+  items_delete: true,
+  agents_view: true,
+};
+
+function flagsFromUser(user: AuthUser | null, role: string | null) {
+  if (role === "ADMIN") return ALL_PERMISSIONS;
+  return {
+    orders_view: user?.orders_view ?? false,
+    orders_edit: user?.orders_edit ?? false,
+    orders_delete: user?.orders_delete ?? false,
+    items_view: user?.items_view ?? false,
+    items_edit: user?.items_edit ?? false,
+    items_delete: user?.items_delete ?? false,
+    agents_view: user?.agents_view ?? false,
+  };
+}
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -74,6 +105,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isReady, setIsReady] = useState(false);
 
   const pathname = usePathname();
+  const permissions = useMemo(
+    () => flagsFromUser(user, role),
+    [user, role],
+  );
 
   useEffect(() => {
     // eslint-disable-next-line
@@ -88,6 +123,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: data.email,
       business: data.business || null,
       is_superuser: data.is_superuser,
+      orders_view: data.orders_view,
+      orders_edit: data.orders_edit,
+      orders_delete: data.orders_delete,
+      items_view: data.items_view,
+      items_edit: data.items_edit,
+      items_delete: data.items_delete,
+      agents_view: data.agents_view,
     };
 
     setUser(authUser);
@@ -117,6 +159,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
   };
+
+  // The JWT must not carry permission switches, so the browser refreshes them
+  // from the profile endpoint. Doing it on mount and when the tab is focused
+  // means an admin's change shows up without signing the sub-admin out.
+  useEffect(() => {
+    if (!accessToken) return;
+
+    let cancelled = false;
+
+    const refreshProfile = () => {
+      authApi
+        .getProfile()
+        .then((profile) => {
+          if (cancelled) return;
+          const nextFlags = {
+            orders_view: profile.orders_view,
+            orders_edit: profile.orders_edit,
+            orders_delete: profile.orders_delete,
+            items_view: profile.items_view,
+            items_edit: profile.items_edit,
+            items_delete: profile.items_delete,
+            agents_view: profile.agents_view,
+          };
+          setRole(profile.role);
+          Cookies.set(COOKIE_KEYS.role, profile.role);
+          setUser((prev) => {
+            const next: AuthUser = {
+              ...(prev ?? { id: profile.id, is_superuser: profile.is_superuser }),
+              id: profile.id,
+              role: profile.role,
+              username: profile.username,
+              email: profile.email,
+              display_name: profile.display_name,
+              is_superuser: profile.is_superuser,
+              ...nextFlags,
+            };
+            Cookies.set(COOKIE_KEYS.user, JSON.stringify(next));
+            return next;
+          });
+        })
+        .catch(() => {
+          // A 401 is handled by the axios interceptor; anything else leaves the
+          // last known flags in place until the next request.
+        });
+    };
+
+    refreshProfile();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") refreshProfile();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [accessToken]);
 
   const logout = useCallback(() => {
     setUser(null);
@@ -171,7 +270,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Logged in
     if (pathname === "/") {
-      if (role === "ADMIN") {
+      if (role === "ADMIN" || role === "SUBADMIN") {
         router.replace("/admin");
       } else {
         router.replace("/agent");
@@ -179,11 +278,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Prevent non-admin access
-    if (pathname.startsWith("/admin") && role !== "ADMIN") {
+    const isAdminArea = role === "ADMIN" || role === "SUBADMIN";
+
+    // Prevent agents from entering the admin area.
+    if (pathname.startsWith("/admin") && !isAdminArea) {
       router.replace("/agent");
+      return;
     }
-  }, [accessToken, role, router, isReady, pathname]);
+
+    if (role !== "SUBADMIN") return;
+
+    const adminOnly =
+      pathname.startsWith("/admin/settings") ||
+      pathname.startsWith("/admin/profile/settings") ||
+      pathname.startsWith("/admin/analytics") ||
+      pathname.startsWith("/admin/summary") ||
+      pathname.startsWith("/admin/bulk-import") ||
+      pathname.startsWith("/admin/users/admins") ||
+      pathname.startsWith("/admin/users/subadmins") ||
+      pathname.startsWith("/admin/users/customers/new") ||
+      pathname.startsWith("/admin/users/agents/new") ||
+      pathname.startsWith("/admin/order/new");
+
+    const fallback = permissions.orders_view
+      ? "/admin"
+      : permissions.items_view
+        ? "/admin/items"
+        : permissions.agents_view
+          ? "/admin/users"
+          : "/admin/profile";
+
+    if (adminOnly) {
+      if (pathname !== fallback) router.replace(fallback);
+      return;
+    }
+
+    const blocked =
+      (!permissions.orders_view &&
+        (pathname === "/admin" ||
+          pathname.startsWith("/admin/order") ||
+          pathname.startsWith("/admin/packing"))) ||
+      (!permissions.items_view && pathname.startsWith("/admin/items")) ||
+      (!permissions.agents_view && pathname.startsWith("/admin/users"));
+
+    if (blocked && pathname !== fallback) {
+      router.replace(fallback);
+    }
+  }, [accessToken, role, router, isReady, pathname, permissions]);
   return (
     <AuthContext.Provider
       value={{
@@ -193,6 +334,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role,
         business,
         isSuperuser,
+        permissions,
         isAuthenticated: !!accessToken,
         login,
         logout,

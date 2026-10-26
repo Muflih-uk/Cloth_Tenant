@@ -2,33 +2,48 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  ArrowRightLeft,
+  Copy,
+  Eye,
+  MoreVertical,
+  Pencil,
+  Trash2,
+} from "lucide-react";
+
+import Button from "@/components/ui/app/Button";
+import Card from "@/components/ui/app/Card";
+import { DetailList, DetailRow } from "@/components/ui/app/DetailList";
+import PageHeader from "@/components/ui/app/PageHeader";
+import { SkeletonCard } from "@/components/ui/app/Skeleton";
+import EmptyState from "@/components/ui/EmptyState";
+import DeleteWithTransferDialog from "@/components/ui/deleteWithTransferDialog";
+import FormField from "@/components/ui/custom/FormField";
+import { Modal } from "@/components/ui/custom/Modals";
+import StockflowAvatar from "@/components/ui/custom/stockflowAvatar";
+import TransferCopyItemsDialog from "@/components/ui/transferItemsDialog";
+import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import ItemAssignment from "@/components/pages/agent/ItemAssignment";
+import { useAuth } from "@/context/AuthContext";
 import { agentApi } from "@/lib/api/agents";
 import { fabricApi } from "@/lib/api/item";
-import { toastSuccess, toastError } from "@/lib/toast";
+import { toastError, toastSuccess } from "@/lib/toast";
+import { deriveUsername } from "@/lib/utils/deriveUsername";
 import { AgentResponse, AgentUpdateRequest, AssignedItem } from "@/types/agent";
 import type { Fabric } from "@/types/item";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import StockFlowButton from "@/components/ui/custom/stockFlowButton";
-import { deriveUsername } from "@/lib/utils/deriveUsername";
-import { Trash2, ArrowLeft, ShieldCheck, Pencil, Eye, ArrowRightLeft, Copy, MoreVertical } from "lucide-react";
-import ItemAssignment from "@/components/pages/agent/ItemAssignment";
-import DeleteWithTransferDialog from "@/components/ui/deleteWithTransferDialog";
-import TransferCopyItemsDialog from "@/components/ui/transferItemsDialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useAuth } from "@/context/AuthContext";
-import { PageLoading } from "@/components/ui/Loading";
-
-function getColorFromId(id: number): string {
-  if (!id) return "hsl(0, 0%, 85%)";
-  const hue = (id * 137.508) % 360;
-  return `hsl(${hue}, 65%, 85%)`;
-}
 
 export default function AgentDetailPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { isSuperuser } = useAuth();
+  const { role, permissions } = useAuth();
+  const canManageAgents = role === "ADMIN";
+  const canViewAgentItems = canManageAgents || permissions.items_view;
 
   const [agent, setAgent] = useState<AgentResponse | null>(null);
   const [formData, setFormData] = useState({
@@ -42,7 +57,9 @@ export default function AgentDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [actionDialogOpen, setActionDialogOpen] = useState(false);
-  const [actionDialogMode, setActionDialogMode] = useState<"transfer" | "copy">("transfer");
+  const [actionDialogMode, setActionDialogMode] = useState<"transfer" | "copy">(
+    "transfer",
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isEditing, setIsEditing] = useState(false);
   const [deletingAllItems, setDeletingAllItems] = useState(false);
@@ -50,12 +67,8 @@ export default function AgentDetailPage() {
 
   const [items, setItems] = useState<Fabric[]>([]);
 
-  // Single source of truth: mirrors exactly what is checked in the UI.
-  // Seeded from the backend on load and re-synced after every save.
   const [selectedVariantIds, setSelectedVariantIds] = useState<number[]>([]);
 
-  // Snapshot of what the backend last confirmed.
-  // Used only to compute hasChanges — never rendered directly.
   const [savedVariantIds, setSavedVariantIds] = useState<number[]>([]);
 
   const [savingItems, setSavingItems] = useState(false);
@@ -70,24 +83,22 @@ export default function AgentDetailPage() {
         const numericId = parseInt(id as string, 10);
         const [agentData, itemsData] = await Promise.all([
           agentApi.getOne(numericId),
-          fabricApi.getAll(),
+          canViewAgentItems ? fabricApi.getAll() : Promise.resolve([]),
         ]);
         setAgent(agentData);
         setItems(itemsData);
         const ids = (agentData.assigned_items || []).flatMap(
-          (item: AssignedItem) => item.variants.map((v) => v.id),
+          (item: AssignedItem) => item.variants.map((variant) => variant.id),
         );
-        // Build variantId → created_at map from backend
         const createdAtMap = new Map<number, string>();
         for (const item of agentData.assigned_items || []) {
-          for (const v of item.variants) {
-            if (v.created_at) {
-              createdAtMap.set(v.id, v.created_at);
+          for (const variant of item.variants) {
+            if (variant.created_at) {
+              createdAtMap.set(variant.id, variant.created_at);
             }
           }
         }
         setVariantCreatedAt(createdAtMap);
-        // Both states start equal — no unsaved changes on first load
         setSelectedVariantIds(ids);
         setSavedVariantIds(ids);
         setFormData({
@@ -103,7 +114,7 @@ export default function AgentDetailPage() {
       }
     };
     fetchData();
-  }, [id]);
+  }, [id, canViewAgentItems]);
 
   const handleChange = (key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -127,7 +138,7 @@ export default function AgentDetailPage() {
       toastSuccess("Agent details updated");
       setIsEditing(false);
       router.push("/admin/users/");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating agent:", error);
       toastError("Failed to update agent details", error);
     } finally {
@@ -139,25 +150,21 @@ export default function AgentDetailPage() {
     setSavingItems(true);
     try {
       const numericId = parseInt(id as string, 10);
-      // Send the full current selection — backend does delete-then-insert,
-      // so this correctly handles both additions and removals.
       await agentApi.updateItems(numericId, selectedVariantIds);
       const updatedAgent = await agentApi.getOne(numericId);
       setAgent(updatedAgent);
       const confirmedIds = (updatedAgent.assigned_items || []).flatMap(
-        (item: AssignedItem) => item.variants.map((v) => v.id),
+        (item: AssignedItem) => item.variants.map((variant) => variant.id),
       );
-      // Rebuild createdAt map from refreshed agent data
       const createdAtMap = new Map<number, string>();
       for (const item of updatedAgent.assigned_items || []) {
-        for (const v of item.variants) {
-          if (v.created_at) {
-            createdAtMap.set(v.id, v.created_at);
+        for (const variant of item.variants) {
+          if (variant.created_at) {
+            createdAtMap.set(variant.id, variant.created_at);
           }
         }
       }
       setVariantCreatedAt(createdAtMap);
-      // Sync both states to what the backend confirmed
       setSelectedVariantIds(confirmedIds);
       setSavedVariantIds(confirmedIds);
       toastSuccess("Items updated successfully");
@@ -169,21 +176,17 @@ export default function AgentDetailPage() {
     }
   };
 
-  // Toggling any variant simply adds or removes it from selectedVariantIds
   const toggleVariant = (variantId: number) => {
     setSelectedVariantIds((prev) =>
       prev.includes(variantId)
-        ? prev.filter((i) => i !== variantId)
+        ? prev.filter((item) => item !== variantId)
         : [...prev, variantId],
     );
   };
 
-  // True when the checked variants differ from the last confirmed backend state
   const hasChanges =
     [...selectedVariantIds].sort().join(",") !==
     [...savedVariantIds].sort().join(",");
-
-  // ── Delete ────────────────────────────────────────────────────────────────
 
   const handleDeleteClick = () => {
     setDeleteDialogOpen(true);
@@ -228,14 +231,14 @@ export default function AgentDetailPage() {
       setAgent(updatedAgent);
 
       const confirmedIds = (updatedAgent.assigned_items || []).flatMap(
-        (item: AssignedItem) => item.variants.map((v) => v.id),
+        (item: AssignedItem) => item.variants.map((variant) => variant.id),
       );
 
       const createdAtMap = new Map<number, string>();
       for (const item of updatedAgent.assigned_items || []) {
-        for (const v of item.variants) {
-          if (v.created_at) {
-            createdAtMap.set(v.id, v.created_at);
+        for (const variant of item.variants) {
+          if (variant.created_at) {
+            createdAtMap.set(variant.id, variant.created_at);
           }
         }
       }
@@ -254,14 +257,14 @@ export default function AgentDetailPage() {
     try {
       const numericId = parseInt(id as string, 10);
       await agentApi.deleteAllItems(numericId);
-      
+
       const updatedAgent = await agentApi.getOne(numericId);
       setAgent(updatedAgent);
-      
+
       setSelectedVariantIds([]);
       setSavedVariantIds([]);
       setVariantCreatedAt(new Map());
-      
+
       toastSuccess("All assigned items deleted successfully");
       setDeleteAllDialogOpen(false);
     } catch (error) {
@@ -272,23 +275,41 @@ export default function AgentDetailPage() {
     }
   };
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  if (loading) {
+    return (
+      <div className="mx-auto min-h-screen w-full max-w-2xl space-y-3 px-2 pb-32 pt-4">
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
+    );
+  }
 
-  if (loading) return <PageLoading />;
-  if (!agent)
-    return <div className="p-8 text-center text-red-400">Agent not found.</div>;
+  if (!agent) {
+    return (
+      <div className="mx-auto min-h-screen w-full max-w-2xl px-2 pb-32 pt-4">
+        <EmptyState
+          title="Agent not found"
+          description="This agent may have been deleted or is no longer available."
+          action={
+            <Button onClick={() => router.push("/admin/users/")}>
+              Back to users
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full px-0 py-4 flex flex-col min-h-screen bg-white sm:px-4 sm:py-8">
+    <div className="mx-auto min-h-screen w-full max-w-2xl px-2 pb-32 pt-2">
       <DeleteWithTransferDialog
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
         entityType="agent"
         entityId={parseInt(id as string, 10)}
-        entityName={agent?.user.display_name || agent?.user.username || ""}
+        entityName={agent.user.display_name || agent.user.username}
         onFetchDeleteInfo={agentApi.getDeleteInfo}
         onDelete={handleDeleteConfirm}
-        isSuperuser={isSuperuser}
       />
 
       <TransferCopyItemsDialog
@@ -296,279 +317,284 @@ export default function AgentDetailPage() {
         onClose={() => setActionDialogOpen(false)}
         mode={actionDialogMode}
         sourceAgentId={parseInt(id as string, 10)}
-        sourceAgentName={agent?.user.display_name || agent?.user.username || ""}
+        sourceAgentName={agent.user.display_name || agent.user.username}
         onAction={handleItemAction}
       />
 
       {deleteAllDialogOpen && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget && !deletingAllItems) setDeleteAllDialogOpen(false);
+        <Modal
+          icon={<Trash2 className="size-5 text-brand-red" aria-hidden="true" />}
+          iconBg="bg-brand-red/10"
+          title="Delete all items?"
+          description="This will unassign all items currently assigned to this agent. This action cannot be undone."
+          onClose={() => {
+            if (!deletingAllItems) setDeleteAllDialogOpen(false);
           }}
-        >
-          <div className="w-full sm:max-w-sm bg-white rounded-3xl shadow-2xl p-4 sm:p-6 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col items-center text-center">
-            <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center mb-4">
-              <Trash2 className="w-6 h-6 text-red-500" />
-            </div>
-            <h2 className="text-lg font-black text-gray-900 mb-2">Delete All Items?</h2>
-            <p className="text-sm text-gray-500 mb-6">
-              This will unassign all items currently assigned to this agent. This action cannot be undone.
-            </p>
-            <div className="flex gap-3 w-full">
-              <button
+          actions={
+            <>
+              <Button
+                variant="secondary"
                 onClick={() => setDeleteAllDialogOpen(false)}
                 disabled={deletingAllItems}
-                className="flex-1 h-12 rounded-2xl border-2 border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition-all active:scale-95 disabled:opacity-40"
+                className="h-12 flex-1"
               >
                 Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteAllItems}
+                loading={deletingAllItems}
+                loadingText="Deleting..."
+                className="h-12 flex-1"
+              >
+                Delete All
+              </Button>
+            </>
+          }
+        />
+      )}
+
+      <div className="mb-4 flex items-start gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => router.push("/admin/users/")}
+          aria-label="Back to users"
+          className="-ml-2"
+        >
+          <ArrowLeft className="size-5" aria-hidden="true" />
+        </Button>
+        <PageHeader
+          title="Agent profile"
+          subtitle="Manage field agent details and stock assignments."
+          className="flex-1"
+        />
+      </div>
+
+      <div className="mb-5 flex items-center gap-3">
+        <StockflowAvatar
+          user={agent.user}
+          tone="purple"
+          size="lg"
+          className="size-20 text-2xl"
+        />
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-xl font-bold text-app-ink">
+            {agent.user.display_name || agent.user.username}
+          </h2>
+          <p className="app-secondary mt-1">Field agent</p>
+        </div>
+      </div>
+
+      {canManageAgents && (
+      <div className="mb-5 flex items-center gap-2">
+        <Button
+          variant="secondary"
+          onClick={() => setIsEditing((value) => !value)}
+          aria-pressed={isEditing}
+          className="flex-1"
+        >
+          {isEditing ? (
+            <Eye className="size-4" aria-hidden="true" />
+          ) : (
+            <Pencil className="size-4" aria-hidden="true" />
+          )}
+          {isEditing ? "View details" : "Edit details"}
+        </Button>
+
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="secondary"
+              size="icon"
+              aria-label="More agent actions"
+              className="data-[state=open]:bg-app-soft"
+            >
+              <MoreVertical className="size-5" aria-hidden="true" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            className="w-52 rounded-card border border-app-line bg-app-card p-1.5 shadow-float"
+          >
+            <div className="flex flex-col gap-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setActionDialogMode("copy");
+                  setActionDialogOpen(true);
+                }}
+                className="app-focus flex min-h-11 w-full items-center gap-2.5 rounded-control px-3 text-left text-sm font-semibold text-app-ink transition-colors hover:bg-app-soft"
+              >
+                <Copy
+                  className="size-4 text-app-muted"
+                  aria-hidden="true"
+                />
+                Copy Items
               </button>
               <button
-                onClick={handleDeleteAllItems}
-                disabled={deletingAllItems}
-                className="flex-1 h-12 rounded-2xl bg-red-500 text-sm font-bold text-white flex items-center justify-center gap-2 hover:bg-red-600 transition-all active:scale-95 disabled:opacity-40 shadow-lg shadow-red-500/20"
+                type="button"
+                onClick={() => {
+                  setActionDialogMode("transfer");
+                  setActionDialogOpen(true);
+                }}
+                className="app-focus flex min-h-11 w-full items-center gap-2.5 rounded-control px-3 text-left text-sm font-semibold text-app-ink transition-colors hover:bg-app-soft"
               >
-                {deletingAllItems ? (
-                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                ) : (
-                  "Delete All"
-                )}
+                <ArrowRightLeft
+                  className="size-4 text-app-muted"
+                  aria-hidden="true"
+                />
+                Transfer Items
+              </button>
+              <div className="mx-2 my-1 h-px bg-app-line" />
+              <button
+                type="button"
+                onClick={() => setDeleteAllDialogOpen(true)}
+                disabled={deletingAllItems}
+                className="app-focus flex min-h-11 w-full items-center gap-2.5 rounded-control px-3 text-left text-sm font-semibold text-brand-red transition-colors hover:bg-brand-red/10 disabled:opacity-50"
+              >
+                <Trash2 className="size-4" aria-hidden="true" />
+                Delete All Items
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteClick}
+                disabled={deleting}
+                className="app-focus flex min-h-11 w-full items-center gap-2.5 rounded-control px-3 text-left text-sm font-semibold text-brand-red transition-colors hover:bg-brand-red/10 disabled:opacity-50"
+              >
+                <Trash2 className="size-4" aria-hidden="true" />
+                Delete Agent
               </button>
             </div>
-          </div>
-        </div>
+          </PopoverContent>
+        </Popover>
+      </div>
       )}
 
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={() => router.push("/admin/users/")}
-          className="p-2 -ml-2 rounded-full hover:bg-gray-50 transition-colors"
-        >
-          <ArrowLeft size={24} className="text-gray-900" />
-        </button>
-        <div className="text-center flex-1">
-          <h1 className="text-xl font-black text-gray-900 tracking-tight">
-            Agent Profile
-          </h1>
-          <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">
-            Personnel Management
-          </p>
-        </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={() => setIsEditing(!isEditing)}
-            className="p-2 rounded-xl hover:bg-gray-50 transition-colors"
-            title={isEditing ? "View details" : "Edit details"}
-          >
-            {isEditing ? (
-              <Eye size={20} className="text-gray-700" />
-            ) : (
-              <Pencil size={20} className="text-gray-700" />
-            )}
-          </button>
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="p-2 rounded-xl hover:bg-gray-50 transition-colors data-[state=open]:bg-gray-50">
-                <MoreVertical size={20} className="text-gray-700" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-48 p-1.5 rounded-2xl shadow-xl border border-gray-100 bg-white">
-              <div className="flex flex-col gap-0.5">
-                <button
-                  onClick={() => {
-                    setActionDialogMode("copy");
-                    setActionDialogOpen(true);
-                  }}
-                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 rounded-xl transition-colors w-full text-left"
-                >
-                  <Copy size={16} className="text-gray-400" />
-                  Copy Items
-                </button>
-                <button
-                  onClick={() => {
-                    setActionDialogMode("transfer");
-                    setActionDialogOpen(true);
-                  }}
-                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 rounded-xl transition-colors w-full text-left"
-                >
-                  <ArrowRightLeft size={16} className="text-gray-400" />
-                  Transfer Items
-                </button>
-                <div className="h-px bg-gray-100 my-1 mx-2" />
-                <button
-                  onClick={() => setDeleteAllDialogOpen(true)}
-                  disabled={deletingAllItems}
-                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-colors w-full text-left disabled:opacity-50"
-                >
-                  {deletingAllItems ? (
-                    <span className="w-4 h-4 border-2 border-red-300 border-t-red-500 rounded-full animate-spin block" />
-                  ) : (
-                    <Trash2 size={16} />
-                  )}
-                  Delete All Items
-                </button>
-                <button
-                  onClick={handleDeleteClick}
-                  disabled={deleting}
-                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 rounded-xl transition-colors w-full text-left disabled:opacity-50"
-                >
-                  {deleting ? (
-                    <span className="w-4 h-4 border-2 border-red-300 border-t-red-500 rounded-full animate-spin block" />
-                  ) : (
-                    <Trash2 size={16} />
-                  )}
-                  Delete Agent
-                </button>
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-      </div>
-
-      {/* Avatar Section */}
-      <div className="flex flex-col items-center mb-6">
-        <div
-          className="w-20 h-20 rounded-3xl flex items-center justify-center mb-4 shadow-sm"
-          style={{
-            backgroundColor: isEditing ? "#eff6ff" : getColorFromId(agent.id),
-          }}
-        >
-          <ShieldCheck
-            size={40}
-            className={isEditing ? "text-blue-500" : "text-gray-600"}
-          />
-        </div>
-        <h2 className="text-2xl font-black text-gray-900">
-          {agent.user.display_name || agent.user.username}
-        </h2>
-        <span className="text-xs font-bold text-gray-400 mt-1">
-          FIELD AGENT
-        </span>
-      </div>
-
-      {/* User Details Section */}
-      {isEditing ? (
-        <>
-          <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-3 space-y-4 mb-4 sm:rounded-[2rem] sm:p-6 sm:space-y-6 sm:mb-6">
-            <FieldGroup className="space-y-6">
-              <Field>
-                <FieldLabel className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">
-                  Display Name
-                </FieldLabel>
-                <Input
-                  value={formData.display_name}
-                  onChange={(e) => handleChange("display_name", e.target.value)}
-                  className="bg-white border-gray-100 rounded-xl h-12 font-bold"
-                />
-                {formData.display_name.trim() && (
-                  <p className="mt-1.5 text-[11px] text-gray-400">
+      {isEditing && canManageAgents ? (
+        <Card className="mb-4">
+          <div className="space-y-5">
+            <FormField
+              label="Display name"
+              htmlFor="agent-edit-display-name"
+              hint={
+                formData.display_name.trim() ? (
+                  <>
                     Username:{" "}
-                    <span className="font-mono font-medium text-gray-600">
+                    <span className="font-mono font-semibold text-app-ink">
                       {deriveUsername(formData.display_name)}
                     </span>
-                  </p>
+                  </>
+                ) : undefined
+              }
+            >
+              <Input
+                id="agent-edit-display-name"
+                value={formData.display_name}
+                onChange={(event) =>
+                  handleChange("display_name", event.target.value)
+                }
+              />
+            </FormField>
+
+            <FormField
+              label="System username"
+              htmlFor="agent-edit-username"
+              hint="Automatically derived from the display name."
+            >
+              <Input
+                id="agent-edit-username"
+                value={deriveUsername(
+                  formData.display_name || formData.username,
                 )}
-              </Field>
+                disabled
+                className="font-mono"
+              />
+            </FormField>
 
-              <Field>
-                <FieldLabel className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">
-                  System Username (auto-derived)
-                </FieldLabel>
-                <Input
-                  value={deriveUsername(
-                    formData.display_name || formData.username,
-                  )}
-                  disabled
-                  className="bg-gray-50 border-gray-100 rounded-xl h-12 font-mono text-sm"
-                />
-              </Field>
+            <FormField
+              label="Email address"
+              htmlFor="agent-edit-email"
+            >
+              <Input
+                id="agent-edit-email"
+                type="email"
+                inputMode="email"
+                value={formData.email}
+                onChange={(event) =>
+                  handleChange("email", event.target.value)
+                }
+              />
+            </FormField>
 
-              <Field>
-                <FieldLabel className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">
-                  Email Address
-                </FieldLabel>
-                <Input
-                  value={formData.email}
-                  onChange={(e) => handleChange("email", e.target.value)}
-                  className="bg-white border-gray-100 rounded-xl h-12 font-bold"
-                />
-              </Field>
-
-              <Field>
-                <FieldLabel className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">
-                  Contact number
-                </FieldLabel>
-                <Input
-                  value={formData.contact}
-                  onChange={(e) => handleChange("contact", e.target.value)}
-                  className="bg-white border-gray-100 rounded-xl h-12 font-bold"
-                />
-              </Field>
-            </FieldGroup>
+            <FormField
+              label="Contact number"
+              htmlFor="agent-edit-contact"
+            >
+              <Input
+                id="agent-edit-contact"
+                inputMode="tel"
+                value={formData.contact}
+                onChange={(event) =>
+                  handleChange("contact", event.target.value)
+                }
+              />
+            </FormField>
           </div>
 
-          <div className="mb-6">
-            <StockFlowButton
-              variant="filled"
-              text={saving ? "Updating..." : "Update Details"}
-              onClick={handleUpdate}
-              disabled={saving}
-              className="w-full h-14 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2 active:scale-95 transition-all"
-            />
-          </div>
-        </>
+          <Button
+            size="lg"
+            onClick={handleUpdate}
+            loading={saving}
+            loadingText="Saving changes..."
+            className="mt-6 w-full"
+          >
+            Save Changes
+          </Button>
+        </Card>
       ) : (
-        <div className="bg-gray-50 border border-gray-100 rounded-2xl p-4 mb-6 w-full">
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-gray-400 uppercase">
-                Display Name
-              </span>
-              <span className="text-sm font-medium text-gray-900">
-                {agent.user.display_name || "—"}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-gray-400 uppercase">
-                Username
-              </span>
-              <span className="text-sm font-medium text-gray-900">
+        <Card title="Account details" className="mb-4">
+          <DetailList>
+            <DetailRow label="Display name">
+              {agent.user.display_name || "—"}
+            </DetailRow>
+            <DetailRow label="Username">
+              <span className="font-mono text-[13px]">
                 {agent.user.username}
               </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-gray-400 uppercase">
-                Email
-              </span>
-              <span className="text-sm font-medium text-gray-900">
-                {agent.user.email}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-gray-400 uppercase">
-                Contact
-              </span>
-              <span className="text-sm font-medium text-gray-900">
-                {agent.contact || "—"}
-              </span>
-            </div>
-          </div>
-        </div>
+            </DetailRow>
+            <DetailRow label="Email">{agent.user.email || "—"}</DetailRow>
+            <DetailRow label="Contact">
+              {agent.contact ? (
+                <a
+                  href={`tel:${agent.contact}`}
+                  className="app-focus rounded-sm text-brand-navy underline-offset-2 hover:underline"
+                >
+                  {agent.contact}
+                </a>
+              ) : (
+                "—"
+              )}
+            </DetailRow>
+          </DetailList>
+        </Card>
       )}
 
-      <ItemAssignment
-        agentId={parseInt(id as string, 10)}
-        agentName={agent?.user.display_name || agent?.user.username || ""}
-        items={items}
-        selectedVariantIds={selectedVariantIds}
-        savedVariantIds={savedVariantIds}
-        variantCreatedAt={variantCreatedAt}
-        onToggleVariant={toggleVariant}
-        onSaveItems={handleSaveItems}
-        savingItems={savingItems}
-        hasChanges={hasChanges}
-      />
+      {canViewAgentItems && (
+        <ItemAssignment
+          agentId={parseInt(id as string, 10)}
+          agentName={agent.user.display_name || agent.user.username}
+          items={items}
+          selectedVariantIds={selectedVariantIds}
+          savedVariantIds={savedVariantIds}
+          variantCreatedAt={variantCreatedAt}
+          onToggleVariant={toggleVariant}
+          onSaveItems={handleSaveItems}
+          savingItems={savingItems}
+          hasChanges={hasChanges}
+          readOnly={!canManageAgents}
+        />
+      )}
     </div>
   );
 }

@@ -7,6 +7,8 @@ import { fabricApi } from "@/lib/api/item";
 import { CustomerRequirementResponse, formatMeters, toMeters } from "@/types/item";
 import { ImagePreview } from "@/components/pages/ImagePreview";
 import { PageLoading } from "@/components/ui/Loading";
+import Button from "@/components/ui/app/Button";
+import EmptyState from "@/components/ui/EmptyState";
 
 export default function CustomerRequirementsPage() {
   const params = useParams();
@@ -41,25 +43,28 @@ export default function CustomerRequirementsPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen flex flex-col">
-        <div className="p-4">
-          <button
+      <div className="flex min-h-full flex-col bg-app-bg">
+        <div className="mx-auto w-full max-w-3xl p-4">
+          <Button
+            variant="secondary"
             onClick={() => router.replace("/admin/items?tab=ordered")}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
           >
-            <ArrowLeft size={20} />
-            <span className="text-sm font-medium">Back</span>
-          </button>
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            Back
+          </Button>
         </div>
-        <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
-          <AlertTriangle size={48} className="mb-4" />
-          <h2 className="text-lg font-bold">{error || "Fabric not found"}</h2>
-          <button
+        <div className="flex flex-1 flex-col items-center justify-center px-6 text-center text-app-muted">
+          <AlertTriangle className="mb-4 size-10 text-app-subtle" aria-hidden="true" />
+          <h2 className="text-lg font-bold text-app-ink">
+            {error || "Fabric not found"}
+          </h2>
+          <Button
+            variant="secondary"
+            className="mt-4"
             onClick={() => router.replace("/admin/items?tab=ordered")}
-            className="mt-3 text-primary text-sm font-medium hover:underline"
           >
             Go back
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -71,56 +76,59 @@ export default function CustomerRequirementsPage() {
   );
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100">
-        <div className="p-4 flex items-center gap-3">
-          <button
+    <div className="min-h-full bg-app-bg pb-8">
+      <div className="sticky top-0 z-10 border-b border-app-line bg-app-card/95 backdrop-blur">
+        <div className="mx-auto flex max-w-3xl items-center gap-3 p-4">
+          <Button
+            variant="secondary"
+            size="icon"
             onClick={() => router.replace("/admin/items?tab=ordered")}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Back to outstanding items"
           >
-            <ArrowLeft size={20} className="text-gray-600" />
-          </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-extrabold text-gray-900 truncate">
+            <ArrowLeft className="size-5" aria-hidden="true" />
+          </Button>
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-lg font-bold text-app-ink">
               {data.fabric.name}
             </h1>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-app-muted">
               ₹{Number(data.fabric.price_per_meter).toLocaleString("en-IN")}/m
             </p>
           </div>
         </div>
       </div>
 
-      <div className="px-0 py-3 space-y-3 sm:p-4 sm:space-y-4">
+      <div className="mx-auto max-w-3xl space-y-3 px-4 py-4 sm:space-y-4">
         {/* Summary Card */}
-        <div className="bg-white rounded-md border border-gray-300 p-3 sm:p-4">
-          <div className="flex items-center justify-between">
+        <div className="rounded-card border border-app-line bg-app-card p-4">
+          <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <Users size={14} className="text-primary" />
-              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+              <Users className="size-4 text-brand-navy" aria-hidden="true" />
+              <h2 className="text-xs font-bold uppercase tracking-wider text-app-muted">
                 Open demand
               </h2>
             </div>
-            <div className="bg-primary/10 text-primary rounded-full py-0.5 px-3 border border-primary/20">
-              <span className="font-bold text-xs">{data.customers.length}</span>
+            <div className="rounded-full border border-brand-navy/20 bg-brand-navy/10 px-3 py-0.5">
+              <span className="text-xs font-bold text-brand-navy">
+                {data.customers.length}
+              </span>
             </div>
           </div>
 
-          <div className="mt-3 pt-3 border-t border-gray-100 grid grid-cols-2 gap-3">
+          <div className="mt-3 grid grid-cols-2 gap-3 border-t border-app-line pt-3">
             <div>
-              <p className="text-[10px] text-gray-400 uppercase font-medium">
+              <p className="text-[10px] font-medium uppercase text-app-subtle">
                 Still to pack
               </p>
-              <p className="text-sm font-black text-gray-900">
+              <p className="text-sm font-bold text-app-ink">
                 {formatMeters(totalOutstanding)} m
               </p>
             </div>
             <div>
-              <p className="text-[10px] text-gray-400 uppercase font-medium">
+              <p className="text-[10px] font-medium uppercase text-app-subtle">
                 Colours waiting
               </p>
-              <p className="text-sm font-black text-gray-900">
+              <p className="text-sm font-bold text-app-ink">
                 {new Set(data.customers.map((c) => c.variant_display_order)).size}
               </p>
             </div>
@@ -129,70 +137,71 @@ export default function CustomerRequirementsPage() {
 
         {/* Customer lines */}
         <div>
-          <div className="flex items-center gap-2 mb-3">
-            <Info size={14} className="text-primary" />
-            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+          <div className="mb-3 flex items-center gap-2">
+            <Info className="size-4 text-brand-navy" aria-hidden="true" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-app-muted">
               Waiting on
             </h2>
           </div>
 
           {data.customers.length === 0 ? (
-            <div className="bg-white rounded-md border border-gray-300 p-6 text-center">
-              <Info size={32} className="mx-auto text-gray-300 mb-2" />
-              <p className="text-sm text-gray-400">No open demand for this fabric</p>
-            </div>
+            <EmptyState
+              icon={<Info className="size-5" aria-hidden="true" />}
+              title="No open demand"
+              description="No customer is waiting on this fabric."
+            />
           ) : (
             <div className="space-y-2">
               {data.customers.map((customer, index) => (
                 <div
                   key={`${customer.order_id}-${index}`}
-                  className="bg-white rounded-md border border-gray-300 p-3 flex items-center gap-3"
+                  className="flex items-center gap-3 rounded-card border border-app-line bg-app-card p-3"
                 >
-                  <div className="relative w-12 h-12 rounded-md bg-gray-50 overflow-hidden flex-shrink-0 border border-gray-100">
+                  <div className="relative size-12 shrink-0 overflow-hidden rounded-control border border-app-line bg-app-soft">
                     {customer.variant_image ? (
                       <ImagePreview
                         src={customer.variant_image}
                         alt={customer.customer_name}
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Info size={16} className="text-gray-300" />
+                      <div className="flex size-full items-center justify-center">
+                        <Info className="size-4 text-app-subtle" aria-hidden="true" />
                       </div>
                     )}
                   </div>
 
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold text-gray-900 truncate">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-sm font-bold text-app-ink">
                       {customer.customer_name}
                     </h3>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className="text-[10px] text-gray-400">
+                    <div className="mt-0.5 flex flex-wrap items-center gap-2">
+                      <span className="text-[10px] text-app-muted">
                         {customer.variant_display_order
                           ? `Colour #${customer.variant_display_order}`
                           : "No colour"}
                       </span>
                       {customer.agent && (
                         <>
-                          <span className="text-gray-200">·</span>
-                          <span className="text-[10px] text-gray-400">
+                          <span className="text-app-subtle">·</span>
+                          <span className="text-[10px] text-app-muted">
                             {customer.agent}
                           </span>
                         </>
                       )}
-                      <span className="text-gray-200">·</span>
-                      <span className="text-[10px] text-gray-400">
+                      <span className="text-app-subtle">·</span>
+                      <span className="text-[10px] text-app-muted">
                         Order #{customer.order_id}
                       </span>
                     </div>
                   </div>
 
-                  <div className="flex-shrink-0 text-right">
-                    <div className="bg-gray-100 rounded-lg px-3 py-1.5">
-                      <span className="text-sm font-black text-gray-900">
+                  <div className="shrink-0 text-right">
+                    <div className="rounded-control bg-app-soft px-3 py-1.5">
+                      <span className="text-sm font-bold text-app-ink">
                         {formatMeters(customer.outstanding_quantity)} m
                       </span>
                     </div>
-                    <p className="text-[10px] text-gray-400 mt-0.5">
+                    <p className="mt-0.5 text-[10px] text-app-muted">
                       of {formatMeters(customer.ordered_quantity)} m
                     </p>
                   </div>

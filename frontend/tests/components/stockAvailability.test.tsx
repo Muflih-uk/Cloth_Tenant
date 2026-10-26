@@ -28,7 +28,7 @@ describe("stock figures", () => {
 
       expect(screen.getByText(/^-60 m$/)).toBeTruthy();
       const figure = screen.getByText(/^-60 m$/);
-      expect(figure.className).toContain("text-red-600");
+      expect(figure.className).toContain("text-brand-red");
       expect(container.textContent).toContain("On rolls: 100 m");
     });
 
@@ -42,7 +42,7 @@ describe("stock figures", () => {
     it("treats exactly zero as empty rather than low", () => {
       render(<StockBadge total={100} available={0} unit="m" />);
 
-      expect(screen.getByText(/^0 m$/).className).toContain("text-red-500");
+      expect(screen.getByText(/^0 m$/).className).toContain("text-brand-red");
     });
   });
 
@@ -58,7 +58,7 @@ describe("stock figures", () => {
     it("marks an oversold colour as an error", () => {
       render(<StockMetresRow stockMeters="100.000" availableMeters="-60.000" />);
 
-      expect(screen.getByText("-60 m").className).toContain("text-red-600");
+      expect(screen.getByText("-60 m").className).toContain("text-brand-red");
     });
 
     it("falls back to the physical figure when the server sends no availability", () => {

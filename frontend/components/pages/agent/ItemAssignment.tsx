@@ -38,6 +38,7 @@ interface ItemAssignmentProps {
   onSaveItems: () => void;
   savingItems: boolean;
   hasChanges: boolean;
+  readOnly?: boolean;
 }
 
 const urlToDataUrl = async (url: string): Promise<string | null> => {
@@ -80,6 +81,7 @@ export default function ItemAssignment({
   onSaveItems,
   savingItems,
   hasChanges,
+  readOnly = false,
 }: ItemAssignmentProps) {
   const [activeTab, setActiveTab] = useState<Tab>("Recent");
   const [scanMode, setScanMode] = useState<ScanMode>("add");
@@ -314,32 +316,38 @@ export default function ItemAssignment({
                 </span>
               )}
             </div>
-            <button
-              onClick={onSaveItems}
-              disabled={savingItems || !hasChanges}
-              className="flex items-center justify-center gap-1.5 px-6 py-3 bg-green-600 text-white rounded-md font-bold shadow-lg shadow-green-600/20 active:scale-95 transition-all disabled:opacity-50 min-w-[100px]"
-            >
-              {savingItems ? "Saving..." : "Save"}
-            </button>
+            {!readOnly && (
+              <button
+                onClick={onSaveItems}
+                disabled={savingItems || !hasChanges}
+                className="flex items-center justify-center gap-1.5 px-6 py-3 bg-green-600 text-white rounded-md font-bold shadow-lg shadow-green-600/20 active:scale-95 transition-all disabled:opacity-50 min-w-[100px]"
+              >
+                {savingItems ? "Saving..." : "Save"}
+              </button>
+            )}
           </div>
         </div>
 
         <div className="flex gap-2 items-center justify-center mb-3">
-          <button
-            onClick={() => openScanner("add")}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-200 rounded-md hover:bg-gray-50 active:scale-[0.98] transition-all"
-          >
-            <Scan size={18} className="text-gray-600" />
-            <span className="font-bold text-sm text-gray-700">Add</span>
-          </button>
-          <button
-            onClick={() => openScanner("remove")}
-            disabled={selectedVariantIds.length === 0}
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white border border-red-200 rounded-md hover:bg-red-50 active:scale-[0.98] transition-all disabled:opacity-40"
-          >
-            <ScanLine size={18} className="text-red-500" />
-            <span className="font-bold text-sm text-red-500">Remove</span>
-          </button>
+          {!readOnly && (
+            <>
+              <button
+                onClick={() => openScanner("add")}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white border border-gray-200 rounded-md hover:bg-gray-50 active:scale-[0.98] transition-all"
+              >
+                <Scan size={18} className="text-gray-600" />
+                <span className="font-bold text-sm text-gray-700">Add</span>
+              </button>
+              <button
+                onClick={() => openScanner("remove")}
+                disabled={selectedVariantIds.length === 0}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white border border-red-200 rounded-md hover:bg-red-50 active:scale-[0.98] transition-all disabled:opacity-40"
+              >
+                <ScanLine size={18} className="text-red-500" />
+                <span className="font-bold text-sm text-red-500">Remove</span>
+              </button>
+            </>
+          )}
           <button
             onClick={handleDownloadPDF}
             disabled={generatingPDF || displayCount === 0}

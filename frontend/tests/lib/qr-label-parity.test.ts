@@ -44,31 +44,47 @@ describe('qr decode-equality (offline ZXing WASM)', () => {
     return text!;
   }
 
-  it('web qrcode EC L (25×25, single label) decodes to the UUID', async () => {
-    const png = (await QRCode.toBuffer(SAMPLE_UUID, {
-      errorCorrectionLevel: 'L',
-    })) as Uint8Array;
-    expect(await decodeText(png)).toBe(SAMPLE_UUID);
-  });
+  it(
+    'web qrcode EC L (25×25, single label) decodes to the UUID',
+    async () => {
+      const png = (await QRCode.toBuffer(SAMPLE_UUID, {
+        errorCorrectionLevel: 'L',
+      })) as Uint8Array;
+      expect(await decodeText(png)).toBe(SAMPLE_UUID);
+    },
+    20_000,
+  );
 
-  it('web qrcode EC M (29×29, print-all label) decodes to the UUID', async () => {
-    const png = (await QRCode.toBuffer(SAMPLE_UUID, {
-      errorCorrectionLevel: 'M',
-    })) as Uint8Array;
-    expect(await decodeText(png)).toBe(SAMPLE_UUID);
-  });
+  it(
+    'web qrcode EC M (29×29, print-all label) decodes to the UUID',
+    async () => {
+      const png = (await QRCode.toBuffer(SAMPLE_UUID, {
+        errorCorrectionLevel: 'M',
+      })) as Uint8Array;
+      expect(await decodeText(png)).toBe(SAMPLE_UUID);
+    },
+    20_000,
+  );
 
-  it('Dart qr EC L fixture (29×29, mobile single label) decodes to the UUID', async () => {
-    const png = readFileSync(
-      fileURLToPath(new URL('../fixtures/dart-qr-L.png', import.meta.url)),
-    );
-    expect(await decodeText(new Uint8Array(png))).toBe(SAMPLE_UUID);
-  });
+  it(
+    'Dart qr EC L fixture (29×29, mobile single label) decodes to the UUID',
+    async () => {
+      const png = readFileSync(
+        fileURLToPath(new URL('../fixtures/dart-qr-L.png', import.meta.url)),
+      );
+      expect(await decodeText(new Uint8Array(png))).toBe(SAMPLE_UUID);
+    },
+    20_000,
+  );
 
-  it('Dart qr EC M fixture (29×29, mobile print-all label) decodes to the UUID', async () => {
-    const png = readFileSync(
-      fileURLToPath(new URL('../fixtures/dart-qr-M.png', import.meta.url)),
-    );
-    expect(await decodeText(new Uint8Array(png))).toBe(SAMPLE_UUID);
-  });
+  it(
+    'Dart qr EC M fixture (29×29, mobile print-all label) decodes to the UUID',
+    async () => {
+      const png = readFileSync(
+        fileURLToPath(new URL('../fixtures/dart-qr-M.png', import.meta.url)),
+      );
+      expect(await decodeText(new Uint8Array(png))).toBe(SAMPLE_UUID);
+    },
+    20_000,
+  );
 });

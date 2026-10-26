@@ -14,7 +14,19 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/context/AuthContext", () => ({
-  useAuth: () => ({ isAuthenticated: true }),
+  useAuth: () => ({
+    isAuthenticated: true,
+    role: "ADMIN",
+    permissions: {
+      orders_view: true,
+      orders_edit: true,
+      orders_delete: true,
+      items_view: true,
+      items_edit: true,
+      items_delete: true,
+      agents_view: true,
+    },
+  }),
 }));
 
 vi.mock("@/lib/api/item", () => ({

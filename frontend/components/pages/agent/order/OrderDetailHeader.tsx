@@ -1,7 +1,9 @@
 "use client";
-import StockFlowButton from "@/components/ui/custom/stockFlowButton";
+
 import { ChevronLeft, FileText } from "lucide-react";
 import Link from "next/link";
+
+import Button from "@/components/ui/app/Button";
 
 interface OrderDetailHeaderProps {
   orderId: string;
@@ -15,28 +17,28 @@ export default function OrderDetailHeader({
   onViewInvoice,
 }: OrderDetailHeaderProps) {
   return (
-    <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 px-0 py-3 sm:px-4 flex items-center justify-between">
-      <Link
-        className="flex items-center text-primary font-medium hover:opacity-70 transition-opacity"
-        href={backHref}
-      >
-        <ChevronLeft size={20} className="mr-1" />
-        <span>Back</span>
-      </Link>
-      <div className="flex items-center gap-3">
-        {onViewInvoice ? (
-          <StockFlowButton
-            text="PO"
-            icon={<FileText />}
-            variant="filled"
-            onClick={onViewInvoice}
-          />
-        ) : (
-          <div className="text-sm font-bold text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-            #{orderId}
-          </div>
-        )}
+    <header className="sticky top-0 z-40 border-b border-app-line/70 bg-app-card/90 backdrop-blur-md">
+      <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
+        <Link
+          href={backHref}
+          className="app-focus -ml-2 inline-flex h-11 items-center gap-0.5 rounded-control px-2 text-sm font-semibold text-brand-navy transition-colors hover:bg-brand-navy/10"
+        >
+          <ChevronLeft size={20} aria-hidden="true" />
+          <span>Back</span>
+        </Link>
+        <div className="flex items-center gap-3">
+          {onViewInvoice ? (
+            <Button onClick={onViewInvoice}>
+              <FileText className="size-4" aria-hidden="true" />
+              PO
+            </Button>
+          ) : (
+            <div className="rounded-full bg-app-soft px-3 py-1.5 text-sm font-bold text-app-muted">
+              #{orderId}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </header>
   );
 }

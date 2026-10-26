@@ -34,7 +34,7 @@ import { useEffect, useState } from "react";
 type Tab = "profile" | "archives";
 
 export default function ProfilePage() {
-  const { user, logout, isSuperuser, updateUser } = useAuth();
+  const { user, role, permissions, logout, updateUser } = useAuth();
   const router = useRouter();
 
   const [tab, setTab] = useState<Tab>("profile");
@@ -48,7 +48,13 @@ export default function ProfilePage() {
 
   const [expandedItem, setExpandedItem] = useState<number | null>(null);
 
-  const isAdmin = profile?.role === "ADMIN" || isSuperuser;
+  const isAdmin = role === "ADMIN";
+  const canEditProfile = isAdmin || role === "SUBADMIN";
+  const showArchives =
+    isAdmin ||
+    role === "AGENT" ||
+    permissions.items_view ||
+    permissions.orders_view;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -56,7 +62,7 @@ export default function ProfilePage() {
         const profileData = await authApi.getProfile();
         setProfile(profileData);
 
-        if (user?.id && !isAdmin) {
+        if (user?.id && role === "AGENT") {
           const agent = await agentApi.getProfile(user.id);
           setAgentData(agent);
         }
@@ -67,16 +73,22 @@ export default function ProfilePage() {
       }
     };
     fetchData();
-  }, [user]);
+  }, [user, role]);
 
   useEffect(() => {
     if (tab !== "archives") return;
     const fetchArchives = async () => {
       setArchivesLoading(true);
       try {
+        const canViewItems =
+          isAdmin || role === "AGENT" || permissions.items_view;
+        const canViewOrders =
+          isAdmin || role === "AGENT" || permissions.orders_view;
         const [items, orders] = await Promise.all([
-          fabricApi.getArchived(),
-          orderApi.getArchived(),
+          canViewItems ? fabricApi.getArchived() : Promise.resolve([]),
+          canViewOrders
+            ? orderApi.getArchived()
+            : Promise.resolve({ results: [] as Order[] }),
         ]);
         setArchivedItems(items as UIItem[]);
         setArchivedOrders(orders.results);
@@ -87,7 +99,7 @@ export default function ProfilePage() {
       }
     };
     fetchArchives();
-  }, [tab]);
+  }, [tab, isAdmin, role, permissions.items_view, permissions.orders_view]);
 
   const handleLogout = () => {
     logout();
@@ -126,7 +138,7 @@ export default function ProfilePage() {
               <StockflowAvatar user={avatarUser} size="lg" />
               {/* The pencil sits on the avatar itself: this is the one place an
                   admin edits their own details and sets the company logo. */}
-              {isAdmin && (
+              {canEditProfile && (
                 <button
                   type="button"
                   onClick={() => setEditOpen(true)}
@@ -151,7 +163,7 @@ export default function ProfilePage() {
 
           {/* Tab Bar */}
           <div className="flex gap-1 bg-gray-100 p-1.5 rounded-md border border-gray-200">
-            {(["profile", "archives"] as Tab[]).map((t) => (
+            {(["profile", ...(showArchives ? (["archives"] as Tab[]) : [])] as Tab[]).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -174,7 +186,7 @@ export default function ProfilePage() {
             open={editOpen}
             onClose={() => setEditOpen(false)}
             profile={profile}
-            isSuperuser={isSuperuser}
+            canEditCompanyLogo={isAdmin}
             onSaved={handleProfileSaved}
           />
         )}
@@ -214,7 +226,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Actions */}
-            {!isAdmin && (
+            {role === "AGENT" && (
               <div className="bg-white rounded-3xl border border-gray-100 shadow-sm divide-y divide-gray-50">
                 <ActionRow
                   icon={<Users size={16} />}

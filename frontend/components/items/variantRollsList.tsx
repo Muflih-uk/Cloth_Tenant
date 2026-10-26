@@ -6,6 +6,7 @@ import { getRolls, peekRolls } from "@/lib/rollsCache";
 import { toastError } from "@/lib/toast";
 import { formatMeters } from "@/types/item";
 import type { FabricRoll, VariantRollsResponse } from "@/types/item";
+import Button from "@/components/ui/app/Button";
 import RollSummary from "./rollSummary";
 import RollLabelDialog, { RollLabelsDialog } from "./rollLabelDialog";
 
@@ -75,7 +76,7 @@ export default function VariantRollsList({ variantId, label }: Props) {
 
   if (state.status === "failed") {
     return (
-      <p className="mt-2 text-[11px] text-gray-400">
+      <p className="mt-2 text-[11px] text-app-muted">
         Could not load this colour&apos;s rolls.
       </p>
     );
@@ -84,8 +85,8 @@ export default function VariantRollsList({ variantId, label }: Props) {
   // Still reading, or reading a colour other than the one on screen.
   if (state.status !== "loaded" || state.variant !== variantId) {
     return (
-      <div className="mt-2 flex items-center gap-2 text-[11px] text-gray-400">
-        <Loader2 className="w-3 h-3 animate-spin" />
+      <div className="mt-2 flex items-center gap-2 text-[11px] text-app-muted">
+        <Loader2 className="size-3 animate-spin" aria-hidden="true" />
         Loading rolls…
       </div>
     );
@@ -100,12 +101,12 @@ export default function VariantRollsList({ variantId, label }: Props) {
   );
 
   return (
-    <div className="mt-2 border-t border-gray-100 pt-2">
+    <div className="mt-2 border-t border-app-line pt-2">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-        <p className="text-[9px] uppercase tracking-widest text-gray-400">
+        <p className="text-[9px] uppercase tracking-widest text-app-subtle">
           Physical Rolls
         </p>
-        <p className="text-[11px] font-bold text-gray-600">
+        <p className="text-[11px] font-bold text-app-muted">
           {rolls.length === 0
             ? "none yet"
             : `${formatMeters(data.roll_stock_meters)} m · ${data.roll_count} roll${
@@ -115,7 +116,7 @@ export default function VariantRollsList({ variantId, label }: Props) {
       </div>
 
       {rolls.length === 0 ? (
-        <p className="mt-1.5 text-[11px] leading-relaxed text-gray-400">
+        <p className="mt-1.5 text-[11px] leading-relaxed text-app-muted">
           This colour has no physical rolls. Receive them from the Edit
           Inventory screen.
         </p>
@@ -124,7 +125,7 @@ export default function VariantRollsList({ variantId, label }: Props) {
           {rolls.map((roll) => (
             <div
               key={roll.id}
-              className="flex items-center gap-1.5 rounded-lg border border-gray-100 bg-white px-2 py-1.5 sm:gap-2 sm:px-2.5"
+              className="flex items-center gap-1.5 rounded-control border border-app-line bg-app-card px-2 py-1.5 sm:gap-2 sm:px-2.5"
             >
               <RollSummary roll={roll} />
               {/*
@@ -138,11 +139,11 @@ export default function VariantRollsList({ variantId, label }: Props) {
               <button
                 type="button"
                 onClick={() => setPrintingRoll(roll)}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-primary/5 hover:text-primary sm:h-8 sm:w-8"
+                className="app-focus flex size-11 shrink-0 items-center justify-center rounded-control text-app-muted transition-colors hover:bg-app-soft hover:text-brand-navy"
                 aria-label={`Print label for ${roll.roll_number}`}
                 title="View/print label"
               >
-                <Printer size={12} />
+                <Printer className="size-4" aria-hidden="true" />
               </button>
             </div>
           ))}
@@ -152,17 +153,18 @@ export default function VariantRollsList({ variantId, label }: Props) {
       {/* Nothing to print without a roll, so the button only exists when there is
           at least one that could still be picked. */}
       {activeRolls.length > 0 && !printing && (
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          fullWidth
           onClick={() => setPrinting(true)}
-          className="mt-2 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-gray-200 text-[11px] font-bold text-gray-600 transition-colors hover:bg-gray-50"
+          className="mt-2"
         >
-          <QrCode size={12} />
+          <QrCode className="size-3.5" aria-hidden="true" />
           Print all QR labels
-          <span className="font-normal text-gray-400">
+          <span className="font-normal text-app-muted">
             ({activeRolls.length})
           </span>
-        </button>
+        </Button>
       )}
 
       {printing && (

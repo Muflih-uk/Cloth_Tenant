@@ -1,24 +1,41 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ChevronRight, KeyRound, Truck, Upload } from "lucide-react";
+import {
+  ChevronRight,
+  KeyRound,
+  Store,
+  Truck,
+  Upload,
+  UserCog,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 
 import SettingsShell from "@/components/pages/profile/settings/SettingsShell";
+import { useAuth } from "@/context/AuthContext";
+
+type SettingsRow = {
+  label: string;
+  description: string;
+  href: string;
+  icon: LucideIcon;
+  tone: string;
+};
 
 /**
  * Profile › Settings.
  *
- * A menu rather than a form: each thing an admin keeps here -- their PIN, the
- * transport list, and the spreadsheet import that used to sit on the profile --
- * now has a page of its own behind this one.
+ * Each admin area has its own page now: Brands, Transports, Admins and Sub
+ * Admins, followed by the signed-in admin's PIN and the customer import.
  */
-const ROWS = [
+const ROWS: SettingsRow[] = [
   {
-    label: "PIN",
-    description: "Create your PIN, or change it with a code emailed to you.",
-    href: "/admin/profile/settings/pin",
-    icon: KeyRound,
-    tone: "bg-emerald-50 text-emerald-600",
+    label: "Brands",
+    description: "The company name, contact details and logo used on invoices.",
+    href: "/admin/profile/settings/brands",
+    icon: Store,
+    tone: "bg-sky-50 text-sky-600",
   },
   {
     label: "Transports",
@@ -26,6 +43,27 @@ const ROWS = [
     href: "/admin/profile/settings/transports",
     icon: Truck,
     tone: "bg-amber-50 text-amber-600",
+  },
+  {
+    label: "Admins",
+    description: "Manage admin accounts and their PINs.",
+    href: "/admin/profile/settings/admins",
+    icon: Users,
+    tone: "bg-violet-50 text-violet-600",
+  },
+  {
+    label: "Sub Admins",
+    description: "Create sub-admin accounts and choose what they can do.",
+    href: "/admin/profile/settings/subadmins",
+    icon: UserCog,
+    tone: "bg-rose-50 text-rose-600",
+  },
+  {
+    label: "PIN",
+    description: "Create your PIN, or change it with a code emailed to you.",
+    href: "/admin/profile/settings/pin",
+    icon: KeyRound,
+    tone: "bg-emerald-50 text-emerald-600",
   },
   {
     label: "Bulk Import",
@@ -38,6 +76,9 @@ const ROWS = [
 
 export default function ProfileSettingsPage() {
   const router = useRouter();
+  const { role } = useAuth();
+
+  if (role !== "ADMIN") return null;
 
   return (
     <SettingsShell
@@ -48,7 +89,7 @@ export default function ProfileSettingsPage() {
       <div className="bg-white rounded-3xl border border-gray-100 shadow-sm divide-y divide-gray-50">
         {ROWS.map(({ label, description, href, icon: Icon, tone }) => (
           <button
-            key={href}
+            key={label}
             type="button"
             onClick={() => router.push(href)}
             className="flex items-center gap-3 w-full px-3 py-3 sm:px-4 group hover:bg-gray-50/60 transition-colors text-left"

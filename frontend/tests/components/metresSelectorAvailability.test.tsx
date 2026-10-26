@@ -46,7 +46,7 @@ describe("available stock after scanning", () => {
     renderSelector({ onHandMetres: 100, availableMetres: -60, metres: "10" });
 
     expect(availableFigure().textContent).toContain("-60 m available to order");
-    expect(availableFigure().className).toContain("text-red-600");
+    expect(availableFigure().className).toContain("text-brand-red");
   });
 
   it("does not warn while the request fits inside availability", () => {

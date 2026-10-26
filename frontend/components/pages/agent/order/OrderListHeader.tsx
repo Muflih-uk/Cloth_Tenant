@@ -16,21 +16,23 @@ export default function OrderListHeader({
   pageIndicator,
 }: OrderListHeaderProps) {
   const badgeColorClasses = {
-    amber: "bg-amber-100 text-amber-600 border-amber-200",
-    green: "bg-green-100 text-green-600 border-green-200",
+    amber:
+      "border-status-pending/20 bg-status-pending/10 text-[color:var(--status-pending-text)]",
+    green:
+      "border-status-dispatched/20 bg-status-dispatched/10 text-[color:var(--status-dispatched-text)]",
   };
 
   return (
-    <div className="pt-4 flex flex-row justify-between items-center gap-2 mb-6">
-      <div className="flex flex-1 flex-wrap items-center gap-2 justify-between">
-        <div className="flex items-center gap-1">
-          <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">
+    <div className="mb-6 flex flex-row items-center justify-between gap-2 pt-4">
+      <div className="flex flex-1 flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-app-muted">
             {title}
           </span>
           <div
-            className={`rounded-full py-0.5 px-3 border ${badgeColorClasses[countColor]}`}
+            className={`rounded-full border px-3 py-0.5 ${badgeColorClasses[countColor]}`}
           >
-            <span className="font-bold text-xs">{count}</span>
+            <span className="text-xs font-bold tabular-nums">{count}</span>
           </div>
         </div>
         {pageIndicator && (

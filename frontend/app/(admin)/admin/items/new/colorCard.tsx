@@ -16,41 +16,41 @@ interface Props {
 
 export default function ColorCard({ variant, index, onEdit, onDelete, isOnly }: Props) {
   return (
-    <div className="flex items-center gap-3 bg-white border border-gray-100 rounded-2xl px-4 py-3 shadow-sm">
-      <div className="flex-shrink-0 w-14 h-14 rounded-xl overflow-hidden bg-gray-100 flex items-center justify-center">
+    <div className="flex items-center gap-3 rounded-card border border-app-line bg-app-card px-3 py-3 shadow-card">
+      <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-control border border-app-line bg-app-soft">
         {variant.imagePreview ? (
           <ImagePreview src={variant.imagePreview} alt={`Colour ${index + 1}`} />
         ) : (
-          <ImagePlus size={18} className="text-gray-300" />
+          <ImagePlus className="size-4 text-app-subtle" aria-hidden="true" />
         )}
       </div>
 
-      <div className="flex-1 min-w-0">
-        <p className="font-semibold text-sm truncate">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold text-app-ink">
           {colorLabel(variant.displayOrder, index)}
         </p>
-        <p className="text-[11px] text-gray-400 mt-0.5">
+        <p className="mt-0.5 text-[11px] text-app-muted">
           Available to order: {formatMeters(variant.stockMeters)} m
         </p>
       </div>
 
-      <div className="flex items-center gap-1 flex-shrink-0">
+      <div className="flex shrink-0 items-center gap-1">
         <button
           type="button"
           onClick={onEdit}
-          className="p-2 rounded-full text-gray-400 active:bg-gray-100"
+          className="app-focus flex size-11 items-center justify-center rounded-control text-app-muted transition-colors hover:bg-app-soft hover:text-app-ink"
           aria-label="Edit"
         >
-          <Pencil size={16} />
+          <Pencil className="size-4" aria-hidden="true" />
         </button>
         {!isOnly && (
           <button
             type="button"
             onClick={onDelete}
-            className="p-2 rounded-full text-red-400 active:bg-red-50"
+            className="app-focus flex size-11 items-center justify-center rounded-control text-brand-red transition-colors hover:bg-brand-red/10"
             aria-label="Delete"
           >
-            <Trash2 size={16} />
+            <Trash2 className="size-4" aria-hidden="true" />
           </button>
         )}
       </div>

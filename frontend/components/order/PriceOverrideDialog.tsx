@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { IndianRupee, Pencil } from "lucide-react";
 
 import { Modal, ModalButton } from "@/components/ui/custom/Modals";
+import { Input } from "@/components/ui/input";
 import {
   discountPercent,
   formatRupees,
@@ -55,8 +56,8 @@ export default function PriceOverrideDialog({
 
   return (
     <Modal
-      icon={<IndianRupee size={18} className="text-primary" />}
-      iconBg="bg-primary/10"
+      icon={<IndianRupee size={18} className="text-brand-navy" />}
+      iconBg="bg-brand-navy/10"
       title={isOverridden ? "Adjust order total" : "Set order total"}
       description={`Order total from the lines is ${formatRupees(computedTotal)}.${canRaise ? "" : " You can reduce it, not increase it."}`}
       onClose={onClose}
@@ -89,31 +90,32 @@ export default function PriceOverrideDialog({
       <div className="pt-1">
         <label
           htmlFor="price-override-total"
-          className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5"
+          className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-app-muted"
         >
           Total
         </label>
         <div className="relative">
           <IndianRupee
             size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-app-muted"
           />
-          <input
+          <Input
             id="price-override-total"
             type="text"
             inputMode="decimal"
             autoFocus
             value={raw}
+            aria-invalid={Boolean(error && !check.ok)}
             onChange={(e) => {
               setRaw(e.target.value);
               setError(null);
             }}
-            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-gray-200 text-sm font-bold text-gray-900 focus:outline-none focus:border-primary"
+            className="pl-9 font-bold"
           />
         </div>
 
         {check.ok && discountPercent(check.total, computedTotal) > 0 && (
-          <p className="mt-1.5 text-xs font-bold text-emerald-600">
+          <p className="mt-1.5 text-xs font-semibold text-[color:var(--status-dispatched-text)]">
             {discountPercent(check.total, computedTotal)}% discount &middot;{" "}
             {formatRupees(round2(computedTotal - check.total))} off
           </p>
@@ -121,11 +123,11 @@ export default function PriceOverrideDialog({
 
         <label
           htmlFor="price-override-reason"
-          className="block text-xs font-bold text-gray-500 uppercase tracking-wide mt-3 mb-1.5"
+          className="mt-3 mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-app-muted"
         >
           Reason <span className="font-normal normal-case">(optional)</span>
         </label>
-        <input
+        <Input
           id="price-override-reason"
           type="text"
           value={reason}
@@ -135,10 +137,11 @@ export default function PriceOverrideDialog({
             setReason(e.target.value);
             setError(null);
           }}
-          className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-900 focus:outline-none focus:border-primary"
         />
 
-        {error && <p className="mt-2 text-xs font-bold text-red-600">{error}</p>}
+        {error && (
+          <p className="mt-2 text-xs font-semibold text-brand-red">{error}</p>
+        )}
       </div>
     </Modal>
   );
@@ -158,7 +161,7 @@ export function EditTotalButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="flex items-center gap-1 text-xs font-bold text-primary hover:underline disabled:opacity-40 disabled:no-underline disabled:hover:no-underline"
+      className="app-focus inline-flex h-11 min-h-11 items-center gap-1 rounded-control px-2 text-xs font-bold text-brand-navy transition-colors hover:bg-brand-navy/10 disabled:opacity-40"
     >
       <Pencil size={12} />
       {isOverridden ? "Adjusted" : "Edit total"}

@@ -6,6 +6,7 @@ import { Modal, ModalButton } from "@/components/ui/custom/Modals";
 import { fabricApi } from "@/lib/api/item";
 import { OrderItem } from "@/types/order";
 import { VariantAllItem, formatMeters, toMeters } from "@/types/item";
+import { Input } from "@/components/ui/input";
 
 interface OrderItemEditModalProps {
   item: OrderItem;
@@ -95,8 +96,8 @@ const OrderItemEditModal: React.FC<OrderItemEditModalProps> = ({
 
   return (
     <Modal
-      icon={<Pencil size={18} className="text-primary" />}
-      iconBg="bg-primary/10"
+      icon={<Pencil size={18} className="text-brand-navy" />}
+      iconBg="bg-brand-navy/10"
       title={`Edit ${item.fabric_name}`}
       description={
         alreadyPacked > 0
@@ -119,11 +120,11 @@ const OrderItemEditModal: React.FC<OrderItemEditModalProps> = ({
         <div>
           <label
             htmlFor="line-metres"
-            className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5"
+            className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-app-muted"
           >
             Metres required
           </label>
-          <input
+          <Input
             id="line-metres"
             type="number"
             inputMode="decimal"
@@ -131,21 +132,23 @@ const OrderItemEditModal: React.FC<OrderItemEditModalProps> = ({
             min="0"
             autoFocus
             value={metres}
+            aria-invalid={Boolean(metresError)}
             onChange={(event) => {
               setMetres(event.target.value);
               if (metresError) setMetresError(null);
             }}
-            className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
           />
           {metresError ? (
-            <p className="mt-1.5 text-xs text-red-600">{metresError}</p>
+            <p className="mt-1.5 text-xs font-medium text-brand-red">
+              {metresError}
+            </p>
           ) : availableMeters !== undefined && availableMeters !== null ? (
             /* Advisory only. Demand outrunning supply is a real, allowed state
                here -- the shortage is arbitrated at packing -- so this says so
                and never blocks the save. It uses the amber triangle already
                used for order warnings rather than inventing a style. */
             projectedAvailability < 0 ? (
-              <p className="mt-1.5 text-xs font-medium text-amber-600 flex items-start gap-1">
+              <p className="mt-1.5 flex items-start gap-1 text-xs font-medium text-[color:var(--status-pending-text)]">
                 <TriangleAlert size={13} className="mt-px flex-shrink-0" />
                 <span>
                   {editCapacity < 0
@@ -158,13 +161,13 @@ const OrderItemEditModal: React.FC<OrderItemEditModalProps> = ({
                 </span>
               </p>
             ) : (
-              <p className="mt-1.5 text-xs text-gray-400">
+              <p className="mt-1.5 text-xs font-medium text-app-muted">
                 {formatMeters(editCapacity)} m of this colour
                 available for ordering
               </p>
             )
           ) : selected ? (
-            <p className="mt-1.5 text-xs text-gray-400">
+            <p className="mt-1.5 text-xs font-medium text-app-muted">
               {formatMeters(selected.stock_meters)} m of this colour in stock
             </p>
           ) : null}
@@ -173,12 +176,14 @@ const OrderItemEditModal: React.FC<OrderItemEditModalProps> = ({
         <div>
           <label
             htmlFor="line-colour"
-            className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5"
+            className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-app-muted"
           >
             Colour
           </label>
           {loading ? (
-            <p className="text-xs text-gray-400">Loading colours…</p>
+            <p className="text-xs font-medium text-app-muted">
+              Loading colours…
+            </p>
           ) : (
             <select
               id="line-colour"
@@ -188,7 +193,7 @@ const OrderItemEditModal: React.FC<OrderItemEditModalProps> = ({
                   event.target.value ? Number(event.target.value) : null,
                 )
               }
-              className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl font-medium text-gray-900 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+              className="app-focus h-12 w-full rounded-control border border-app-line bg-app-card px-3.5 text-sm font-medium text-app-ink outline-none transition-colors"
             >
               {colours.map((colour) => (
                 <option key={colour.id} value={colour.id}>

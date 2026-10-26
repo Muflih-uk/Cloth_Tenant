@@ -1,17 +1,24 @@
 "use client";
-import { useState, useEffect } from "react";
-import { orderApi, OrderLog } from "@/lib/api/order";
-import { History, ChevronDown, ChevronUp } from "lucide-react";
+
+import { useEffect, useState } from "react";
+import { ChevronDown, ChevronUp, History } from "lucide-react";
+
+import { orderApi, type OrderLog } from "@/lib/api/order";
+import { cn } from "@/lib/utils";
 
 interface OrderLogsProps {
   orderId: number;
 }
 
 const actionLabels: Record<string, { label: string; color: string }> = {
-  ITEM_DELETED: { label: "Item Deleted", color: "text-red-600 bg-red-50" },
-  ORDER_DELETED: { label: "Order Deleted", color: "text-red-600 bg-red-50" },
-  ORDER_EDITED: { label: "Order Edited", color: "text-blue-600 bg-blue-50" },
-  DISPATCHED: { label: "Dispatched", color: "text-green-600 bg-green-50" },
+  ITEM_DELETED: { label: "Item Deleted", color: "bg-brand-red/10 text-brand-red" },
+  ORDER_DELETED: { label: "Order Deleted", color: "bg-brand-red/10 text-brand-red" },
+  ORDER_EDITED: { label: "Order Edited", color: "bg-brand-navy/10 text-brand-navy" },
+  DISPATCHED: {
+    label: "Dispatched",
+    color:
+      "bg-brand-green/10 text-[color:var(--status-dispatched-text)]",
+  },
 };
 
 export default function OrderLogs({ orderId }: OrderLogsProps) {
@@ -42,23 +49,32 @@ export default function OrderLogs({ orderId }: OrderLogsProps) {
   }
 
   return (
-    <div className="mt-6 border-t border-gray-100 pt-4">
+    <section className="mt-6 border-t border-app-line/60 pt-3">
       <button
+        type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+        aria-expanded={expanded}
+        className="app-focus flex h-11 items-center gap-2 rounded-control px-1 text-sm font-semibold text-app-muted transition-colors hover:text-app-ink"
       >
-        <History size={16} />
+        <History size={16} aria-hidden="true" />
         <span>View Activity Logs</span>
-        {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        {expanded ? (
+          <ChevronUp size={16} aria-hidden="true" />
+        ) : (
+          <ChevronDown size={16} aria-hidden="true" />
+        )}
       </button>
 
       {expanded && (
-        <div className="mt-4 space-y-3">
+        <div className="mt-3 space-y-2">
           {loading ? (
-            <p className="text-sm text-gray-400">Loading logs...</p>
+            <p className="text-xs font-medium text-app-muted">Loading logs...</p>
           ) : (
             logs.map((log) => {
-              const actionInfo = actionLabels[log.action] || { label: log.action, color: "text-gray-600 bg-gray-50" };
+              const actionInfo = actionLabels[log.action] || {
+                label: log.action,
+                color: "bg-app-soft text-app-muted",
+              };
               const date = new Date(log.created_at);
               const formattedDate = date.toLocaleDateString("en-IN", {
                 day: "2-digit",
@@ -68,18 +84,32 @@ export default function OrderLogs({ orderId }: OrderLogsProps) {
               });
 
               return (
-                <div key={log.id} className="bg-gray-50 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${actionInfo.color}`}>
+                <div
+                  key={log.id}
+                  className="rounded-control border border-app-line/60 bg-app-soft/50 p-3"
+                >
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wide",
+                        actionInfo.color,
+                      )}
+                    >
                       {actionInfo.label}
                     </span>
-                    <span className="text-xs text-gray-400">{formattedDate}</span>
+                    <span className="text-[11px] font-medium text-app-subtle">
+                      {formattedDate}
+                    </span>
                   </div>
+
                   {log.performed_by && (
-                    <p className="text-xs text-gray-500">By: {log.performed_by}</p>
+                    <p className="text-xs text-app-muted">
+                      By: {log.performed_by}
+                    </p>
                   )}
+
                   {log.details && Object.keys(log.details).length > 0 && (
-                    <div className="mt-2 text-xs text-gray-600">
+                    <div className="mt-2 space-y-0.5 text-xs text-app-muted">
                       {Object.entries(log.details).map(([key, value]) => (
                         <p key={key}>
                           {key.replace(/_/g, " ")}: {String(value)}
@@ -93,6 +123,6 @@ export default function OrderLogs({ orderId }: OrderLogsProps) {
           )}
         </div>
       )}
-    </div>
+    </section>
   );
 }

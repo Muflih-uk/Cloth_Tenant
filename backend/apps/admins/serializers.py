@@ -31,7 +31,10 @@ class AdminSerializer(serializers.ModelSerializer):
         read_only_fields = ("id",)
 
     def validate_username(self, value):
-        if User.objects.filter(username=value).exists():
+        qs = User.objects.filter(username=value)
+        if self.instance is not None:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
             raise serializers.ValidationError(f'Username "{value}" is already taken.')
         return value
 
@@ -54,6 +57,9 @@ class AdminSerializer(serializers.ModelSerializer):
         raw_pin = validated_data.pop("pin", None)
         if "display_name" in validated_data:
             instance.display_name = validated_data.pop("display_name")
+        password = validated_data.pop("password", None)
+        if password:
+            instance.set_password(password)
 
         instance = super().update(instance, validated_data)
         if raw_pin:

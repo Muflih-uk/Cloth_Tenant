@@ -7,7 +7,7 @@ import { useSyncExternalStore } from "react";
 
 const AdminProfileButton: React.FC = () => {
   const router = useRouter();
-  const { business, isSuperuser, user } = useAuth();
+  const { business, role, user } = useAuth();
 
   const mounted = useSyncExternalStore(
     () => () => {},
@@ -31,7 +31,8 @@ const AdminProfileButton: React.FC = () => {
   return (
     <div className="relative flex w-full items-center justify-between px-4 py-3">
       <div className="truncate text-sm font-bold tracking-wide text-brand-navy">
-        {businessLabel || (isSuperuser ? "Superuser" : "")}
+        {businessLabel ||
+          (role === "SUBADMIN" ? "Sub admin" : role === "ADMIN" ? "Admin" : "")}
       </div>
       <button
         type="button"

@@ -17,15 +17,15 @@ export default function RollSummary({ roll }: { roll: FabricRoll }) {
   const status = remaining > 0 && roll.is_active ? "Available" : "Used";
   const statusClass =
     status === "Available"
-      ? "bg-emerald-100 text-emerald-700"
-      : "bg-red-100 text-red-700";
+      ? "bg-brand-green/10 text-brand-green"
+      : "bg-brand-red/10 text-brand-red";
 
   return (
     <div className="flex min-w-0 flex-1 items-center gap-2">
-      <p className="min-w-0 flex-1 truncate text-xs font-black text-gray-800">
+      <p className="min-w-0 flex-1 truncate text-xs font-bold text-app-ink">
         {roll.roll_number}
       </p>
-      <p className="shrink-0 text-[11px] font-bold text-gray-600">
+      <p className="shrink-0 text-[11px] font-bold text-app-muted">
         {formatMeters(roll.remaining_meters)} m
       </p>
       <span

@@ -1,6 +1,7 @@
 "use client";
 
 import { Check } from "lucide-react";
+
 import { ImagePreview } from "@/components/pages/ImagePreview";
 import type { FabricVariant } from "@/types/item";
 import { formatMeters, toMeters } from "@/types/item";
@@ -22,22 +23,27 @@ export default function VariantSelector({
   if (variants.length === 0) return null;
 
   return (
-    <div className="mb-8">
-      <h3 className="font-bold text-gray-900 mb-3">Colour</h3>
-      <div className="flex p-2 gap-4 overflow-x-auto pb-2 scrollbar-none">
+    <div className="mb-6">
+      <h3 className="mb-3 font-bold text-app-ink">Colour</h3>
+      <div className="scrollbar-none flex gap-4 overflow-x-auto pb-2">
         {variants.map((v, index) => {
           const alreadyOn = toMeters(existingMetresByVariant[v.id] ?? 0);
           const isSelected = selectedVariant?.id === v.id;
           return (
-            <div key={v.id} className="flex flex-col items-center gap-1.5 flex-shrink-0">
+            <div
+              key={v.id}
+              className="flex shrink-0 flex-col items-center gap-1.5"
+            >
               <button
+                type="button"
                 onClick={() => onSelect(v)}
-                className={`relative w-20 h-20 rounded-3xl border-2 transition-all overflow-hidden ${
+                className={`app-focus relative size-20 overflow-hidden rounded-2xl border-2 transition-all ${
                   isSelected
-                    ? "border-primary scale-105"
-                    : "border hover:border-gray-200"
+                    ? "scale-105 border-brand-navy"
+                    : "border-app-line hover:border-brand-navy/30"
                 }`}
                 aria-label={v.display_order || `Colour ${index + 1}`}
+                aria-pressed={isSelected}
               >
                 {v.image ? (
                   <ImagePreview
@@ -46,20 +52,25 @@ export default function VariantSelector({
                     enlargeDisabled={true}
                   />
                 ) : (
-                  <div className="w-full h-full bg-gray-100" />
+                  <div className="size-full bg-app-soft" />
                 )}
                 {alreadyOn > 0 && (
-                  <div className="absolute bottom-1 right-1 bg-primary text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                  <div className="absolute right-1 bottom-1 rounded-full bg-brand-navy px-1.5 py-0.5 text-[9px] font-bold text-white">
                     {formatMeters(alreadyOn)} m
                   </div>
                 )}
                 {isSelected && (
-                  <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                    <Check className="text-white" size={24} strokeWidth={4} />
+                  <div className="absolute inset-0 flex items-center justify-center bg-brand-navy/25">
+                    <Check
+                      className="text-white"
+                      size={24}
+                      strokeWidth={4}
+                      aria-hidden="true"
+                    />
                   </div>
                 )}
               </button>
-              <span className="text-[10px] font-bold text-gray-500 max-w-20 truncate">
+              <span className="max-w-20 truncate text-[10px] font-bold text-app-muted">
                 {v.display_order || `Colour ${index + 1}`}
               </span>
             </div>

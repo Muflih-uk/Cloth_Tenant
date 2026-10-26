@@ -37,8 +37,7 @@ def make_user(username, role, pin=None, superuser=False):
 class BrandPermissionTests(TestCase):
     """The company profile is shared paperwork, so writes are admin-only.
 
-    An admin who is not a superuser has to send their PIN, matching every other
-    admin write; superusers are exempt inside ``check_admin_pin``.
+    Every admin has to send their PIN, matching every other admin write.
     """
 
     def setUp(self):
@@ -89,26 +88,37 @@ class BrandPermissionTests(TestCase):
         self.brand.refresh_from_db()
         self.assertEqual(self.brand.name, "XL Apparals")
 
-    def test_superuser_needs_no_pin(self):
-        superuser = make_user("brandsuper", "ADMIN", superuser=True)
+    def test_a_superuser_still_needs_a_pin(self):
+        superuser = make_user(
+            "brandsuper", "ADMIN", pin="1234", superuser=True
+        )
         self.client.credentials(**auth_header(superuser))
         resp = self.client.patch(self.url, {"name": "Renamed"}, format="json")
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.brand.refresh_from_db()
+        self.assertEqual(self.brand.name, "XL Apparals")
+
+        resp = self.client.patch(
+            self.url, {"name": "Renamed", "pin": "1234"}, format="json"
+        )
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.brand.refresh_from_db()
         self.assertEqual(self.brand.name, "Renamed")
 
     def test_the_profile_stays_a_singleton_on_create(self):
-        superuser = make_user("brandsuper2", "ADMIN", superuser=True)
-        self.client.credentials(**auth_header(superuser))
-        resp = self.client.post(LIST_URL, {"name": "Second"}, format="json")
+        admin = make_user("brandadmin4", "ADMIN", pin="1234")
+        self.client.credentials(**auth_header(admin))
+        resp = self.client.post(
+            LIST_URL, {"name": "Second", "pin": "1234"}, format="json"
+        )
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
         self.assertEqual(Brand.objects.count(), 1)
         self.brand.refresh_from_db()
         self.assertEqual(self.brand.name, "Second")
 
     def test_the_profile_cannot_be_deleted(self):
-        superuser = make_user("brandsuper3", "ADMIN", superuser=True)
-        self.client.credentials(**auth_header(superuser))
-        resp = self.client.delete(self.url)
+        admin = make_user("brandadmin5", "ADMIN", pin="1234")
+        self.client.credentials(**auth_header(admin))
+        resp = self.client.delete(self.url, {"pin": "1234"}, format="json")
         self.assertEqual(resp.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
         self.assertTrue(Brand.objects.filter(pk=self.brand.pk).exists())

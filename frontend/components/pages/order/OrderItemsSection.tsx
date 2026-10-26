@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback } from "react";
-import { AlertTriangle, Scissors } from "lucide-react";
-import Link from "next/link";
+
 import { useAuth } from "@/context/AuthContext";
 import { outstandingMeters } from "@/lib/utils/orderItemSort";
-import { OrderItem as OrderItemType, OrderStatus } from "@/types/order";
+import type { OrderItem as OrderItemType, OrderStatus } from "@/types/order";
 import { formatMeters, toMeters } from "@/types/item";
 import OrderItem from "@/components/pages/admin/order-item/OrderItem";
 import PackingBundlePanel from "@/components/pages/order/PackingBundlePanel";
+import Card from "@/components/ui/app/Card";
 
 interface OrderItemsSectionProps {
   items?: OrderItemType[];
@@ -39,10 +39,6 @@ interface OrderItemsSectionProps {
  * confirms how many metres to cut, and the server fills the line that roll's
  * colour belongs to. There are no per-line metre controls, because cloth only
  * leaves the shelf against a specific scanned roll.
- *
- * The banner that used to sit above the list and point at `/admin/packing` is
- * parked behind a `false` below rather than deleted, in case the round-screen
- * entry point wants bringing back.
  */
 export default function OrderItemsSection({
   items,
@@ -65,20 +61,23 @@ export default function OrderItemsSection({
   const liveItems = items ?? [];
 
   const outstanding = liveItems.reduce(
-    (sum, i) => sum + toMeters(i.outstanding_quantity),
+    (sum, item) => sum + toMeters(item.outstanding_quantity),
     0,
   );
-  const ordered = liveItems.reduce((sum, i) => sum + toMeters(i.ordered_quantity), 0);
+  const ordered = liveItems.reduce(
+    (sum, item) => sum + toMeters(item.ordered_quantity),
+    0,
+  );
   const allocated = liveItems.reduce(
-    (sum, i) => sum + toMeters(i.allocated_quantity),
+    (sum, item) => sum + toMeters(item.allocated_quantity),
     0,
   );
 
   // Lines can only be edited while the order is still open for changes, and
   // never once cloth has moved against them.
-  const isEditable = status === "DRAFT" || status === "PENDING" || status === "EDITING";
+  const isEditable =
+    status === "DRAFT" || status === "PENDING" || status === "EDITING";
   const isDeletable = isEditable;
-  const awaitingPacking = outstanding > 0 && status !== "DISPATCHED";
 
   // A line packing has finished belongs with the box that carried it, so the list
   // below carries only what is still owed. That only holds while the bundles are
@@ -114,68 +113,52 @@ export default function OrderItemsSection({
 
   return (
     <>
-      <div className="mb-4 border-b border-gray-100 pb-2">
-        <div>
-          <h2 className="text-lg font-extrabold text-gray-900 leading-tight">
-            Fabric lines
-          </h2>
-          <p className="text-xs text-gray-400 font-medium">
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="app-section-title">Fabric lines</h2>
+          <p className="app-secondary mt-1">
             {formatMeters(ordered)} m ordered · {formatMeters(allocated)} m packed
+            {outstanding > 0 && status !== "DISPATCHED" && (
+              <span className="ml-1 font-semibold text-[color:var(--status-pending-text)]">
+                · {formatMeters(outstanding)} m owed
+              </span>
+            )}
           </p>
         </div>
       </div>
 
-      {false && awaitingPacking && (
-        <div className="mb-3 flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <AlertTriangle size={18} className="shrink-0 text-amber-600" />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-amber-900">
-              {formatMeters(outstanding)} m still to pack
-            </p>
-            <p className="text-[11px] text-amber-700">
-              Share the roll out in a packing round, or fill a line below.
-            </p>
-          </div>
-          <Link
-            href="/admin/packing"
-            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-2 text-[11px] font-bold text-white hover:bg-amber-600 transition-colors"
-          >
-            <Scissors size={13} />
-            Pack
-          </Link>
+      {canPack && orderId !== undefined && (
+        <div className="mb-4">
+          <PackingBundlePanel
+            orderId={orderId}
+            enabled={canEditPacking}
+            items={liveItems}
+            onChanged={handleBundleChanged}
+            onOrderStatusChange={onOrderStatusChange}
+            onBundlesChange={onBundlesChange}
+            transportCompanyId={transportCompanyId}
+            preferredTransportId={preferredTransportId}
+          />
         </div>
       )}
 
-      {canPack && orderId !== undefined && (
-        <PackingBundlePanel
-          orderId={orderId}
-          enabled={canEditPacking}
-          items={liveItems}
-          onChanged={handleBundleChanged}
-          onOrderStatusChange={onOrderStatusChange}
-          onBundlesChange={onBundlesChange}
-          transportCompanyId={transportCompanyId}
-          preferredTransportId={preferredTransportId}
-        />
-      )}
-
-      <div className="bg-white rounded-2xl overflow-hidden">
+      <Card padded={false} className="overflow-hidden">
         {bundlesVisible && outstandingLines.length === 0 ? (
-          <p className="px-4 py-6 text-center text-xs font-medium text-gray-400">
+          <p className="px-4 py-8 text-center text-xs font-medium text-app-muted">
             All items packed — see the bundles above.
           </p>
         ) : (
-        <OrderItem
-          items={outstandingLines}
-          isDeletable={isDeletable}
-          isEditable={isEditable}
-          orderId={orderId}
-          showPackingProgress
-          onAllocationChange={onItemsChange}
-          onDeleteItem={onItemsChange}
-        />
+          <OrderItem
+            items={outstandingLines}
+            isDeletable={isDeletable}
+            isEditable={isEditable}
+            orderId={orderId}
+            showPackingProgress
+            onAllocationChange={onItemsChange}
+            onDeleteItem={onItemsChange}
+          />
         )}
-      </div>
+      </Card>
     </>
   );
 }

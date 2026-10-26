@@ -17,7 +17,8 @@ import { formatApiError } from "@/lib/toast";
 import { AgentAllResponse } from "@/types/agent";
 
 const AgentsList: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, role } = useAuth();
+  const canManageAgents = role === "ADMIN";
 
   const [data, setData] = useState<AgentAllResponse>([]);
   const [loading, setLoading] = useState(true);
@@ -58,7 +59,7 @@ const AgentsList: React.FC = () => {
       .includes(search.toLowerCase()),
   );
 
-  const addAgentButton = (
+  const addAgentButton = canManageAgents ? (
     <Button
       onClick={() => router.push("/admin/users/agents/new")}
       className="shrink-0"
@@ -66,7 +67,7 @@ const AgentsList: React.FC = () => {
       <Plus className="size-4" aria-hidden="true" />
       Add agent
     </Button>
-  );
+  ) : null;
 
   if (error) {
     return (
@@ -103,7 +104,11 @@ const AgentsList: React.FC = () => {
     return (
       <EmptyState
         title="No agents yet"
-        description="Add your first sales agent to assign customers and orders."
+        description={
+          canManageAgents
+            ? "Add your first sales agent to assign customers and orders."
+            : "No sales agents have been added yet."
+        }
         action={addAgentButton}
       />
     );

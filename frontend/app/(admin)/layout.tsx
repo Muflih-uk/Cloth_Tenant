@@ -21,7 +21,7 @@ export default function AdminLayout({
     const isFullscreenPage =
         pathname.includes("/admin/items/new") ||
         pathname.includes("/admin/items/edit") ||
-        pathname.includes("/admin/settings/brands") ||
+        pathname.includes("/admin/profile/settings/brands/") ||
         isStatusPage ||
         isNewOrderPage ||
         isItemQrPrintPage ||

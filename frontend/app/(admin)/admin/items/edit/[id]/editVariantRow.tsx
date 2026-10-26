@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import { ImagePlus, Pencil, Plus, Scale, Trash2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import Button from "@/components/ui/app/Button";
 import { ImagePreview } from "@/components/pages/ImagePreview";
 import { colorLabel } from "@/lib/color-number";
 import { toMeters, type EditableVariant } from "@/types/item";
@@ -54,14 +55,14 @@ export default function EditVariantRow({
     toMeters(value).toLocaleString(undefined, { maximumFractionDigits: 3 });
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_1px_0_rgba(0,0,0,0.02)]">
-      <div className="p-2.5 sm:p-3">
-        <div className="flex items-start gap-2.5 sm:gap-3">
+    <div className="overflow-hidden rounded-card border border-app-line bg-app-card shadow-card">
+      <div className="p-3">
+        <div className="flex items-start gap-3">
           <div className="relative shrink-0">
             <button
               type="button"
               onClick={onPickImage}
-              className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-gray-100 sm:h-14 sm:w-14"
+              className="app-focus relative flex size-14 items-center justify-center overflow-hidden rounded-control border border-app-line bg-app-soft"
               aria-label="Change colour photo"
             >
               {imageSrc ? (
@@ -71,12 +72,15 @@ export default function EditVariantRow({
                     alt={label}
                     enlargeDisabled
                   />
-                  <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition hover:bg-black/25 hover:opacity-100">
-                    <ImagePlus size={14} />
+                  <span className="absolute inset-0 flex items-center justify-center bg-brand-navy/0 text-white opacity-0 transition hover:bg-brand-navy/30 hover:opacity-100">
+                    <ImagePlus className="size-4" aria-hidden="true" />
                   </span>
                 </>
               ) : (
-                <ImagePlus size={17} className="text-gray-300" />
+                <ImagePlus
+                  className="size-5 text-app-subtle"
+                  aria-hidden="true"
+                />
               )}
             </button>
             {imageSrc && (
@@ -90,16 +94,16 @@ export default function EditVariantRow({
                     newImage: null,
                   })
                 }
-                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 shadow-sm transition-colors hover:text-red-500"
+                className="app-focus absolute -right-2 -top-2 flex size-7 items-center justify-center rounded-full border border-app-line bg-app-card text-app-muted shadow-card transition-colors after:absolute after:-inset-2 after:content-[''] hover:text-brand-red"
                 aria-label="Remove colour photo"
               >
-                <X size={11} />
+                <X className="size-3.5" aria-hidden="true" />
               </button>
             )}
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               {editingName ? (
                 <Input
                   value={variant.displayOrder}
@@ -113,32 +117,32 @@ export default function EditVariantRow({
                       setEditingName(false);
                     }
                   }}
-                  className="h-7 min-w-0 flex-1 border-0 bg-transparent px-0 text-sm font-black shadow-none focus-visible:ring-0"
+                  className="h-11 min-w-0 flex-1 px-2 text-sm font-semibold"
                   aria-label="Colour number"
                 />
               ) : (
-                <p className="min-w-0 flex-1 truncate text-[13px] font-black text-gray-800 sm:text-sm">
+                <p className="min-w-0 flex-1 truncate text-sm font-semibold text-app-ink">
                   {label}
                 </p>
               )}
               <button
                 type="button"
                 onClick={() => setEditingName(true)}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-300 transition-colors hover:bg-gray-50 hover:text-primary sm:h-6 sm:w-6"
+                className="app-focus flex size-11 shrink-0 items-center justify-center rounded-control text-app-muted transition-colors hover:bg-app-soft hover:text-brand-navy"
                 aria-label="Edit colour name"
                 title="Edit colour name"
               >
-                <Pencil size={12} />
+                <Pencil className="size-4" aria-hidden="true" />
               </button>
               {!isOnly && (
                 <button
                   type="button"
                   onClick={onDelete}
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500 sm:h-6 sm:w-6"
+                  className="app-focus flex size-11 shrink-0 items-center justify-center rounded-control text-app-muted transition-colors hover:bg-brand-red/10 hover:text-brand-red"
                   aria-label="Remove colour"
                   title="Remove colour"
                 >
-                  <Trash2 size={13} />
+                  <Trash2 className="size-4" aria-hidden="true" />
                 </button>
               )}
             </div>
@@ -164,23 +168,22 @@ export default function EditVariantRow({
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {onRequestReceive && (
-            <button
-              type="button"
+            <Button
               onClick={onRequestReceive}
-              className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary/10 px-3 text-[11px] font-bold text-primary transition-colors hover:bg-primary/15 sm:h-8 sm:flex-none sm:px-2.5"
+              className="flex-1 sm:flex-none"
             >
-              <Plus size={13} />
+              <Plus className="size-3.5" aria-hidden="true" />
               Receive Rolls
-            </button>
+            </Button>
           )}
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             onClick={() => setAdjustingStock(true)}
-            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-100 bg-gray-50 px-3 text-[11px] font-semibold text-gray-500 transition-colors hover:border-gray-200 hover:text-gray-700 sm:h-8 sm:flex-none sm:px-2.5"
+            className="flex-1 sm:flex-none"
           >
-            <Scale size={13} />
+            <Scale className="size-3.5" aria-hidden="true" />
             Adjust stock
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -210,13 +213,13 @@ function Metric({
   className?: string;
 }) {
   return (
-    <div className={`min-w-0 rounded-lg bg-gray-50 px-2 py-1.5 ${className}`}>
-      <p className="truncate text-[9px] uppercase tracking-wide text-gray-400">
+    <div className={`min-w-0 rounded-control bg-app-soft px-2 py-1.5 ${className}`}>
+      <p className="truncate text-[9px] uppercase tracking-wide text-app-subtle">
         {label}
       </p>
       <p
-        className={`mt-0.5 truncate text-sm font-black ${
-          warning ? "text-red-600" : "text-gray-700"
+        className={`mt-0.5 truncate text-sm font-bold ${
+          warning ? "text-brand-red" : "text-app-ink"
         }`}
       >
         {value}

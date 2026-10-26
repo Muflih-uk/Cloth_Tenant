@@ -2,16 +2,18 @@
 
 import { customerApi } from "@/lib/api/customer";
 import { CustomerAllResponse } from "@/types/customer";
-import { ArrowRight, MapPin, Search, User } from "lucide-react";
+import { ArrowRight, MapPin, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { PageLoading } from "../ui/Loading";
 import { createDraftOrder } from "@/lib/draftOrder";
 import { extractErrorMessage } from "@/lib/orderFlow";
 import { toastError } from "@/lib/toast";
 import Pagination from "../ui/Pagination";
 import { PaginatedResponse } from "@/types/global";
 import StockflowAvatar from "../ui/custom/stockflowAvatar";
+import SearchInput from "../ui/app/SearchInput";
+import EmptyState from "../ui/EmptyState";
+import { SkeletonCard } from "../ui/app/Skeleton";
 
 const CACHE_KEY = "customers_cache";
 const CACHE_META_KEY = "customers_cache_meta";
@@ -119,6 +121,7 @@ const ListCustomer: React.FC = () => {
   useEffect(() => {
     const cached = readCache();
     if (cached) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setData(cached);
       const meta: CacheMeta | null = JSON.parse(
         localStorage.getItem(CACHE_META_KEY) || "null",
@@ -169,61 +172,68 @@ const ListCustomer: React.FC = () => {
   };
 
   return (
-    <div className="py-3 px-0 sm:py-6 sm:px-6">
-      {/* Search Bar */}
-      <div className="relative mb-4">
-        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-400">
-          <Search size={18} />
-        </div>
-        <input
-          type="text"
-          placeholder="Search customer..."
-          className="w-full bg-white border border-gray-100 rounded-2xl py-3 pl-12 pr-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/30 transition-all shadow-sm"
+    <div className="px-4 py-4 sm:py-6">
+      <div className="mb-4">
+        <SearchInput
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={setSearch}
+          placeholder="Search customer..."
+          ariaLabel="Search customers"
         />
       </div>
 
       {lastSync && (
-        <p className="text-[10px] text-gray-300 font-medium mb-3 px-1">
+        <p className="mb-3 px-1 text-[10px] font-medium text-app-muted">
           Last synced {lastSync.toLocaleTimeString()}
         </p>
       )}
 
       {loading ? (
-        <PageLoading />
-      ) : data.length == 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-gray-300">
-          <User size={40} className="mb-4 opacity-20" />
-          <h2 className="text-xl font-bold">No Customers Found</h2>
+        <div className="space-y-3" aria-busy="true" aria-label="Loading customers">
+          {[0, 1, 2, 3].map((index) => (
+            <SkeletonCard key={index} />
+          ))}
         </div>
+      ) : data.length === 0 ? (
+        <EmptyState
+          icon={<User className="size-5" aria-hidden="true" />}
+          title="No customers found"
+          description="Try a different search to find the customer you need."
+        />
       ) : (
         <div className="space-y-3">
           {data.map((customer) => (
             <button
+              type="button"
               onClick={() => handleSubmit(customer.id)}
               key={customer.id}
-              className="flex w-full items-center gap-3 bg-white border border-gray-100 p-3 sm:gap-4 sm:p-4 hover:border-primary/30 hover:shadow-md transition-all rounded-3xl group text-left active:scale-[0.98]"
+              className="app-focus app-card group flex w-full items-center gap-3 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-brand-navy/20 active:translate-y-0"
             >
               <StockflowAvatar user={customer} />
 
-              <div className="flex-1 min-w-0">
-                <h6 className="font-semibold text-gray-900 text-sm ">
+              <div className="min-w-0 flex-1">
+                <h2 className="truncate text-sm font-bold text-app-ink">
                   {customer.name}
-                </h6>
+                </h2>
                 {customer.address && (
-                  <div className="flex items-center gap-1 mt-1">
-                    <MapPin size={10} className="text-gray-300" />
-                    <p className="text-xs text-gray-400 truncate leading-tight font-medium">
+                  <div className="mt-1 flex items-center gap-1">
+                    <MapPin
+                      size={11}
+                      className="shrink-0 text-app-subtle"
+                      aria-hidden="true"
+                    />
+                    <p className="truncate text-xs font-medium leading-tight text-app-muted">
                       {customer.address}
                     </p>
                   </div>
                 )}
               </div>
 
-              <div className="text-gray-200 group-hover:text-primary/40 transition-colors">
-                <ArrowRight size={20} />
-              </div>
+              <ArrowRight
+                size={20}
+                className="shrink-0 text-app-subtle transition-colors group-hover:text-brand-navy/50"
+                aria-hidden="true"
+              />
             </button>
           ))}
 

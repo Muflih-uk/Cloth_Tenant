@@ -39,8 +39,8 @@ class TransportPermissionTests(TestCase):
 
     The list has to be readable unsigned: an order offers the transports a
     customer can pick from, and that is not a privileged fact. Writing it is
-    admin work, and a non-superuser admin has to name their PIN like on any
-    other admin write.
+    admin work, and every admin has to name their PIN like on any other admin
+    write.
     """
 
     def setUp(self):
@@ -107,11 +107,20 @@ class TransportPermissionTests(TestCase):
         self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
         self.assertTrue(Transport.objects.filter(pk=self.transport.pk).exists())
 
-    def test_a_superuser_needs_no_pin(self):
-        superuser = make_user("tsuper", "ADMIN", superuser=True)
+    def test_a_superuser_still_needs_a_pin(self):
+        superuser = make_user("tsuper", "ADMIN", pin="1234", superuser=True)
         self.client.credentials(**auth_header(superuser))
+
         resp = self.client.post(LIST_URL, {"name": "Other"}, format="json")
-        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
         resp = self.client.delete(self.url)
+        self.assertEqual(resp.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Transport.objects.filter(pk=self.transport.pk).exists())
+
+        resp = self.client.post(
+            LIST_URL, {"name": "Other", "pin": "1234"}, format="json"
+        )
+        self.assertEqual(resp.status_code, status.HTTP_201_CREATED)
+        resp = self.client.delete(self.url, {"pin": "1234"}, format="json")
         self.assertEqual(resp.status_code, status.HTTP_204_NO_CONTENT)
         self.assertFalse(Transport.objects.filter(pk=self.transport.pk).exists())

@@ -34,8 +34,9 @@ export function normalizeAdminItem(item: FabricStockEntry): UIItem {
 }
 
 const ListItems: React.FC<ListItemsProps> = ({ initialTab }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, role, permissions } = useAuth();
   const router = useRouter();
+  const canEdit = role === "ADMIN" || permissions.items_edit;
   const searchParams = useSearchParams();
   const createdToken = searchParams.get("created");
   const [data, setData] = useState<UIItem[]>([]);
@@ -98,9 +99,9 @@ const ListItems: React.FC<ListItemsProps> = ({ initialTab }) => {
       loading={loading}
       context="admin"
       initialTab={initialTab}
-      onAddItem={() => router.push("/admin/items/new")}
-      onEdit={handleEdit}
-      onPrintAll={handlePrintAll}
+      onAddItem={canEdit ? () => router.push("/admin/items/new") : undefined}
+      onEdit={canEdit ? handleEdit : undefined}
+      onPrintAll={canEdit ? handlePrintAll : undefined}
       onPrintQR={handlePrintQR}
       outstandingDemand={outstanding}
       onOutstandingClick={(fabricId) =>

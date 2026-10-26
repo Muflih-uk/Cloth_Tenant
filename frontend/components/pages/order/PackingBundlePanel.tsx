@@ -94,35 +94,35 @@ function BundleLineList({
   if (shares.length === 0) return null;
 
   return (
-    <ul className="mt-2 flex flex-col gap-1.5 border-t border-amber-200 pt-2">
+    <ul className="mt-2 flex flex-col gap-1.5 border-t border-status-pending/30 pt-2">
       {shares.map((share) => {
         const line = lineFor(share.itemId);
         return (
           <li
             key={share.itemId}
-            className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-2 py-2 sm:px-3"
+            className="flex items-center gap-3 rounded-control border border-app-line/60 bg-app-card px-2 py-2 sm:px-3"
           >
-            <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
+            <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-control border border-app-line/60 bg-app-soft">
               {line?.variant_image ? (
                 <ImagePreview src={line.variant_image} alt={share.fabricName} />
               ) : (
-                <div className="h-full w-full bg-gray-100" />
+                <div className="h-full w-full bg-app-soft" />
               )}
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-gray-900">
+              <p className="truncate text-sm font-semibold text-app-ink">
                 {`${share.fabricName}${orderItemColorSuffix(share.colour)}`}
               </p>
-              <p className="mt-1 text-xs font-medium text-gray-600">
-                <span className="font-bold text-gray-900">
+              <p className="mt-1 text-xs font-medium text-app-muted">
+                <span className="font-bold text-app-ink">
                   {`${formatMeters(share.metres)} m packed in this bundle`}
                 </span>
               </p>
               {/* Only say which rolls when there were rolls to name. Metres typed in
                   by the packer came off no roll, and printing a blank here would look
                   like a slip in the data rather than a fact about the cloth. */}
-              <p className="mt-0.5 text-[10px] text-gray-400">
+              <p className="mt-0.5 text-[10px] text-app-subtle">
                 {share.rollNumbers.length > 0
                   ? share.rollNumbers.join(", ")
                   : "packed by hand"}
@@ -130,7 +130,7 @@ function BundleLineList({
             </div>
 
             {/* What this box's share of the line came to, not the whole line. */}
-            <span className="flex-shrink-0 text-base font-black text-gray-900">
+            <span className="flex-shrink-0 text-base font-extrabold text-app-ink">
               ₹{share.value.toLocaleString("en-IN")}
             </span>
           </li>
@@ -565,14 +565,14 @@ export default function PackingBundlePanel({
   };
 
   return (
-    <section className="mb-4 rounded-2xl border border-amber-200 bg-amber-50/60 px-3 py-4 sm:p-4">
+    <section className="mb-4 rounded-card border border-status-pending/30 bg-status-pending/5 px-3 py-4 sm:p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="flex items-center gap-1.5 text-sm font-extrabold text-amber-900">
+          <h3 className="flex items-center gap-1.5 text-sm font-extrabold text-[color:var(--status-pending-text)]">
             <Box size={15} />
             Packing bundles
           </h3>
-          <p className="mt-0.5 text-[11px] font-medium text-amber-700">
+          <p className="mt-0.5 text-[11px] font-medium text-[color:var(--status-pending-text)]">
             {openBundle
               ? `${openBundle.code} is open · ${openBundle.roll_count} roll${
                   openBundle.roll_count === 1 ? "" : "s"
@@ -590,7 +590,7 @@ export default function PackingBundlePanel({
             type="button"
             onClick={handleCreate}
             disabled={busy || loading}
-            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-2 text-[11px] font-bold text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
+            className="app-focus flex h-11 min-h-11 shrink-0 items-center gap-1.5 rounded-control bg-brand-navy px-3 text-[11px] font-bold text-white transition-colors hover:bg-brand-navy/90 disabled:opacity-50"
           >
             <QrCode size={13} />
             Create bundle
@@ -602,7 +602,7 @@ export default function PackingBundlePanel({
             type="button"
             onClick={() => setScanOpen(true)}
             disabled={busy}
-            className="flex shrink-0 items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-2 text-[11px] font-bold text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
+            className="app-focus flex h-11 min-h-11 shrink-0 items-center gap-1.5 rounded-control bg-brand-navy px-3 text-[11px] font-bold text-white transition-colors hover:bg-brand-navy/90 disabled:opacity-50"
           >
             <QrCode size={13} />
             Scan a roll into this bundle
@@ -611,7 +611,7 @@ export default function PackingBundlePanel({
       </div>
 
       {slipMessage && (
-        <p className="mt-2 text-[11px] font-semibold text-green-700">
+        <p className="mt-2 text-[11px] font-semibold text-[color:var(--status-dispatched-text)]">
           {slipMessage}
         </p>
       )}
@@ -619,7 +619,7 @@ export default function PackingBundlePanel({
       {openBundle && (
         <div className="mt-3">
           {openBundle.rolls.length === 0 ? (
-            <p className="text-[11px] font-medium text-amber-700">
+            <p className="text-[11px] font-medium text-[color:var(--status-pending-text)]">
               Nothing in this bundle yet. Scan a roll label to put one in.
             </p>
           ) : (
@@ -627,12 +627,12 @@ export default function PackingBundlePanel({
               {openBundle.rolls.map((roll) => (
                 <li
                   key={roll.id}
-                  className="flex items-center gap-2 rounded-xl border border-amber-200 bg-white px-2 py-2 sm:px-3"
+                  className="flex items-center gap-2 rounded-control border border-status-pending/30 bg-app-card px-2 py-2 sm:px-3"
                 >
-                  <span className="w-20 shrink-0 font-mono text-[11px] font-bold text-gray-900">
+                  <span className="w-20 shrink-0 font-mono text-[11px] font-bold text-app-ink">
                     {roll.roll_number}
                   </span>
-                  <span className="min-w-0 flex-1 text-[11px] font-medium text-gray-600">
+                  <span className="min-w-0 flex-1 text-[11px] font-medium text-app-muted">
                     {roll.fabric_name || roll.fabric}
                     {roll.colour ? ` · ${roll.colour}` : ""} ·{" "}
                     {formatMeters(roll.metres)} m
@@ -641,7 +641,7 @@ export default function PackingBundlePanel({
                     type="button"
                     onClick={() => handleRemove(roll.id)}
                     disabled={busy}
-                    className="flex shrink-0 items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-[10px] font-bold text-gray-500 transition-colors hover:bg-gray-50 hover:text-red-600 disabled:opacity-50"
+                    className="app-focus flex h-11 min-h-11 shrink-0 items-center gap-1 rounded-control border border-app-line px-2 text-[10px] font-bold text-app-muted transition-colors hover:bg-app-soft hover:text-brand-red disabled:opacity-50"
                   >
                     <Trash2 size={11} />
                     Remove from bundle
@@ -660,7 +660,7 @@ export default function PackingBundlePanel({
                 type="button"
                 onClick={() => toggleExpanded(openBundle.id)}
                 aria-expanded={expanded[openBundle.id] === true}
-                className="flex items-center gap-1 rounded-lg border border-amber-200 bg-white px-2 py-1 text-[10px] font-bold text-amber-800 transition-colors hover:bg-amber-100"
+                className="app-focus flex h-11 min-h-11 items-center gap-1 rounded-control border border-status-pending/30 bg-app-card px-2 text-[10px] font-bold text-[color:var(--status-pending-text)] transition-colors hover:bg-status-pending/15"
               >
                 {expanded[openBundle.id] ? (
                   <ChevronDown size={11} />
@@ -685,7 +685,7 @@ export default function PackingBundlePanel({
                   ? "A bundle has to hold at least one roll before it can be sealed."
                   : undefined
               }
-              className="flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-gray-700 disabled:opacity-50"
+              className="app-focus flex h-11 min-h-11 items-center gap-1.5 rounded-control bg-brand-navy px-3 text-[11px] font-bold text-white transition-colors hover:bg-brand-navy/90 disabled:opacity-50"
             >
               <Lock size={13} />
               Complete bundle &amp; print slip
@@ -697,7 +697,7 @@ export default function PackingBundlePanel({
                   type="button"
                   onClick={handleCancel}
                   disabled={busy}
-                  className="flex items-center gap-1 rounded-lg bg-red-600 px-3 py-1.5 text-[11px] font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+                  className="app-focus flex h-11 min-h-11 items-center gap-1 rounded-control bg-brand-red px-3 text-[11px] font-bold text-white transition-colors hover:bg-brand-red/90 disabled:opacity-50"
                 >
                   <PackageX size={13} />
                   Give every roll back
@@ -705,7 +705,7 @@ export default function PackingBundlePanel({
                 <button
                   type="button"
                   onClick={() => setConfirmCancel(false)}
-                  className="flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1.5 text-[11px] font-bold text-gray-500 transition-colors hover:bg-gray-50"
+                  className="app-focus flex h-11 min-h-11 items-center gap-1 rounded-control border border-app-line px-2.5 text-[11px] font-bold text-app-muted transition-colors hover:bg-app-soft"
                 >
                   <X size={13} />
                   Keep bundle
@@ -716,7 +716,7 @@ export default function PackingBundlePanel({
                 type="button"
                 onClick={() => setConfirmCancel(true)}
                 disabled={busy}
-                className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-[11px] font-bold text-gray-500 transition-colors hover:bg-gray-50 disabled:opacity-50"
+                className="app-focus flex h-11 min-h-11 items-center gap-1.5 rounded-control border border-app-line px-2.5 text-[11px] font-bold text-app-muted transition-colors hover:bg-app-soft disabled:opacity-50"
               >
                 <PackageX size={13} />
                 Cancel bundle
@@ -725,7 +725,7 @@ export default function PackingBundlePanel({
           </div>
 
           {confirmCancel && (
-            <p className="mt-2 text-[11px] font-medium text-red-600">
+            <p className="mt-2 text-[11px] font-medium text-brand-red">
               Cancelling puts every roll in this bundle back on the shelf and takes
               the metres off the order. The bundle is kept as a record.
             </p>
@@ -734,21 +734,21 @@ export default function PackingBundlePanel({
       )}
 
       {sealedBundles.length > 0 && (
-        <div className="mt-3 border-t border-amber-200 pt-3">
-          <p className="text-[11px] font-bold text-amber-900">
+        <div className="mt-3 border-t border-status-pending/30 pt-3">
+          <p className="text-[11px] font-bold text-[color:var(--status-pending-text)]">
             Sealed bundles
           </p>
           <ul className="mt-1.5 flex flex-col gap-1.5">
             {sealedBundles.map((bundle) => (
               <li
                 key={bundle.id}
-                className="rounded-xl border border-gray-200 bg-white px-2 py-2 sm:px-3"
+                className="rounded-control border border-app-line bg-app-card px-2 py-2 sm:px-3"
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[11px] font-bold text-gray-900">
+                  <span className="text-[11px] font-bold text-app-ink">
                     {bundle.code}
                   </span>
-                  <span className="text-[11px] font-medium text-gray-500">
+                  <span className="text-[11px] font-medium text-app-muted">
                     {/* A box of metres typed in rather than scanned off rolls has no
                         rolls to count, so it says what is actually in it. */}
                     {bundle.is_roll_based
@@ -760,7 +760,7 @@ export default function PackingBundlePanel({
                   {/* Once a box has gone, say so, and say when -- the slip it was
                       printed from is now the record of something in transit. */}
                   {bundle.is_dispatched && (
-                    <span className="flex items-center gap-1 rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-green-700">
+                    <span className="flex items-center gap-1 rounded-full border border-brand-green/25 bg-brand-green/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[color:var(--status-dispatched-text)]">
                       <Truck size={10} />
                       {bundle.dispatched_at
                         ? `Dispatched ${bundle.dispatched_at.slice(0, 10)}`
@@ -772,7 +772,7 @@ export default function PackingBundlePanel({
                       type="button"
                       onClick={() => toggleExpanded(bundle.id)}
                       aria-expanded={expanded[bundle.id] === true}
-                      className="flex min-w-0 items-center justify-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-center text-[10px] font-bold text-gray-500 transition-colors hover:bg-gray-50"
+                      className="app-focus flex h-11 min-h-11 min-w-0 items-center justify-center gap-1 rounded-control border border-app-line px-2 text-center text-[10px] font-bold text-app-muted transition-colors hover:bg-app-soft"
                     >
                       {expanded[bundle.id] ? (
                         <ChevronDown size={11} />
@@ -785,7 +785,7 @@ export default function PackingBundlePanel({
                       type="button"
                       onClick={() => handleSlipPrint(bundle)}
                       disabled={busy}
-                      className="flex min-w-0 items-center justify-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-center text-[10px] font-bold text-gray-500 transition-colors hover:bg-gray-50 disabled:opacity-50"
+                      className="app-focus flex h-11 min-h-11 min-w-0 items-center justify-center gap-1 rounded-control border border-app-line px-2 text-center text-[10px] font-bold text-app-muted transition-colors hover:bg-app-soft disabled:opacity-50"
                     >
                       <Printer size={11} />
                       Print slip
@@ -794,7 +794,7 @@ export default function PackingBundlePanel({
                       type="button"
                       onClick={() => handleSlipDownload(bundle)}
                       disabled={busy}
-                      className="flex min-w-0 items-center justify-center gap-1 rounded-lg bg-gray-900 px-2 py-1 text-center text-[10px] font-bold text-white transition-colors hover:bg-gray-700 disabled:opacity-50"
+                      className="app-focus flex h-11 min-h-11 min-w-0 items-center justify-center gap-1 rounded-control bg-brand-navy px-2 text-center text-[10px] font-bold text-white transition-colors hover:bg-brand-navy/90 disabled:opacity-50"
                     >
                       <Download size={11} />
                       Download slip
@@ -808,7 +808,7 @@ export default function PackingBundlePanel({
                         type="button"
                         onClick={() => handleDispatchClick(bundle)}
                         disabled={busy}
-                        className="flex min-w-0 items-center justify-center gap-1 rounded-lg bg-green-600 px-2 py-1 text-center text-[10px] font-bold text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+                        className="app-focus flex h-11 min-h-11 min-w-0 items-center justify-center gap-1 rounded-control bg-brand-green px-2 text-center text-[10px] font-bold text-white transition-colors hover:bg-brand-green/90 disabled:opacity-50"
                       >
                         <Truck size={11} />
                         Dispatch
@@ -831,40 +831,40 @@ export default function PackingBundlePanel({
           left out of the page, since the main list below only carries what is
           still owed. */}
       {!loading && bundleLoadError && (
-        <p className="mt-3 border-t border-amber-200 pt-3 text-[11px] font-medium text-amber-800">
+        <p className="mt-3 border-t border-status-pending/30 pt-3 text-[11px] font-medium text-[color:var(--status-pending-text)]">
           Bundle details could not be loaded, so packed items cannot be classified.
           Please reload the order.
         </p>
       )}
 
       {!loading && !bundleLoadError && packedByHand.length > 0 && (
-        <div className="mt-3 border-t border-amber-200 pt-3">
-          <p className="text-[11px] font-bold text-amber-900">
+        <div className="mt-3 border-t border-status-pending/30 pt-3">
+          <p className="text-[11px] font-bold text-[color:var(--status-pending-text)]">
             Packed without a bundle
           </p>
           <ul className="mt-1.5 flex flex-col gap-1.5">
             {packedByHand.map((line) => (
               <li
                 key={line.id}
-                className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-2 py-2 sm:px-3"
+                className="flex items-center gap-3 rounded-control border border-app-line bg-app-card px-2 py-2 sm:px-3"
               >
-                <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg border border-gray-100 bg-gray-50">
+                <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-control border border-app-line/60 bg-app-soft">
                   {line.variant_image ? (
                     <ImagePreview
                       src={line.variant_image}
                       alt={line.fabric_name}
                     />
                   ) : (
-                    <div className="h-full w-full bg-gray-100" />
+                    <div className="h-full w-full bg-app-soft" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-gray-900">
+                  <p className="truncate text-sm font-semibold text-app-ink">
                     {line.fabric_name}
                     {orderItemColorSuffix(line.variant_display_order)}
                   </p>
-                  <p className="mt-1 text-xs font-medium text-gray-600">
-                    <span className="font-bold text-gray-900">
+                  <p className="mt-1 text-xs font-medium text-app-muted">
+                    <span className="font-bold text-app-ink">
                       {`${formatMeters(metresPackedOutsideBundles(line, coverage))} m packed by hand`}
                     </span>
                   </p>
@@ -872,13 +872,13 @@ export default function PackingBundlePanel({
                       its surplus is noted here rather than lost with it. */}
                   {toMeters(line.allocated_quantity) >
                     toMeters(line.ordered_quantity) && (
-                    <p className="mt-0.5 text-[11px] font-semibold text-amber-600">
+                    <p className="mt-0.5 text-[11px] font-semibold text-[color:var(--status-pending-text)]">
                       +{formatMeters(toMeters(line.allocated_quantity) - toMeters(line.ordered_quantity))}{" "}
                       m over ordered
                     </p>
                   )}
                 </div>
-                <span className="flex-shrink-0 text-base font-black text-gray-900">
+                <span className="flex-shrink-0 text-base font-extrabold text-app-ink">
                   ₹
                   {(
                     (metresPackedOutsideBundles(line, coverage) *
@@ -893,7 +893,7 @@ export default function PackingBundlePanel({
 
       {pendingScan && openBundle && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-brand-navy/35 backdrop-blur-sm p-4"
           role="dialog"
           aria-modal="true"
           aria-label={`Enter cut for ${pendingScan.roll_number}`}
@@ -903,28 +903,28 @@ export default function PackingBundlePanel({
               event.preventDefault();
               void handleConfirmScan();
             }}
-            className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+            className="w-full max-w-sm rounded-card border border-app-line bg-app-card p-6 shadow-float"
           >
             <div className="flex items-start gap-3">
-              <div className="rounded-xl bg-amber-100 p-2 text-amber-700">
+              <div className="rounded-control bg-status-pending/15 p-2 text-[color:var(--status-pending-text)]">
                 <QrCode size={18} />
               </div>
               <div className="min-w-0">
-                <h3 className="text-lg font-bold text-gray-900">
+                <h3 className="text-lg font-bold text-app-ink">
                   Metres to cut
                 </h3>
-                <p className="mt-0.5 text-sm font-semibold text-gray-700">
+                <p className="mt-0.5 text-sm font-semibold text-app-ink">
                   {pendingScan.roll_number} · {pendingScan.fabric}
                   {pendingScan.colour ? ` · ${pendingScan.colour}` : ""}
                 </p>
-                <p className="mt-0.5 text-[11px] text-gray-500">
+                <p className="mt-0.5 text-[11px] text-app-muted">
                   {formatMeters(Number(pendingScan.remaining_meters))} m left on
                   this roll · going into {openBundle.code}
                 </p>
               </div>
             </div>
 
-            <label className="mt-5 block text-xs font-bold text-gray-700">
+            <label className="mt-5 block text-xs font-bold text-app-ink">
               Metres to cut from this roll
               <input
                 autoFocus
@@ -935,10 +935,10 @@ export default function PackingBundlePanel({
                 max={pendingScan.remaining_meters}
                 value={scanMetres}
                 onChange={(event) => setScanMetres(event.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-base font-bold text-gray-900 focus:border-amber-500 focus:outline-none"
+                className="app-focus mt-1 h-12 w-full rounded-control border border-app-line bg-app-card px-3 text-base font-bold text-app-ink outline-none transition-colors focus:border-brand-navy"
               />
             </label>
-            <p className="mt-1 text-[11px] text-gray-500">
+            <p className="mt-1 text-[11px] text-app-muted">
               The figure is checked against the roll again when you confirm.
             </p>
 
@@ -947,14 +947,14 @@ export default function PackingBundlePanel({
                 type="button"
                 onClick={handleCancelPendingScan}
                 disabled={busy}
-                className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+                className="app-focus h-11 min-h-11 rounded-control border border-app-line px-4 text-sm font-bold text-app-muted transition-colors hover:bg-app-soft disabled:opacity-50"
               >
                 Scan another roll
               </button>
               <button
                 type="submit"
                 disabled={busy}
-                className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
+                className="app-focus flex h-11 min-h-11 items-center gap-1.5 rounded-control bg-brand-navy px-4 text-sm font-bold text-white transition-colors hover:bg-brand-navy/90 disabled:opacity-50"
               >
                 <Box size={14} />
                 {busy ? "Packing..." : "Cut and pack"}
@@ -976,27 +976,27 @@ export default function PackingBundlePanel({
           prompt on the page. */}
       {dispatchingBundle && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-brand-navy/35 backdrop-blur-sm p-4"
           role="dialog"
           aria-modal="true"
           aria-label={`Dispatch ${dispatchingBundle.code}`}
         >
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-bold text-gray-900">
+          <div className="w-full max-w-sm rounded-card border border-app-line bg-app-card p-6 shadow-float">
+            <h3 className="text-lg font-bold text-app-ink">
               Dispatch this bundle
             </h3>
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-app-muted">
               {dispatchingBundle.code} holds{" "}
               {formatMeters(dispatchingBundle.total_metres)} m. Recording it here
               means this box has left the warehouse.
             </p>
 
-            <label className="mt-4 block text-xs font-bold text-gray-700">
+            <label className="mt-4 block text-xs font-bold text-app-ink">
               Transport
               <select
                 value={dispatchTransport}
                 onChange={(e) => setDispatchTransport(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-sm font-medium text-gray-900 focus:border-green-500 focus:outline-none"
+                className="app-focus mt-1 h-12 w-full rounded-control border border-app-line bg-app-card px-3 text-sm font-medium text-app-ink outline-none transition-colors focus:border-brand-green"
               >
                 <option value="">Choose a transport</option>
                 {transports.map((transport) => (
@@ -1009,7 +1009,7 @@ export default function PackingBundlePanel({
                 ))}
               </select>
             </label>
-            <p className="mt-2 text-[11px] text-gray-500">
+            <p className="mt-2 text-[11px] text-app-muted">
               The other bundles on this order are untouched -- dispatch them when
               they go, on the same transport.
             </p>
@@ -1022,7 +1022,7 @@ export default function PackingBundlePanel({
                   setDispatchTransport("");
                 }}
                 disabled={busy}
-                className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+                className="app-focus h-11 min-h-11 rounded-control border border-app-line px-4 text-sm font-bold text-app-muted transition-colors hover:bg-app-soft disabled:opacity-50"
               >
                 Cancel
               </button>
@@ -1042,7 +1042,7 @@ export default function PackingBundlePanel({
                   );
                 }}
                 disabled={busy || !dispatchTransport}
-                className="flex items-center gap-1.5 rounded-xl bg-green-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+                className="app-focus flex h-11 min-h-11 items-center gap-1.5 rounded-control bg-brand-green px-4 text-sm font-bold text-white transition-colors hover:bg-brand-green/90 disabled:opacity-50"
               >
                 <Truck size={14} />
                 {busy ? "Dispatching..." : "Dispatch bundle"}

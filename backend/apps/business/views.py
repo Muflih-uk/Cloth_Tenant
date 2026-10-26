@@ -12,9 +12,9 @@ from .serializers import BrandSerializer
 class BrandViewSet(ModelViewSet):
     """The mill's company profile.
 
-    Read for any signed-in user (invoices need it); write for admins only, and an
-    admin who is not a superuser has to send their PIN -- the same anti-mistake
-    gate every other admin write uses. There is no delete because invoicing would
+    Read for any signed-in user (invoices need it); write for admins only, and
+    every admin has to send their PIN -- the same anti-mistake gate every other
+    admin write uses. There is no delete because invoicing would
     break without a company name: ``Brand.delete()`` refuses and ``destroy``
     returns 405.
     """

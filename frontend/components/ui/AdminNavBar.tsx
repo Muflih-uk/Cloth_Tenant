@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { Truck, Users, Archive, BarChart3, Store } from "lucide-react";
+import { Truck, Users, Archive, BarChart3 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import React, { useState, useSyncExternalStore } from "react";
 
@@ -10,7 +10,8 @@ import BottomNav, { type BottomNavItem } from "./app/BottomNav";
 const AdminNavBar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
-  const { isSuperuser } = useAuth();
+  const { role, permissions } = useAuth();
+  const isAdmin = role === "ADMIN";
 
   const mounted = useSyncExternalStore(
     () => () => {},
@@ -28,37 +29,35 @@ const AdminNavBar: React.FC = () => {
 
   if (!mounted) return null;
 
-  const items: (BottomNavItem & { requiresSuperuser?: boolean })[] = [
+  const items: (BottomNavItem & { visible: boolean })[] = [
     {
       label: "Users",
       icon: Users,
       path: "/admin/users",
+      visible: isAdmin || permissions.agents_view || permissions.orders_view,
     },
     {
       label: "Orders",
       icon: Truck,
       path: "/admin",
-    },
-    {
-      label: "Settings",
-      icon: Store,
-      path: "/admin/settings",
-      requiresSuperuser: true,
+      visible: isAdmin || permissions.orders_view,
     },
     {
       label: "Stats",
       icon: BarChart3,
       path: "/admin/analytics",
+      visible: isAdmin,
     },
     {
       label: "Stock",
       icon: Archive,
       path: "/admin/items",
+      visible: isAdmin || permissions.items_view,
     },
   ];
 
   const navItems = items
-    .filter((item) => !item.requiresSuperuser || isSuperuser)
+    .filter((item) => item.visible)
     .map((item) => ({
       ...item,
       active:

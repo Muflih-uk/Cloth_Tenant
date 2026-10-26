@@ -81,6 +81,7 @@ export default function ProductDetailPage() {
     });
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setPageLoading(true);
         const fetchData = async () => {
             try {
@@ -157,12 +158,17 @@ export default function ProductDetailPage() {
                 } else if (matched) {
                     setRate(fabricResponse.price_per_meter);
                 }
-            } catch (e: any) {
-                const errorMsg = e?.response?.data?.error || "";
+            } catch (error) {
+                const errorMsg =
+                    (
+                        error as {
+                            response?: { data?: { error?: string } };
+                        }
+                    )?.response?.data?.error || "";
                 if (errorMsg.includes("not assigned to you")) {
                     setShowNotAssignedModal(true);
                 } else {
-                    console.error("Error fetching fabric details:", e);
+                    console.error("Error fetching fabric details:", error);
                 }
             } finally {
                 setPageLoading(false);
@@ -237,7 +243,10 @@ export default function ProductDetailPage() {
     }, [rate, catalogRate, existingRate, isOverridden]);
 
     useEffect(() => {
-        if (requested > 0) setValidationError(null);
+        if (requested > 0) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setValidationError(null);
+        }
     }, [requested]);
 
     const handleSubmit = async () => {
@@ -313,13 +322,13 @@ export default function ProductDetailPage() {
     if (pageLoading) return <PageLoading />;
 
     return (
-        <div className="min-h-screen bg-gray-50/50 pb-32">
+        <div className="min-h-screen bg-app-bg pb-32">
             <ProductHeader
                 isEditMode={isEditMode}
                 onBack={() => router.push(`${basePath}/${id}`)}
             />
 
-            <div className="max-w-md mx-auto px-0 pt-3 sm:px-6 sm:pt-6">
+            <main className="mx-auto max-w-2xl px-4 pt-4 sm:pt-6">
                 <ProductImage
                     image={selectedVariant?.image}
                     alt={data?.name || "Fabric"}
@@ -335,12 +344,14 @@ export default function ProductDetailPage() {
                 />
 
                 {data?.description && (
-                    <>
-                        <h3 className="font-bold">Description</h3>
-                        <p className="py-2 text-sm text-gray-500">
+                    <div className="mb-6">
+                        <h3 className="mb-1 font-bold text-app-ink">
+                            Description
+                        </h3>
+                        <p className="text-sm font-medium leading-relaxed text-app-muted">
                             {data.description}
                         </p>
-                    </>
+                    </div>
                 )}
 
                 <MetresSelector
@@ -366,12 +377,12 @@ export default function ProductDetailPage() {
                     value={rate}
                     onChange={setRate}
                     canRaiseRate={role === "ADMIN"}
-isOverridden={isOverridden}
+                    isOverridden={isOverridden}
                 />
 
                 {validationError && (
-                    <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-500">
-                        <Info size={18} className="shrink-0" />
+                    <div className="mb-4 flex items-center gap-3 rounded-control border border-brand-red/20 bg-brand-red/10 p-4 text-brand-red">
+                        <Info size={18} className="shrink-0" aria-hidden="true" />
                         <p className="text-xs font-bold uppercase tracking-wider">
                             {validationError}
                         </p>
@@ -384,14 +395,17 @@ isOverridden={isOverridden}
                     disabled={submitting || requested <= 0 || !!validationError}
                     onClick={handleSubmit}
                 />
-            </div>
+            </main>
 
             {showNotAssignedModal && (
                 <Modal
                     icon={
-                        <AlertTriangle size={18} className="text-amber-500" />
+                        <AlertTriangle
+                            size={18}
+                            className="text-[color:var(--status-pending-text)]"
+                        />
                     }
-                    iconBg="bg-amber-100"
+                    iconBg="bg-status-pending/15"
                     title="Fabric Not Assigned"
                     description="This fabric is not assigned to you."
                     onClose={() => setShowNotAssignedModal(false)}
@@ -421,8 +435,8 @@ isOverridden={isOverridden}
                         </>
                     }
                 >
-                    <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
-                        <p className="text-sm text-amber-800 font-medium">
+                    <div className="rounded-control border border-status-pending/20 bg-status-pending/10 p-3">
+                        <p className="text-sm font-medium text-[color:var(--status-pending-text)]">
                             Ask an admin to assign this fabric to you.
                         </p>
                     </div>

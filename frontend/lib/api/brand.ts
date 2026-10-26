@@ -15,7 +15,7 @@ export const brandApi = {
     return api.get<BrandResponse>(`/api/business/${id}/`).then((r) => r.data);
   },
 
-  create(data: BrandFormData): Promise<BrandResponse> {
+  create(data: BrandFormData, pin: string): Promise<BrandResponse> {
     const fd = new FormData();
     fd.append("name", data.name);
     fd.append("phone", data.phone);
@@ -24,14 +24,14 @@ export const brandApi = {
     if (data.address_line2) fd.append("address_line2", data.address_line2);
     if (data.gst) fd.append("gst", data.gst);
     if (data.logo) fd.append("logo", data.logo);
+    fd.append("pin", pin);
     return api.post<BrandResponse>("/api/business/", fd).then((r) => r.data);
   },
 
   update(
     id: number,
     data: Partial<BrandFormData>,
-    /** Required for a non-superuser admin; superusers are exempt server-side. */
-    pin?: string,
+    pin: string,
   ): Promise<BrandResponse> {
     const fd = new FormData();
     if (data.name !== undefined) fd.append("name", data.name);
@@ -41,7 +41,7 @@ export const brandApi = {
     if (data.address_line2 !== undefined) fd.append("address_line2", data.address_line2);
     if (data.gst !== undefined) fd.append("gst", data.gst);
     if (data.logo !== undefined && data.logo !== null) fd.append("logo", data.logo);
-    if (pin) fd.append("pin", pin);
+    fd.append("pin", pin);
     return api.patch<BrandResponse>(`/api/business/${id}/`, fd).then((r) => r.data);
   },
 
@@ -49,7 +49,7 @@ export const brandApi = {
     return api.get<BrandDeleteInfo>(`/api/business/${id}/delete_info/`).then((r) => r.data);
   },
 
-  delete(id: number, pin?: string, action?: string, transfer_to_id?: number): Promise<void> {
+  delete(id: number, pin: string, action?: string, transfer_to_id?: number): Promise<void> {
     return api
       .delete(`/api/business/${id}/`, { data: { pin, action, transfer_to_id } })
       .then((r) => r.data);

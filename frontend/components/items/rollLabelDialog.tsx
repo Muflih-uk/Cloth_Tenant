@@ -8,6 +8,7 @@ import { formatMeters } from "@/types/item";
 import type { FabricRoll } from "@/types/item";
 import { toastError } from "@/lib/toast";
 import { brandApi } from "@/lib/api/brand";
+import Button from "@/components/ui/app/Button";
 
 interface PrintableRollLabel {
   rollNumber: string;
@@ -201,21 +202,21 @@ export default function RollLabelDialog({
 
   return (
     <div
-      className="roll-label-overlay fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/40 backdrop-blur-sm px-4 py-6"
+      className="roll-label-overlay fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-brand-navy/40 backdrop-blur-sm px-4 py-6"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="roll-label-dialog my-auto max-h-[calc(100vh-3rem)] w-full max-w-sm shrink-0 overflow-y-auto rounded-3xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between px-5 pt-5 pb-3 print:hidden">
-          <h2 className="text-sm font-black text-gray-900">{roll.roll_number} label</h2>
+      <div className="roll-label-dialog my-auto max-h-[calc(100vh-3rem)] w-full max-w-sm shrink-0 overflow-y-auto rounded-card border border-app-line bg-app-card shadow-float">
+        <div className="flex items-center justify-between px-5 pt-4 pb-3 print:hidden">
+          <h2 className="text-sm font-bold text-app-ink">{roll.roll_number} label</h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
+            className="app-focus flex size-11 items-center justify-center rounded-control text-app-muted transition-colors hover:bg-app-soft hover:text-app-ink"
             aria-label="Close roll label"
           >
-            <X size={18} />
+            <X className="size-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -229,22 +230,17 @@ export default function RollLabelDialog({
         </div>
 
         <div className="flex gap-2 px-5 pb-5 print:hidden">
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-11 flex-1 rounded-2xl border-2 border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition-all active:scale-95"
-          >
+          <Button variant="secondary" onClick={onClose} className="flex-1">
             Close
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
             onClick={printLabel}
             disabled={qr === null || !logoLoaded}
-            className="h-11 flex-1 rounded-2xl bg-primary text-white text-sm font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-primary/20 disabled:opacity-50 transition-all active:scale-95"
+            className="flex-1"
           >
-            <Printer size={16} />
+            <Printer className="size-4" aria-hidden="true" />
             Print label
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -279,9 +275,9 @@ export function RollLabel({
       fixed width and generous type are what make it legible from a metre away
       once it is stuck to a roll.
     */
-    <div className="roll-label-card mx-5 mb-5 rounded-2xl border-2 border-gray-900 p-5 text-center print:mx-0 print:mb-0 print:rounded-none print:p-0">
-      <p className="roll-label-fabric text-xl font-black leading-tight text-gray-900">{fabric}</p>
-      <p className="roll-label-color mt-1 text-lg font-bold text-gray-700">
+    <div className="roll-label-card mx-5 mb-5 rounded-card border-2 border-app-ink p-5 text-center print:mx-0 print:mb-0 print:rounded-none print:p-0">
+      <p className="roll-label-fabric text-xl font-bold leading-tight text-app-ink">{fabric}</p>
+      <p className="roll-label-color mt-1 text-lg font-bold text-app-muted">
         {displayOrder ? `Color #${displayOrder}` : "Colour not named"}
       </p>
 
@@ -295,16 +291,16 @@ export function RollLabel({
           className="roll-label-qr mx-auto my-4 h-40 w-40 print:my-3 print:h-36 print:w-36"
         />
       ) : (
-        <div className="mx-auto my-4 h-40 w-40 animate-pulse bg-gray-100 print:hidden" />
+        <div className="mx-auto my-4 h-40 w-40 animate-pulse rounded-control bg-app-soft print:hidden" />
       )}
 
-      <p className="roll-label-number text-2xl font-black tracking-wide text-gray-900">
+      <p className="roll-label-number text-2xl font-bold tracking-wide text-app-ink">
         {roll.roll_number}
       </p>
-      <p className="roll-label-length mt-1.5 text-lg font-bold text-gray-800">
+      <p className="roll-label-length mt-1.5 text-lg font-bold text-app-ink">
         {formatMeters(roll.original_meters)} m
       </p>
-      <p className="roll-label-caption text-[11px] font-medium uppercase tracking-widest text-gray-400">
+      <p className="roll-label-caption text-[11px] font-medium uppercase tracking-widest text-app-subtle">
         on the roll
       </p>
     </div>
@@ -365,23 +361,23 @@ export function RollLabelsDialog({
 
   return (
     <div
-      className="roll-label-overlay fixed inset-0 z-[60] flex flex-col items-center justify-start overflow-y-auto overscroll-contain bg-black/40 backdrop-blur-sm px-4 py-6"
+      className="roll-label-overlay fixed inset-0 z-[60] flex flex-col items-center justify-start overflow-y-auto overscroll-contain bg-brand-navy/40 backdrop-blur-sm px-4 py-6"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="roll-label-dialog mb-auto max-h-[calc(100vh-2rem)] max-h-[calc(100dvh-2rem)] w-full max-w-sm shrink-0 touch-pan-y overflow-y-auto overscroll-contain rounded-3xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between px-5 pt-5 pb-3 print:hidden">
-          <h2 className="text-sm font-black text-gray-900">
+      <div className="roll-label-dialog mb-auto max-h-[calc(100vh-2rem)] max-h-[calc(100dvh-2rem)] w-full max-w-sm shrink-0 touch-pan-y overflow-y-auto overscroll-contain rounded-card border border-app-line bg-app-card shadow-float">
+        <div className="flex items-center justify-between px-5 pt-4 pb-3 print:hidden">
+          <h2 className="text-sm font-bold text-app-ink">
             {rolls.length} roll label{rolls.length === 1 ? "" : "s"}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 transition-colors"
+            className="app-focus flex size-11 items-center justify-center rounded-control text-app-muted transition-colors hover:bg-app-soft hover:text-app-ink"
             aria-label="Close roll labels"
           >
-            <X size={18} />
+            <X className="size-5" aria-hidden="true" />
           </button>
         </div>
 
@@ -397,16 +393,11 @@ export function RollLabelsDialog({
           ))}
         </div>
 
-        <div className="sticky bottom-0 flex gap-2 border-t border-gray-100 bg-white px-5 py-3 print:hidden">
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-11 flex-1 rounded-2xl border-2 border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition-all active:scale-95"
-          >
+        <div className="sticky bottom-0 flex gap-2 border-t border-app-line bg-app-card px-5 py-3 print:hidden">
+          <Button variant="secondary" onClick={onClose} className="flex-1">
             Close
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
             onClick={() =>
               openRollLabelPrintWindow(
                 rolls.map((roll) =>
@@ -421,11 +412,11 @@ export function RollLabelsDialog({
               )
             }
             disabled={!ready}
-            className="h-11 flex-1 rounded-2xl bg-primary text-white text-sm font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-primary/20 disabled:opacity-50 transition-all active:scale-95"
+            className="flex-1"
           >
-            <Printer size={16} />
+            <Printer className="size-4" aria-hidden="true" />
             Print {rolls.length} label{rolls.length === 1 ? "" : "s"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

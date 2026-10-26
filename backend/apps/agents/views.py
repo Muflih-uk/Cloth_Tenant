@@ -11,9 +11,11 @@ from django.db.models import Count, Prefetch
 from apps.orders.stock import variants_with_committed_demand
 
 from apps.accounts.permissions import (
+    CanViewAgents,
     IsAdmin,
     IsAdminOrSelfAgent,
     check_admin_pin,
+    get_subadmin_flags,
 )
 from apps.items.models import FabricVariant
 from apps.notification.utils import notify_user_safely
@@ -50,20 +52,29 @@ def _assigned_fabrics(agent, request):
 
 
 def _may_manage(request, agent):
-    """Admins may see any agent's catalogue; agents only their own."""
+    """Admins and agents-view sub-admins see any catalogue; agents their own."""
     if request.user.role == "ADMIN":
         return True
+    if request.user.role == "SUBADMIN":
+        return get_subadmin_flags(request.user)["agents_view"]
     return agent.user_id == request.user.id
 
 
 class AgentViewSet(ModelViewSet):
     serializer_class = AgentSerializer
-    permission_classes = [IsAdminOrSelfAgent]
+    permission_classes = [CanViewAgents]
+
+    def get_permissions(self):
+        if self.action in ("create", "destroy"):
+            return [IsAdmin()]
+        if self.action in ("update", "partial_update"):
+            return [IsAdminOrSelfAgent()]
+        return [CanViewAgents()]
 
     def get_queryset(self):
         user = self.request.user
 
-        if user.role == "ADMIN":
+        if user.role in ("ADMIN", "SUBADMIN"):
             return (
                 Agent.objects.filter(is_active=True)
                 .select_related("user")
@@ -134,8 +145,12 @@ class AgentViewSet(ModelViewSet):
 
 
 class AgentDetail(APIView):
+    permission_classes = [CanViewAgents]
+
     def get(self, request, user_id):
         agent = get_object_or_404(Agent, user_id=user_id)
+        if not _may_manage(request, agent):
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
         serializer = AgentSerializer(agent, context={"request": request})
         return Response(serializer.data)
 
@@ -149,7 +164,7 @@ class AgentItemsView(APIView):
 
     def get_permissions(self):
         if self.request.method == "GET":
-            return [IsAdminOrSelfAgent()]
+            return [CanViewAgents()]
         return [IsAdmin()]
 
     def get(self, request, agent_id):

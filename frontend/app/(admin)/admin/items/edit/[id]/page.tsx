@@ -7,7 +7,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ImagePreview } from "@/components/pages/ImagePreview";
-import StockFlowButton from "@/components/ui/custom/stockFlowButton";
+import Button from "@/components/ui/app/Button";
 import { fabricApi } from "@/lib/api/item";
 import { updateFabric } from "@/lib/updateItem";
 import { nextColorNumber } from "@/lib/color-number";
@@ -43,11 +43,13 @@ const ALLOWED_IMAGE_EXT = [
 ];
 
 export default function FabricEditPage() {
-  const { isSuperuser } = useAuth();
+  const { role, permissions } = useAuth();
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const fabricId = Number(id);
   const nextTempId = useRef(-1);
+  const canEdit = role === "ADMIN" || permissions.items_edit;
+  const canDelete = role === "ADMIN" || permissions.items_delete;
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -74,6 +76,10 @@ export default function FabricEditPage() {
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // ── Fetch ─────────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!canEdit) router.replace("/admin/items");
+  }, [canEdit, router]);
 
   useEffect(() => {
     if (!fabricId) return;
@@ -241,11 +247,6 @@ export default function FabricEditPage() {
   };
 
   const handleDelete = () => {
-    if (isSuperuser) {
-      if (!confirm("Delete this fabric? This cannot be undone.")) return;
-      handleDeleteConfirm("");
-      return;
-    }
     setPinDialogOpen(true);
   };
 
@@ -260,6 +261,7 @@ export default function FabricEditPage() {
     variants.some((v) => v.displayOrder.trim() !== "" || v.newImage);
 
   if (loading) return <PageLoading />;
+  if (!canEdit) return null;
 
   const totalMetres = variants.reduce(
     (sum, v) =>
@@ -271,7 +273,7 @@ export default function FabricEditPage() {
   const heroImage = variants[0]?.imagePreview ?? variants[0]?.imageUrl;
 
   return (
-    <div className="flex min-h-screen w-full flex-col bg-white px-0 py-3 sm:px-4 sm:py-8">
+    <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col bg-app-bg px-4 py-4 sm:px-6 sm:py-8">
       <PinDeleteDialog
         open={pinDialogOpen}
         onClose={() => setPinDialogOpen(false)}
@@ -281,13 +283,13 @@ export default function FabricEditPage() {
       />
 
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 pb-6 sm:px-4 sm:pb-8">
-          <div className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-4 shadow-xl sm:p-6">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-brand-navy/35 px-3 pb-6 backdrop-blur-sm sm:items-center sm:px-4 sm:pb-8">
+          <div className="w-full max-w-sm space-y-4 rounded-card border border-app-line bg-app-card p-4 shadow-float sm:p-6">
             <div className="space-y-1">
-              <h3 className="text-base font-black">
+              <h3 className="text-base font-bold text-app-ink">
                 Remove {deleteConfirm.label}?
               </h3>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm leading-relaxed text-app-muted">
                 The colour and its {formatMeters(
                   variants.find((v) => v.localId === deleteConfirm.localId)
                     ?.stockMeters,
@@ -296,23 +298,23 @@ export default function FabricEditPage() {
               </p>
             </div>
             <div className="flex gap-3">
-              <button
-                type="button"
+              <Button
+                variant="secondary"
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 h-11 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                className="flex-1"
               >
                 Cancel
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="destructive"
                 onClick={() => {
                   deleteVariant(deleteConfirm.localId);
                   setDeleteConfirm(null);
                 }}
-                className="flex-1 h-11 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors"
+                className="flex-1"
               >
                 Remove
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -323,41 +325,45 @@ export default function FabricEditPage() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="-ml-2 shrink-0 rounded-full p-2 hover:bg-gray-50"
+          className="app-focus -ml-1 flex size-11 shrink-0 items-center justify-center rounded-full bg-app-soft text-app-muted transition-colors hover:bg-brand-navy hover:text-white"
           aria-label="Back"
         >
-          <ArrowLeft className="h-[22px] w-[22px] sm:h-6 sm:w-6" />
+          <ArrowLeft className="size-5" aria-hidden="true" />
         </button>
         <div className="min-w-0 flex-1 text-center">
-          <h1 className="text-lg font-black sm:text-xl">Edit Fabric</h1>
-          <p className="truncate text-[10px] uppercase tracking-widest text-gray-400">
+          <h1 className="text-lg font-bold text-app-ink sm:text-xl">Edit Fabric</h1>
+          <p className="truncate text-[10px] uppercase tracking-widest text-app-subtle">
             ID #{id}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleDelete}
-          disabled={deleting}
-          className="shrink-0 rounded-xl p-2 text-red-400 transition-colors hover:bg-red-50 disabled:opacity-50"
-          aria-label="Delete fabric"
-        >
-          <Trash2 size={20} />
-        </button>
+        {canDelete ? (
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleting}
+            className="app-focus flex size-11 shrink-0 items-center justify-center rounded-full bg-app-soft text-brand-red transition-colors hover:bg-brand-red/10 disabled:opacity-50"
+            aria-label="Delete fabric"
+          >
+            <Trash2 className="size-5" aria-hidden="true" />
+          </button>
+        ) : (
+          <div className="size-11 shrink-0" aria-hidden="true" />
+        )}
       </div>
 
       {/* Hero */}
       <div className="mb-6 flex flex-col items-center sm:mb-8">
-        <div className="relative mb-3 flex h-16 w-16 items-center justify-center overflow-hidden rounded-3xl bg-primary/10 sm:h-20 sm:w-20">
+        <div className="relative mb-3 flex size-16 items-center justify-center overflow-hidden rounded-card border border-app-line bg-brand-navy/10 sm:size-20">
           {heroImage ? (
             <ImagePreview src={heroImage} alt={common.name} />
           ) : (
-            <Package className="h-8 w-8 text-primary sm:h-9 sm:w-9" />
+            <Package className="size-8 text-brand-navy sm:size-9" aria-hidden="true" />
           )}
         </div>
-        <h2 className="max-w-full truncate px-2 text-center text-lg font-black sm:text-xl">
+        <h2 className="max-w-full truncate px-2 text-center text-lg font-bold text-app-ink sm:text-xl">
           {common.name || "—"}
         </h2>
-        <p className="px-2 text-center text-xs font-medium text-gray-400 sm:text-sm">
+        <p className="px-2 text-center text-xs font-medium text-app-muted sm:text-sm">
           {formatMeters(totalMetres)} m on hand across {variants.length} colour
           {variants.length !== 1 ? "s" : ""}
         </p>
@@ -365,8 +371,8 @@ export default function FabricEditPage() {
 
       <div className="space-y-3 sm:space-y-4">
         {/* ── Fabric details ── */}
-        <div className="space-y-4 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-4 sm:px-5 sm:py-5">
-          <p className="text-[10px] text-gray-400 uppercase tracking-widest">
+        <div className="space-y-4 rounded-card border border-app-line bg-app-card px-4 py-4 sm:px-5 sm:py-5">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-app-subtle">
             Fabric Details
           </p>
 
@@ -423,7 +429,7 @@ export default function FabricEditPage() {
               }
             />
             {common.price_per_meter.trim() !== "" && rate < 0 && (
-              <p className="mt-1.5 text-xs text-red-600">
+              <p className="mt-1.5 text-xs font-medium text-brand-red">
                 Enter a price of zero or more.
               </p>
             )}
@@ -433,17 +439,17 @@ export default function FabricEditPage() {
         {/* ── Colours ── */}
         <div>
           <div className="mb-3 flex items-center justify-between gap-2 px-1">
-            <h2 className="min-w-0 text-sm font-bold">
+            <h2 className="min-w-0 text-sm font-bold text-app-ink">
               Colours &amp; Fabric Inventory
             </h2>
-            <span className="shrink-0 text-[10px] uppercase tracking-widest text-gray-400">
+            <span className="shrink-0 text-[10px] uppercase tracking-widest text-app-subtle">
               {variants.length} colour{variants.length !== 1 ? "s" : ""}
             </span>
           </div>
 
           {variants.length === 0 && (
-            <div className="flex items-center gap-2 text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-xs">
-              <AlertCircle size={14} className="shrink-0" />
+            <div className="flex items-center gap-2 rounded-control border border-status-pending/20 bg-status-pending/10 px-4 py-3 text-xs font-medium text-[color:var(--status-pending-text)]">
+              <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />
               At least one colour is required.
             </div>
           )}
@@ -512,13 +518,13 @@ export default function FabricEditPage() {
           <button
             type="button"
             onClick={addVariant}
-            className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 py-3 text-sm text-gray-400 transition-colors hover:border-primary hover:text-primary"
+            className="app-focus mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-app-line text-sm font-semibold text-app-muted transition-colors hover:border-brand-navy hover:bg-brand-navy/5 hover:text-brand-navy"
           >
-            <Plus size={16} />
+            <Plus className="size-4" aria-hidden="true" />
             Add Colour
           </button>
 
-          <p className="mt-3 text-[11px] text-gray-400 leading-relaxed">
+          <p className="mt-3 text-[11px] leading-relaxed text-app-muted">
             Use Adjust stock to change order availability. Receive Rolls adds
             physical cloth without changing the order-stock base; packing cuts
             from the oldest roll first.
@@ -537,13 +543,16 @@ export default function FabricEditPage() {
       </div>
 
       <div className="mb-10 mt-6 sm:mb-24 sm:mt-8">
-        <StockFlowButton
-          variant="filled"
-          text={saving ? "Saving…" : "Save Changes"}
-          disabled={!isValid || saving}
+        <Button
+          size="lg"
+          fullWidth
+          loading={saving}
+          loadingText="Saving…"
+          disabled={!isValid}
           onClick={handleSave}
-          className="w-full h-14 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/20 flex items-center justify-center"
-        />
+        >
+          Save Changes
+        </Button>
       </div>
     </div>
   );

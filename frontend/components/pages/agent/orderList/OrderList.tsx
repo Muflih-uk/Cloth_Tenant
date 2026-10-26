@@ -61,6 +61,7 @@ export default function AgentOrderList({
   }, [search]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsFetching(true);
     const fetchData = async () => {
       try {
@@ -185,7 +186,7 @@ export default function AgentOrderList({
   if (loadError) return null;
 
   return (
-    <div className="min-h-screen min-w-full">
+    <div className="mx-auto min-h-screen max-w-4xl bg-app-bg px-4 pb-24">
       <OrderListHeader
         title="Remaining Orders"
         count={order_len}
@@ -194,16 +195,17 @@ export default function AgentOrderList({
         pageIndicator={
           currentPage > 1 ? (
             <div className="flex items-center gap-1 xs:gap-2">
-              <p className="text-gray-400 font-medium text-xs whitespace-nowrap">
+              <p className="whitespace-nowrap text-xs font-medium text-app-muted">
                 Viewing page {currentPage}
               </p>
               <button
+                type="button"
                 onClick={() => {
                   setCurrentPage(1);
                   sessionStorage.removeItem("agent_scrollY");
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
-                className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-colors whitespace-nowrap"
+                className="app-focus h-8 whitespace-nowrap rounded-full bg-brand-navy/10 px-2.5 text-[10px] font-semibold text-brand-navy transition-colors hover:bg-brand-navy/15"
                 title="Reset to page 1"
               >
                 Reset to page 1

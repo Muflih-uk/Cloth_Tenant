@@ -1,7 +1,8 @@
 "use client";
 
 import { ArrowLeft, Plus } from "lucide-react";
-import StockFlowButton from "@/components/ui/custom/stockFlowButton";
+import Button from "@/components/ui/app/Button";
+import EmptyState from "@/components/ui/EmptyState";
 import ColorCard from "./colorCard";
 import CommonDetailsBadge from "./commonDetailsBadge";
 import type { ColorVariant, FabricDetails } from "@/types/item";
@@ -30,21 +31,23 @@ export default function ColorListScreen({
   onBack,
 }: Props) {
   return (
-    <div className="flex flex-col min-h-screen bg-white px-0 py-4 sm:px-4 sm:py-8">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
+    <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col bg-app-bg px-4 py-4 sm:px-6 sm:py-8">
+      <div className="mb-4 flex items-center gap-3">
         <button
           type="button"
           onClick={onBack}
-          className="p-2 -ml-2 rounded-full hover:bg-gray-50"
+          aria-label="Go back"
+          className="app-focus flex size-11 shrink-0 items-center justify-center rounded-full bg-app-soft text-app-muted transition-colors hover:bg-brand-navy hover:text-white"
         >
-          <ArrowLeft size={24} />
+          <ArrowLeft className="size-5" aria-hidden="true" />
         </button>
-        <div>
-          <p className="text-[10px] text-gray-400 uppercase tracking-widest">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-app-subtle">
             Step 2 of 2
           </p>
-          <h1 className="text-xl font-black leading-tight">Colors</h1>
+          <h1 className="truncate text-xl font-bold leading-tight text-app-ink">
+            Colors
+          </h1>
         </div>
       </div>
 
@@ -52,17 +55,13 @@ export default function ColorListScreen({
       <CommonDetailsBadge common={common} onEdit={onEditCommon} />
 
       {/* Color list */}
-      <div className="mt-6 space-y-3 flex-1">
+      <div className="mt-4 flex-1 space-y-3">
         {variants.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
-            <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
-              <Plus size={22} className="text-gray-300" />
-            </div>
-            <p className="text-sm text-gray-400">No colors added yet</p>
-            <p className="text-xs text-gray-300">
-              Tap the button below to add your first color variant
-            </p>
-          </div>
+          <EmptyState
+            icon={<Plus className="size-5" aria-hidden="true" />}
+            title="No colors added yet"
+            description="Add your first colour variant to continue."
+          />
         )}
 
         {variants.map((v, i) => (
@@ -76,26 +75,27 @@ export default function ColorListScreen({
           />
         ))}
 
-        {/* Add color button */}
         <button
           type="button"
           onClick={onAddColor}
-          className="w-full flex items-center justify-center gap-2 h-12 rounded-2xl border-2 border-dashed border-gray-200 text-sm font-semibold text-gray-400 hover:border-primary hover:text-primary hover:bg-primary/5 transition-all active:scale-[0.98]"
+          className="app-focus flex h-12 w-full items-center justify-center gap-2 rounded-control border-2 border-dashed border-app-line text-sm font-semibold text-app-muted transition-colors hover:border-brand-navy hover:bg-brand-navy/5 hover:text-brand-navy"
         >
-          <Plus size={16} />
+          <Plus className="size-4" aria-hidden="true" />
           Add New Color
         </button>
       </div>
 
-      {/* Submit */}
-      <div className="mt-auto pt-8 pb-6">
-        <StockFlowButton
-          variant="filled"
-          text={loading ? "Creating…" : "Create Fabric"}
-          disabled={variants.length === 0 || loading}
+      <div className="mt-auto pt-6 pb-2">
+        <Button
+          size="lg"
+          fullWidth
+          loading={loading}
+          loadingText="Creating…"
+          disabled={variants.length === 0}
           onClick={onSubmit}
-          className="w-full h-14 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/20 flex items-center justify-center"
-        />
+        >
+          Create Fabric
+        </Button>
       </div>
     </div>
   );

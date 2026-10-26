@@ -1,10 +1,10 @@
 "use client";
-import { OrderAllResponse } from "@/types/order";
-import { formatMeters, toMeters } from "@/types/item";
-import StatusBadge from "@/components/ui/custom/StatusBadge";
-import { User } from "lucide-react";
-import { getColorFromId } from "@/util/getColorFromId";
+
 import { markOrderAsViewed } from "@/lib/viewedOrders";
+import { formatMeters, toMeters } from "@/types/item";
+import { OrderAllResponse } from "@/types/order";
+
+import StatusBadge from "@/components/ui/custom/StatusBadge";
 import StockflowAvatar from "@/components/ui/custom/stockflowAvatar";
 
 interface OrderCardProps {
@@ -21,7 +21,7 @@ const formatDate = (dateStr: string) => {
 };
 
 export default function OrderCard({ order, onClick }: OrderCardProps) {
-  const viewed = true; // Temporary removal
+  const viewed = true;
 
   const handleClick = () => {
     markOrderAsViewed(order.id);
@@ -29,73 +29,75 @@ export default function OrderCard({ order, onClick }: OrderCardProps) {
   };
 
   const totalOrderedMeters = toMeters(order.totals?.total_ordered_meters);
-  const totalOutstandingMeters = toMeters(order.totals?.total_outstanding_meters);
-  // An order can be stranded with no lines at all. It still has to be listed --
-  // hiding it makes the order count and the rows disagree -- but flag it so it
-  // reads as broken rather than as a normal zero-metre order.
+  const totalOutstandingMeters = toMeters(
+    order.totals?.total_outstanding_meters,
+  );
   const hasItems = (order.items?.length ?? 0) > 0;
 
   return (
-    <div
+    <button
+      type="button"
       onClick={handleClick}
-      className="bg-white border border-gray-100 p-3 sm:p-4 rounded-2xl hover:border-primary/30 hover:shadow-md transition-all cursor-pointer active:scale-[0.99] relative"
+      className="app-focus app-card relative w-full overflow-hidden p-4 text-left transition-all hover:-translate-y-0.5 hover:border-brand-navy/20 active:translate-y-0"
     >
       {!viewed && (
-        <div className="absolute top-3 right-3 w-2.5 h-2.5 bg-primary rounded-full" />
+        <span className="absolute right-3 top-3 size-2.5 rounded-full bg-brand-green">
+          <span className="sr-only">Unread order</span>
+        </span>
       )}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <StockflowAvatar user={order.customer_details} />
-          <div className="min-w-0">
-            <h6
-              className={`font-bold text-xs ${!viewed ? "text-gray-900" : "text-gray-700"}`}
-            >
-              {order.customer_details?.name || "Unknown Customer"}
-            </h6>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {order.agent_details?.username ?? "Unassigned"}
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {formatDate(order.created_at)}
-            </p>
+
+      <div className="flex items-start gap-3">
+        <StockflowAvatar user={order.customer_details} />
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="truncate text-sm font-bold text-app-ink">
+                {order.customer_details?.name || "Unknown Customer"}
+              </h3>
+              <p className="mt-0.5 truncate text-xs font-medium text-app-muted">
+                {order.agent_details?.username ?? "Unassigned"}
+              </p>
+            </div>
+
+            <div className="flex shrink-0 flex-col items-end gap-1">
+              <StatusBadge status={order.status} />
+              <span className="text-[11px] font-semibold tabular-nums text-app-subtle">
+                {formatDate(order.created_at)}
+              </span>
+            </div>
           </div>
         </div>
-
-        <StatusBadge status={order.status} />
       </div>
 
-      <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-50">
-        <div className="flex items-center gap-1.5">
+      <div className="mt-3 flex items-end justify-between gap-3 rounded-control border border-app-line/60 bg-app-card/80 p-3">
+        <div className="min-w-0">
           {hasItems ? (
-            <>
-              <span className="text-base font-black text-gray-900">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span className="text-lg font-extrabold tracking-tight text-app-ink">
                 {formatMeters(totalOrderedMeters)}
+                <span className="ml-0.5 text-xs font-semibold text-app-muted">
+                  m
+                </span>
               </span>
-              <span className="text-xs text-gray-400">m</span>
-            </>
+              {totalOutstandingMeters > 0 && (
+                <span className="text-xs font-semibold text-brand-red">
+                  {formatMeters(totalOutstandingMeters)} m to pack
+                </span>
+              )}
+            </div>
           ) : (
-            <span className="text-xs font-semibold text-red-500">
+            <span className="text-xs font-semibold text-brand-red">
               No items on this order
             </span>
           )}
-          {hasItems && totalOutstandingMeters > 0 && (
-            <>
-              <span className="text-gray-300 mx-1">•</span>
-              <span className="text-sm font-bold text-amber-600">
-                {formatMeters(totalOutstandingMeters)}
-              </span>
-              <span className="text-xs text-amber-600">to pack</span>
-            </>
-          )}
         </div>
 
-        <div className="text-right">
-          <span className="text-sm font-black text-primary">
-            ₹
-            {Number(order.totals?.effective_total || 0).toLocaleString("en-IN")}
-          </span>
-        </div>
+        <p className="shrink-0 text-sm font-extrabold tracking-tight text-brand-navy">
+          ₹
+          {Number(order.totals?.effective_total || 0).toLocaleString("en-IN")}
+        </p>
       </div>
-    </div>
+    </button>
   );
 }

@@ -1,9 +1,13 @@
 "use client";
+
+import { Trash2 } from "lucide-react";
 import { useState } from "react";
-import { OrderItem as OrderItemType } from "@/types/order";
+
 import OrderItem from "@/components/pages/admin/order-item/OrderItem";
-import { toastSuccess, toastError } from "@/lib/toast";
+import { Modal, ModalButton } from "@/components/ui/custom/Modals";
 import { orderApi } from "@/lib/api/order";
+import { toastSuccess, toastError } from "@/lib/toast";
+import { OrderItem as OrderItemType } from "@/types/order";
 
 interface OrderDetailItemsProps {
   items?: OrderItemType[];
@@ -40,32 +44,25 @@ export default function OrderDetailItems({
     }
   };
 
-  // A partly dispatched order is still live work: bundles have gone out, but the
-// order can still owe cloth and can still have sealed bundles waiting in the
-// warehouse. Only a fully dispatched order is out of reach.
-  const isEditable =
-    status === "DRAFT" ||
-    status === "PENDING" ||
-    status === "PACKED" ||
-    status === "PARTIALLY_DISPATCHED";
-
   return (
     <>
-      <div className="flex justify-between items-end mb-4 border-b border-gray-100 pb-2">
+      <div className="mb-4 flex items-end justify-between border-b border-app-line/70 pb-2">
         <div>
-          <h2 className="text-lg font-extrabold text-gray-900 leading-tight">
+          <h2 className="text-lg font-extrabold leading-tight text-app-ink">
             Items
           </h2>
-          <p className="text-xs text-gray-400 font-medium">Order items below</p>
+          <p className="text-xs font-medium text-app-muted">
+            Order items below
+          </p>
         </div>
         {status && status !== "DISPATCHED" && status !== "DRAFT" && (
-          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+          <span className="rounded-full bg-app-soft px-2.5 py-1 text-xs font-semibold text-app-muted">
             Packing Status
           </span>
         )}
       </div>
 
-      <div className="bg-white rounded-2xl overflow-hidden">
+      <div className="app-card overflow-hidden">
         <OrderItem
           items={items}
           isDeletable={false}
@@ -75,32 +72,30 @@ export default function OrderDetailItems({
       </div>
 
       {showDeleteDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-4 sm:p-6 max-w-sm w-full shadow-xl">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">
-              Delete Item?
-            </h3>
-            <p className="text-sm text-gray-500 mb-6">
-              {status !== "DRAFT"
-                ? "This will return the stock back to the warehouse. This action cannot be undone."
-                : "Are you sure you want to remove this item from the order?"}
-            </p>
-            <div className="flex gap-3">
-              <button
+        <Modal
+          icon={<Trash2 size={18} className="text-brand-red" />}
+          iconBg="bg-brand-red/10"
+          title="Delete Item?"
+          description={
+            status !== "DRAFT"
+              ? "This will return the stock back to the warehouse. This action cannot be undone."
+              : "Are you sure you want to remove this item from the order?"
+          }
+          onClose={() => setShowDeleteDialog(false)}
+          actions={
+            <>
+              <ModalButton
+                variant="ghost"
                 onClick={() => setShowDeleteDialog(false)}
-                className="flex-1 py-2.5 px-3 sm:py-3 sm:px-4 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
               >
                 Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                className="flex-1 py-2.5 px-3 sm:py-3 sm:px-4 rounded-xl bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
-              >
+              </ModalButton>
+              <ModalButton variant="destructive" onClick={confirmDelete}>
                 Delete
-              </button>
-            </div>
-          </div>
-        </div>
+              </ModalButton>
+            </>
+          }
+        />
       )}
     </>
   );

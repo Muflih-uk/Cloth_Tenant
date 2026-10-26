@@ -39,15 +39,27 @@ const RULES: Array<{ match: RegExp; parent: string }> = [
     parent: "/admin/profile/settings",
   },
   {
+    match: /^\/admin\/profile\/settings\/brands\/(new|[^/]+)$/,
+    parent: "/admin/profile/settings/brands",
+  },
+  {
+    match: /^\/admin\/profile\/settings\/brands$/,
+    parent: "/admin/profile/settings",
+  },
+  {
+    match: /^\/admin\/profile\/settings\/(admins|subadmins)$/,
+    parent: "/admin/profile/settings",
+  },
+  {
     match: /^\/admin\/profile\/settings\/pin$/,
     parent: "/admin/profile/settings",
   },
   { match: /^\/admin\/profile\/settings$/, parent: "/admin/profile" },
   { match: /^\/admin\/profile$/, parent: "/admin" },
 
-  // Superuser settings and its forms.
+  // Admin settings and their forms, reached through Profile › Settings.
   { match: /^\/admin\/settings\/(brands|transports)(\/.*)?$/, parent: "/admin/settings" },
-  { match: /^\/admin\/settings$/, parent: "/admin" },
+  { match: /^\/admin\/settings$/, parent: "/admin/profile/settings" },
 
   // Tools that open on their own: summary sits under the order list, bulk
   // import is launched from Settings now.

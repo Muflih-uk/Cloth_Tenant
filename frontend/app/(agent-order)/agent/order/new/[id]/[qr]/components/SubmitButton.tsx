@@ -1,7 +1,8 @@
 "use client";
 
 import { PackagePlus } from "lucide-react";
-import StockFlowButton from "@/components/ui/custom/stockFlowButton";
+
+import Button from "@/components/ui/app/Button";
 
 interface SubmitButtonProps {
   isEditMode: boolean;
@@ -17,15 +18,16 @@ export default function SubmitButton({
   onClick,
 }: SubmitButtonProps) {
   return (
-    <div className="px-0 sm:px-4">
-      <StockFlowButton
-        text={isEditMode ? "Update Quantity" : "Add to Order"}
-        variant="filled"
-        icon={<PackagePlus />}
-        onClick={onClick}
-        disabled={loading || disabled}
-        className="w-full py-4 active:scale-95 transition-all"
-      />
-    </div>
+    <Button
+      size="lg"
+      fullWidth
+      loading={loading}
+      disabled={loading || disabled}
+      onClick={onClick}
+      className="mb-6"
+    >
+      <PackagePlus className="size-4" aria-hidden="true" />
+      {isEditMode ? "Update Quantity" : "Add to Order"}
+    </Button>
   );
 }

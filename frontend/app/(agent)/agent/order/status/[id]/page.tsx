@@ -6,9 +6,11 @@ import { OrderResponse } from "@/types/order";
 import OrderDetailHeader from "@/components/pages/agent/order/OrderDetailHeader";
 import OrderDetailItems from "@/components/pages/agent/order/OrderDetailItems";
 import OrderLogs from "@/components/pages/order/OrderLogs";
-import StockFlowButton from "@/components/ui/custom/stockFlowButton";
+import Button from "@/components/ui/app/Button";
+import { PageLoading } from "@/components/ui/Loading";
+import { Modal, ModalButton } from "@/components/ui/custom/Modals";
 import { toastSuccess, toastError } from "@/lib/toast";
-import { Trash2, Package, Pencil } from "lucide-react";
+import { Package, Pencil, Trash2 } from "lucide-react";
 import { formatMeters, toMeters } from "@/types/item";
 import { useBackButton } from "@/util/useBackButton";
 import OrderSummary from "@/components/pages/order/OrderSummary";
@@ -53,6 +55,7 @@ export default function Page() {
   }, [id]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
   }, [fetchData]);
 
@@ -92,7 +95,7 @@ export default function Page() {
     }
   };
 
-  if (loading) return <h2 className="flex justify-center mt-10">Loading...</h2>;
+  if (loading) return <PageLoading text="Loading order…" />;
 
   const isDeletable = data?.status === "PENDING" || data?.status === "EDITING";
   // Agents want to see packing progress as soon as any cloth has moved, not
@@ -109,14 +112,14 @@ export default function Page() {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-6">
+    <div className="min-h-screen bg-app-bg pb-24">
       <OrderDetailHeader
         orderId={id}
         backHref="/agent"
         onViewInvoice={handleViewInvoice}
       />
 
-      <div className="px-0 pt-3 max-w-4xl mx-auto sm:px-4 sm:pt-4">
+      <main className="mx-auto max-w-4xl space-y-4 px-4 pt-4">
         {data?.customer_details && data?.agent_details && (
           <OrderSummary
             customer={data?.customer_details}
@@ -142,12 +145,16 @@ export default function Page() {
         )}
 
         {showPackingStatus && (
-          <div className="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-100">
-            <div className="flex items-center gap-2 mb-3">
-              <Package size={16} className="text-gray-500" />
-              <h3 className="text-sm font-bold text-gray-700">
+          <section className="app-card p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <Package
+                size={16}
+                className="text-app-muted"
+                aria-hidden="true"
+              />
+              <h2 className="text-sm font-bold text-app-ink">
                 Packing Status
-              </h3>
+              </h2>
             </div>
             <div className="space-y-2">
               {data?.items.map((item) => {
@@ -157,18 +164,22 @@ export default function Page() {
                 return (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between text-xs gap-2"
+                    className="flex items-center justify-between gap-2 text-xs"
                   >
-                    <span className="text-black truncate flex-1">
+                    <span className="min-w-0 flex-1 truncate font-medium text-app-ink">
                       {item.fabric_name}
-                      <span className="text-gray-400">
+                      <span className="font-normal text-app-muted">
                         {item.variant_display_order
                           ? ` · ${item.variant_display_order}`
                           : ""}
                       </span>
                     </span>
                     <span
-                      className={`font-medium shrink-0 ${isFullyPacked ? "text-green-600" : "text-amber-600"}`}
+                      className={`shrink-0 font-semibold ${
+                        isFullyPacked
+                          ? "text-[color:var(--status-dispatched-text)]"
+                          : "text-[color:var(--status-pending-text)]"
+                      }`}
                     >
                       {formatMeters(allocated)} / {formatMeters(ordered)} m
                     </span>
@@ -176,70 +187,66 @@ export default function Page() {
                 );
               })}
             </div>
-          </div>
+          </section>
         )}
 
-        <OrderDetailItems
-          items={data?.items}
-          orderId={Number(id)}
-          status={data?.status}
-          onRefresh={fetchData}
-        />
+        <section>
+          <OrderDetailItems
+            items={data?.items}
+            orderId={Number(id)}
+            status={data?.status}
+            onRefresh={fetchData}
+          />
+        </section>
 
         {isDeletable && (
-          <div className="mt-6 pt-4 border-t border-gray-100 flex gap-3">
-            <StockFlowButton
-              text="Edit"
-              icon={<Pencil size={16} />}
+          <div className="flex gap-3 border-t border-app-line/70 pt-4">
+            <Button
+              variant="secondary"
               onClick={handleEditOrder}
-              variant="outline"
-              fullWidth
-              className="border-blue-200 text-blue-500 hover:bg-blue-500 hover:text-white transition duration-300"
               disabled={startingEdit}
-            />
-            {/*<StockFlowButton
-              text="Delete"
-              icon={<Trash2 size={16} />}
-              onClick={() => setShowDeleteDialog(true)}
-              variant="outline"
+              loading={startingEdit}
               fullWidth
-              className="border-red-200 text-red-500 hover:bg-red-500 hover:text-white transition duration-300"
-            />*/}
+            >
+              <Pencil size={16} aria-hidden="true" />
+              Edit
+            </Button>
           </div>
         )}
 
         <OrderLogs orderId={Number(id)} />
-      </div>
+      </main>
 
       {showDeleteDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-4 sm:p-6 max-w-sm w-full shadow-xl">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">
-              Delete Order?
-            </h3>
-            <p className="text-sm text-gray-500 mb-6">
-              {data?.status !== "DRAFT"
-                ? "This will return the stock back to the warehouse. This action cannot be undone."
-                : "Are you sure you want to delete this order?"}
-            </p>
-            <div className="flex gap-3">
-              <button
+        <Modal
+          icon={<Trash2 size={18} className="text-brand-red" />}
+          iconBg="bg-brand-red/10"
+          title="Delete Order?"
+          description={
+            data?.status !== "DRAFT"
+              ? "This will return the stock back to the warehouse. This action cannot be undone."
+              : "Are you sure you want to delete this order?"
+          }
+          onClose={() => setShowDeleteDialog(false)}
+          actions={
+            <>
+              <ModalButton
+                variant="ghost"
                 onClick={() => setShowDeleteDialog(false)}
-                className="flex-1 py-3 px-4 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
                 disabled={deleting}
               >
                 Cancel
-              </button>
-              <button
+              </ModalButton>
+              <ModalButton
+                variant="destructive"
                 onClick={handleDeleteOrder}
                 disabled={deleting}
-                className="flex-1 py-3 px-4 rounded-xl bg-red-500 text-white font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
               >
                 {deleting ? "Deleting..." : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
+              </ModalButton>
+            </>
+          }
+        />
       )}
     </div>
   );

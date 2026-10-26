@@ -13,7 +13,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import PasswordResetToken, PinResetCode
-from .permissions import IsAdmin, check_admin_pin
+from .permissions import IsAdmin, check_admin_pin, get_subadmin_flags
 from .serializers import (
     CreatePinSerializer,
     LoginRequestSerializer,
@@ -68,6 +68,7 @@ class LoginView(APIView):
                 "username": user.username,
                 "email": user.email,
                 "is_superuser": user.is_superuser,
+                **get_subadmin_flags(user),
             },
             status=status.HTTP_200_OK,
         )

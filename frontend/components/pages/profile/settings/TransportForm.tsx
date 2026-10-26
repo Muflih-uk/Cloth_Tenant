@@ -13,8 +13,6 @@ import type { Transport } from "@/types/transport";
 interface TransportFormProps {
   /** Omitted means "create a new one". */
   transport?: Transport;
-  /** A superuser is exempt from the PIN, so the field is not shown to them. */
-  isSuperuser: boolean;
 }
 
 /** Back to the list this form was opened from. */
@@ -23,14 +21,10 @@ const LIST_HREF = "/admin/profile/settings/transports";
 /**
  * The transport form behind both dedicated pages.
  *
- * Transport writes are an admin action, so a non-superuser has to name their PIN
- * here -- the same gate as every other shared record. A superuser is exempt and
- * never sees the field.
+ * Transport writes are an admin action, so the admin has to name their PIN
+ * here -- the same gate as every other shared record.
  */
-export default function TransportForm({
-  transport,
-  isSuperuser,
-}: TransportFormProps) {
+export default function TransportForm({ transport }: TransportFormProps) {
   const router = useRouter();
   const editing = transport !== undefined;
 
@@ -53,19 +47,18 @@ export default function TransportForm({
     const next: Record<string, string> = {};
     if (!name.trim()) next.name = "Transport name is required";
     else if (name.trim().length > 100) next.name = "Keep it under 100 characters";
-    if (!isSuperuser && pin.length !== 6) next.pin = "Enter your 6-digit PIN";
+    if (pin.length !== 6) next.pin = "Enter your 6-digit PIN";
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
     setBusy(true);
     try {
       const payload = { name: name.trim(), is_active: isActive };
-      const pinArg = isSuperuser ? undefined : pin;
       if (editing && transport) {
-        await transportApi.update(transport.id, payload, pinArg);
+        await transportApi.update(transport.id, payload, pin);
         toastSuccess("Transport updated");
       } else {
-        await transportApi.create(payload, pinArg);
+        await transportApi.create(payload, pin);
         toastSuccess("Transport added");
       }
       router.push(LIST_HREF);
@@ -125,8 +118,7 @@ export default function TransportForm({
             </p>
           </Field>
 
-          {!isSuperuser && (
-            <Field>
+          <Field>
               <div className="flex justify-between items-center mb-1.5">
                 <FieldLabel className="text-xs font-bold uppercase tracking-widest text-gray-400">
                   Admin PIN
@@ -151,8 +143,7 @@ export default function TransportForm({
                   errors.pin ? "border-red-200" : ""
                 }`}
               />
-            </Field>
-          )}
+          </Field>
         </FieldGroup>
       </div>
 

@@ -53,7 +53,6 @@ const OrderItem: React.FC<Props> = ({
   showPackingProgress = false,
   renderLineFooter,
 }) => {
-  const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [orderItems, setOrderItems] = useState(items);
   const [editingItem, setEditingItem] = useState<OrderItemType | null>(null);
@@ -63,20 +62,18 @@ const OrderItem: React.FC<Props> = ({
   const [showEditDialog, setShowEditDialog] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOrderItems(items);
   }, [items]);
 
   const onDelete = async (itemId: number) => {
     if (!orderId) return;
     try {
-      setDeleting(true);
       await orderApi.deleteItem(orderId, itemId);
       setOrderItems((prev) => prev?.filter((item) => item.id !== itemId));
       onDeleteItem?.(itemId);
     } catch (err) {
       toastError("Failed to remove fabric line", err);
-    } finally {
-      setDeleting(false);
     }
   };
 
@@ -142,7 +139,7 @@ const OrderItem: React.FC<Props> = ({
     }
   };
 
-  if (!items) return <PageLoading />;
+  if (!items) return <PageLoading text="Loading fabric lines…" />;
 
   const visibleItems = sortOrderItemsUnpackedFirst(
     orderItems?.filter((item) => (onlyFullyPacked ? isOrderItemFullyPacked(item) : true)) ??

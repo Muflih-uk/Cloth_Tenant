@@ -8,11 +8,16 @@ from django.utils import timezone
 from drf_spectacular.utils import OpenApiTypes, extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from apps.accounts.permissions import IsAdmin, check_admin_pin
+from apps.accounts.permissions import (
+    CanDeleteItems,
+    CanEditItems,
+    CanViewItems,
+    IsAdmin,
+    check_admin_pin,
+)
 from apps.agents.models import Agent, AgentItem
 from apps.orders.models import OrderItem, RollAllocation
 
@@ -187,9 +192,11 @@ class FabricViewSet(ModelViewSet):
     def get_permissions(self):
         if self.action == "fabrics_sync":
             return [IsAdmin()]
-        if self.request.method in ["POST", "PUT", "PATCH", "DELETE"]:
-            return [IsAdmin()]
-        return [IsAuthenticated()]
+        if self.request.method == "DELETE":
+            return [CanDeleteItems()]
+        if self.request.method in ("POST", "PUT", "PATCH"):
+            return [CanEditItems()]
+        return [CanViewItems()]
 
     def get_serializer_class(self):
         if self.action == "create":
@@ -534,9 +541,11 @@ class FabricRollViewSet(ModelViewSet):
         return qs
 
     def get_permissions(self):
-        if self.request.method in ["POST", "PUT", "PATCH", "DELETE"]:
-            return [IsAdmin()]
-        return [IsAuthenticated()]
+        if self.request.method == "DELETE":
+            return [CanDeleteItems()]
+        if self.request.method in ("POST", "PUT", "PATCH"):
+            return [CanEditItems()]
+        return [CanViewItems()]
 
     def destroy(self, request, *args, **kwargs):
         """Only a roll nobody has cut from, and that holds nothing, may go.
@@ -609,9 +618,13 @@ class FabricVariantViewSet(ModelViewSet):
         ).filter(fabric__is_deleted=False)
 
     def get_permissions(self):
-        if self.request.method in ["POST", "PUT", "PATCH", "DELETE"]:
-            return [IsAdmin()]
-        return [IsAuthenticated()]
+        if self.action == "destroy":
+            return [CanDeleteItems()]
+        if self.request.method in ("POST", "PUT", "PATCH"):
+            if self.action == "rolls_preview":
+                return [CanViewItems()]
+            return [CanEditItems()]
+        return [CanViewItems()]
 
     def destroy(self, request, *args, **kwargs):
         """Refuse to drop a colour that still has cloth on its rolls.

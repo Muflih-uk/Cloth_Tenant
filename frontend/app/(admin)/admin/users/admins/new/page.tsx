@@ -1,12 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { adminApi } from "@/lib/api/admin";
-import { toastSuccess, toastError } from "@/lib/toast";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import StockFlowButton from "@/components/ui/custom/stockFlowButton";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeft, Eye, EyeOff } from "lucide-react";
+
+import Button from "@/components/ui/app/Button";
+import Card from "@/components/ui/app/Card";
+import PageHeader from "@/components/ui/app/PageHeader";
+import FormField from "@/components/ui/custom/FormField";
+import { Input } from "@/components/ui/input";
+import { adminApi } from "@/lib/api/admin";
+import { toastError, toastSuccess } from "@/lib/toast";
 import { deriveUsername } from "@/lib/utils/deriveUsername";
 
 export default function NewAdminPage() {
@@ -28,13 +32,12 @@ export default function NewAdminPage() {
     adminApi
       .getAll()
       .then((admins) => {
-        setExistingUsernames(new Set(admins.map((a) => a.username)));
+        setExistingUsernames(new Set(admins.map((admin) => admin.username)));
       })
       .catch(() => {});
   }, []);
 
   const handleChange = (key: string, value: string) => {
-    // PIN: only allow digits, max 6
     if (key === "pin") {
       value = value.replace(/\D/g, "").slice(0, 6);
     }
@@ -93,175 +96,180 @@ export default function NewAdminPage() {
     }
   };
 
-  return (
-    <div className="w-full px-0 py-4 flex flex-col min-h-screen bg-white sm:px-4 sm:py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-          New Admin
-        </h1>
-        <p className="text-sm text-gray-400 font-medium">
-          Create a new system administrator
-        </p>
-      </div>
+  const derivedUsername = formData.displayName.trim()
+    ? deriveUsername(formData.displayName, existingUsernames)
+    : "";
 
-      <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-3 mb-4 sm:rounded-3xl sm:p-6 sm:mb-8">
-        <FieldGroup className="space-y-6 flex-1">
-          {/* Display Name */}
-          <Field>
-            <div className="flex justify-between items-center mb-1.5">
-              <FieldLabel className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                Display Name
-              </FieldLabel>
-              {errors.displayName && (
-                <span className="text-[10px] text-red-500 font-bold">
-                  {errors.displayName}
-                </span>
-              )}
-            </div>
+  return (
+    <div className="mx-auto min-h-screen w-full max-w-2xl px-2 pb-32 pt-2">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => router.back()}
+        aria-label="Go back"
+        className="-ml-2 mb-2"
+      >
+        <ArrowLeft className="size-5" aria-hidden="true" />
+      </Button>
+
+      <PageHeader
+        title="New admin"
+        subtitle="Create a new system administrator."
+        className="mb-4"
+      />
+
+      <Card className="mb-5">
+        <div className="space-y-5">
+          <FormField
+            label="Display name"
+            htmlFor="admin-display-name"
+            error={errors.displayName}
+            required
+            hint={
+              derivedUsername ? (
+                <>
+                  Username:{" "}
+                  <span className="font-mono font-semibold text-app-ink">
+                    {derivedUsername}
+                  </span>
+                </>
+              ) : undefined
+            }
+          >
             <Input
+              id="admin-display-name"
               placeholder="e.g. Jane Smith"
               value={formData.displayName}
-              onChange={(e) => handleChange("displayName", e.target.value)}
-              className={`bg-white border-gray-100 rounded-xl h-12 focus:ring-primary/10 ${errors.displayName ? "border-red-200 focus:border-red-300" : "focus:border-primary"}`}
+              onChange={(event) =>
+                handleChange("displayName", event.target.value)
+              }
+              aria-invalid={Boolean(errors.displayName)}
             />
-            {formData.displayName.trim() && (
-              <p className="mt-1.5 text-[11px] text-gray-400">
-                Username:{" "}
-                <span className="font-mono font-medium text-gray-600">
-                  {deriveUsername(formData.displayName, existingUsernames)}
-                </span>
-              </p>
-            )}
-          </Field>
+          </FormField>
 
-          {/* Email */}
-          <Field>
-            <div className="flex justify-between items-center mb-1.5">
-              <FieldLabel className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                Email Address
-              </FieldLabel>
-              {errors.email && (
-                <span className="text-[10px] text-red-500 font-bold">
-                  {errors.email}
-                </span>
-              )}
-            </div>
+          <FormField
+            label="Email address"
+            htmlFor="admin-email"
+            error={errors.email}
+            required
+          >
             <Input
+              id="admin-email"
               type="email"
+              inputMode="email"
               placeholder="admin@example.com"
               value={formData.email}
-              onChange={(e) => handleChange("email", e.target.value)}
-              className={`bg-white border-gray-100 rounded-xl h-12 focus:ring-primary/10 ${errors.email ? "border-red-200 focus:border-red-300" : "focus:border-primary"}`}
+              onChange={(event) => handleChange("email", event.target.value)}
+              aria-invalid={Boolean(errors.email)}
             />
-          </Field>
+          </FormField>
 
-          {/* Password */}
-          <Field>
-            <div className="flex justify-between items-center mb-1.5">
-              <FieldLabel className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                Secure Password
-              </FieldLabel>
-              {errors.password && (
-                <span className="text-[10px] text-red-500 font-bold">
-                  {errors.password}
-                </span>
-              )}
-            </div>
+          <FormField
+            label="Secure password"
+            htmlFor="admin-password"
+            error={errors.password}
+            required
+            hint="Use at least 6 characters."
+          >
             <Input
+              id="admin-password"
               type="password"
+              autoComplete="new-password"
               placeholder="Minimum 6 characters"
               value={formData.password}
-              onChange={(e) => handleChange("password", e.target.value)}
-              className={`bg-white border-gray-100 rounded-xl h-12 focus:ring-primary/10 ${errors.password ? "border-red-200 focus:border-red-300" : "focus:border-primary"}`}
+              onChange={(event) =>
+                handleChange("password", event.target.value)
+              }
+              aria-invalid={Boolean(errors.password)}
             />
-          </Field>
+          </FormField>
 
-          {/* PIN — always shown, required for all admins */}
-          <Field>
-            <div className="flex justify-between items-center mb-1.5">
-              <FieldLabel className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                PIN
-              </FieldLabel>
-              {errors.pin ? (
-                <span className="text-[10px] text-red-500 font-bold">
-                  {errors.pin}
+          <FormField
+            label="PIN"
+            htmlFor="admin-pin"
+            error={errors.pin}
+            required
+            hint={
+              <span className="flex items-center justify-between gap-3">
+                <span>
+                  Required when deleting orders, customers, agents, or items.
                 </span>
-              ) : (
-                <span className="text-[10px] text-gray-400">
-                  {formData.pin.length}/6 digits
+                <span className="shrink-0 tabular-nums">
+                  {formData.pin.length}/6
                 </span>
-              )}
-            </div>
+              </span>
+            }
+          >
             <div className="relative">
               <Input
+                id="admin-pin"
                 type={showPin ? "text" : "password"}
                 inputMode="numeric"
+                autoComplete="new-password"
                 placeholder="6-digit PIN"
                 value={formData.pin}
-                onChange={(e) => handleChange("pin", e.target.value)}
-                className={`bg-white border-gray-100 rounded-xl h-12 pr-12 tracking-[0.3em] font-mono focus:ring-primary/10 ${
-                  errors.pin
-                    ? "border-red-200 focus:border-red-300"
-                    : "focus:border-primary"
-                }`}
+                onChange={(event) => handleChange("pin", event.target.value)}
+                aria-invalid={Boolean(errors.pin)}
+                className="pr-12 font-mono tracking-[0.3em]"
               />
               <button
                 type="button"
-                onClick={() => setShowPin((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors text-xs font-bold select-none"
+                onClick={() => setShowPin((value) => !value)}
+                aria-label={showPin ? "Hide PIN" : "Show PIN"}
+                aria-pressed={showPin}
+                className="app-focus absolute right-1.5 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-control text-app-muted transition-colors hover:bg-app-soft hover:text-app-ink"
               >
-                {showPin ? "HIDE" : "SHOW"}
+                {showPin ? (
+                  <EyeOff className="size-4" aria-hidden="true" />
+                ) : (
+                  <Eye className="size-4" aria-hidden="true" />
+                )}
               </button>
             </div>
-            <p className="mt-1.5 text-[11px] text-gray-400">
-              Admin must enter this PIN whenever they delete orders, customers,
-              agents, or items.
-            </p>
 
-            {/* PIN dot preview */}
             {formData.pin.length > 0 && (
-              <div className="flex gap-2 mt-3">
-                {Array.from({ length: 6 }).map((_, i) => (
+              <div className="flex gap-2 pt-1">
+                {Array.from({ length: 6 }).map((_, index) => (
                   <div
-                    key={i}
-                    className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all ${
-                      i < formData.pin.length
-                        ? "border-primary bg-primary/10"
-                        : "border-gray-200 bg-gray-50"
+                    key={index}
+                    className={`flex size-9 items-center justify-center rounded-control border text-sm font-bold transition-colors ${
+                      index < formData.pin.length
+                        ? "border-brand-navy/25 bg-brand-navy/5 text-brand-navy"
+                        : "border-app-line bg-app-soft text-app-subtle"
                     }`}
                   >
-                    {showPin ? (
-                      <span className="text-sm font-bold text-primary">
-                        {formData.pin[i] ?? ""}
-                      </span>
-                    ) : (
-                      i < formData.pin.length && (
-                        <div className="w-2 h-2 rounded-full bg-primary" />
-                      )
-                    )}
+                    {index < formData.pin.length
+                      ? showPin
+                        ? formData.pin[index]
+                        : "•"
+                      : ""}
                   </div>
                 ))}
               </div>
             )}
-          </Field>
+          </FormField>
+        </div>
+      </Card>
 
-        </FieldGroup>
-      </div>
-
-      <div className="flex gap-3 items-center mt-auto pb-6 sm:gap-4 sm:pb-10">
-        <StockFlowButton
-          variant="outline"
-          text="Cancel"
+      <div className="flex items-center gap-3">
+        <Button
+          variant="secondary"
+          size="lg"
           onClick={() => router.back()}
-          className="flex-1 h-14 rounded-2xl border-gray-200 font-bold text-gray-500 active:scale-95 transition-all text-sm"
-        />
-        <StockFlowButton
-          variant="filled"
-          text={isSubmitting ? "Creating..." : "Create Admin"}
-          onClick={handleSubmit}
           disabled={isSubmitting}
-          className="flex-2 h-14 rounded-2xl bg-primary shadow-lg shadow-primary/20 font-bold text-white active:scale-95 transition-all text-sm"
-        />
+          className="flex-1"
+        >
+          Cancel
+        </Button>
+        <Button
+          size="lg"
+          onClick={handleSubmit}
+          loading={isSubmitting}
+          loadingText="Creating..."
+          className="flex-[2]"
+        >
+          Create Admin
+        </Button>
       </div>
     </div>
   );

@@ -1,9 +1,12 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { Loader2, Trash2 } from "lucide-react";
+
 import { orderApi } from "@/lib/api/order";
 import { transportApi } from "@/lib/api/transport";
-import { OrderResponse, OrderStatus } from "@/types/order";
+import type { OrderResponse, OrderStatus } from "@/types/order";
 import { toMeters } from "@/types/item";
 import OrderSummary from "@/components/pages/order/OrderSummary";
 import OrderItemsSection from "@/components/pages/order/OrderItemsSection";
@@ -11,14 +14,14 @@ import OrderFooter from "@/components/pages/order/OrderFooter";
 import OrderDetailHeader from "@/components/pages/admin/order-item/OrderDetailHeader";
 import OrderLogs from "@/components/pages/order/OrderLogs";
 import { toastSuccess } from "@/lib/toast";
-import StockFlowButton from "@/components/ui/custom/stockFlowButton";
-import { Trash2 } from "lucide-react";
+import Button from "@/components/ui/app/Button";
 import PinDeleteDialog from "@/components/ui/pinDeleteDialog";
 import { useAuth } from "@/context/AuthContext";
 import { PageLoading } from "@/components/ui/Loading";
 
 export default function Page() {
-  const { isSuperuser } = useAuth();
+  const { role, permissions } = useAuth();
+  const canDelete = role === "ADMIN" || permissions.orders_delete;
   const params = useParams();
   const id = params.id as string;
   const router = useRouter();
@@ -48,6 +51,7 @@ export default function Page() {
   }, [id]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     fetchData().finally(() => setLoading(false));
   }, [fetchData]);
@@ -87,16 +91,6 @@ export default function Page() {
   );
 
   const handleDeleteClick = () => {
-    if (isSuperuser) {
-      if (
-        !confirm(
-          "Delete this order? Stock will be returned to inventory. This cannot be undone.",
-        )
-      )
-        return;
-      handleDeleteConfirm("");
-      return;
-    }
     setPinDialogOpen(true);
   };
 
@@ -136,7 +130,7 @@ export default function Page() {
   if (loading && !data) return <PageLoading />;
 
   return (
-    <div className="min-h-screen bg-white pb-20">
+    <div className="min-h-screen bg-app-bg pb-32">
       <PinDeleteDialog
         open={pinDialogOpen}
         onClose={() => setPinDialogOpen(false)}
@@ -144,47 +138,48 @@ export default function Page() {
         title="Delete Order"
         description="Stock will be returned to inventory. This cannot be undone."
       />
+
       <OrderDetailHeader orderId={id} backHref="/admin" />
 
-      <div className="px-0 pt-3 max-w-4xl mx-auto sm:px-4 sm:pt-4">
-        {isDeletable && (
-          <div className="flex justify-end w-full p-2">
-            <StockFlowButton
-              icon={
-                deleting ? (
-                  <span className="w-4 h-4 border-2 border-red-300 border-t-red-500 rounded-full animate-spin block" />
-                ) : (
-                  <Trash2 size={16} />
-                )
-              }
+      <main className="mx-auto w-full max-w-4xl px-4 pt-4">
+        {isDeletable && canDelete && (
+          <div className="mb-3 flex justify-end">
+            <Button
+              variant="secondary"
+              size="icon"
               onClick={handleDeleteClick}
               disabled={deleting}
-              variant="outline"
-className="border-red-200 text-red-500 hover:bg-red-500 hover:text-white transition duration-300"
-            />
+              aria-label="Delete order"
+              className="border-brand-red/20 text-brand-red hover:bg-brand-red hover:text-white"
+            >
+              {deleting ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Trash2 className="size-4" aria-hidden="true" />
+              )}
+            </Button>
           </div>
         )}
 
         {data?.customer_details && data?.agent_details && (
           <OrderSummary
-            customer={data?.customer_details}
-            agent={data?.agent_details}
-            orderDate={data?.created_at?.slice(0, 10) ?? ""}
-            status={data?.status ?? ""}
+            customer={data.customer_details}
+            agent={data.agent_details}
+            orderDate={data.created_at?.slice(0, 10) ?? ""}
+            status={data.status ?? ""}
             preferredTransport={
               transports.find(
                 (transport) =>
-                  Number(transport.value) == data?.preferred_transport,
+                  Number(transport.value) == data.preferred_transport,
               )?.label ?? ""
             }
-            expectedDeliveryDate={data?.expected_delivery_date ?? ""}
+            expectedDeliveryDate={data.expected_delivery_date ?? ""}
             dispatchTransport={
               transports.find(
-                (transport) =>
-                  Number(transport.value) == data?.transport_company,
+                (transport) => Number(transport.value) == data.transport_company,
               )?.label ?? ""
             }
-            notes={data?.notes ?? ""}
+            notes={data.notes ?? ""}
           />
         )}
 
@@ -200,12 +195,12 @@ className="border-red-200 text-red-500 hover:bg-red-500 hover:text-white transit
         />
 
         <OrderLogs orderId={Number(id)} />
-      </div>
+      </main>
 
-{/* No dispatch button here any more. A dispatch belongs to a sealed bundle, and
-          it is done from the bundle panel above where that bundle lives -- so an
-          order that is two boxes out of three says exactly that, and each box can
-          go on its own truck. */}
+      {/* No dispatch button here any more. A dispatch belongs to a sealed bundle,
+          and it is done from the bundle panel above where that bundle lives -- so
+          an order that is two boxes out of three says exactly that, and each box
+          can go on its own truck. */}
       <OrderFooter
         status={data?.status}
         fullyPacked={fullyPacked}

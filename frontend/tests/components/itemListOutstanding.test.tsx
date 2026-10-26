@@ -66,7 +66,7 @@ describe("ItemList outstanding tab", () => {
     );
 
     expect(screen.getByRole("button", { name: "Outstanding (0)" })).toBeTruthy();
-    expect(screen.getByText("No fabric is awaiting packing")).toBeTruthy();
+    expect(screen.getByText(/No fabric is awaiting packing/)).toBeTruthy();
   });
 
   it("filters the positive outstanding demand by fabric name", () => {

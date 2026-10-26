@@ -159,8 +159,8 @@ describe("VariantCard physical rolls", () => {
     expect(
       await screen.findByRole("button", { name: /print label for NAT-0001/i }),
     ).toBeTruthy();
-    const firstRow = screen.getByText("NAT-0001").closest(".rounded-lg");
-    const secondRow = screen.getByText("NAT-0002").closest(".rounded-lg");
+    const firstRow = screen.getByText("NAT-0001").closest(".rounded-control");
+    const secondRow = screen.getByText("NAT-0002").closest(".rounded-control");
     expect(firstRow).toBeTruthy();
     expect(secondRow).toBeTruthy();
     expect(within(firstRow as HTMLElement).getByText("100 m")).toBeTruthy();
@@ -200,7 +200,7 @@ describe("VariantCard physical rolls", () => {
 
     await expand();
 
-    const usedRow = (await screen.findByText("Used")).closest(".rounded-lg");
+    const usedRow = (await screen.findByText("Used")).closest(".rounded-control");
     expect(usedRow).toBeTruthy();
     expect(within(usedRow as HTMLElement).getByText("NAT-0002")).toBeTruthy();
     expect(within(usedRow as HTMLElement).getByText("0 m")).toBeTruthy();

@@ -226,8 +226,8 @@ describe("PhysicalRollsPanel", () => {
     await expand();
 
     expect(screen.getByText("0 m")).toBeTruthy();
-    expect(screen.getByText("Used").className).toContain("bg-red-100");
-    expect(screen.getByText("Used").className).toContain("text-red-700");
+    expect(screen.getByText("Used").className).toContain("bg-brand-red/10");
+    expect(screen.getByText("Used").className).toContain("text-brand-red");
     expect(screen.getByText("Available")).toBeTruthy();
   });
 
@@ -243,7 +243,7 @@ describe("PhysicalRollsPanel", () => {
     await expand();
 
     expect(screen.getByText("40 m")).toBeTruthy();
-    expect(screen.getByText("Used").className).toContain("bg-red-100");
+    expect(screen.getByText("Used").className).toContain("bg-brand-red/10");
     expect(screen.getByText("Available")).toBeTruthy();
   });
 

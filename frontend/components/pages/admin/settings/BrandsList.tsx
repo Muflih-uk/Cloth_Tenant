@@ -40,7 +40,9 @@ export default function BrandsList() {
                     text="Add Brand"
                     variant="filled"
                     icon={<Plus className="size-4" />}
-                    onClick={() => router.push("/admin/settings/brands/new")}
+                    onClick={() =>
+                        router.push("/admin/profile/settings/brands/new")
+                    }
                     className="shadow-lg shadow-primary/20 ring-1 ring-primary/10"
                 />
             </div>
@@ -54,7 +56,9 @@ export default function BrandsList() {
                     text="Add Brand"
                     variant="filled"
                     icon={<Plus className="size-4" />}
-                    onClick={() => router.push("/admin/settings/brands/new")}
+                    onClick={() =>
+                        router.push("/admin/profile/settings/brands/new")
+                    }
                     className="shadow-lg shadow-primary/20 ring-1 ring-primary/10"
                 />
             </div>
@@ -63,7 +67,9 @@ export default function BrandsList() {
                 <div
                     key={brand.id}
                     onClick={() =>
-                        router.push(`/admin/settings/brands/${brand.id}`)
+                        router.push(
+                            `/admin/profile/settings/brands/${brand.id}`,
+                        )
                     }
                     className="flex items-center gap-3 bg-white border border-gray-100 p-3 sm:gap-4 sm:p-4 hover:border-primary/30 hover:shadow-md transition-all rounded-2xl group cursor-pointer active:scale-[0.98]"
                 >
