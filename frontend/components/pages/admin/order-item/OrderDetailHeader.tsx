@@ -9,7 +9,7 @@ interface OrderDetailHeaderProps {
 
 export default function OrderDetailHeader({ orderId, backHref }: OrderDetailHeaderProps) {
   return (
-    <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+    <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-gray-100 px-0 py-3 sm:px-4 flex items-center justify-between">
       <Link
         className="flex items-center text-primary font-medium hover:opacity-70 transition-opacity"
         href={backHref}

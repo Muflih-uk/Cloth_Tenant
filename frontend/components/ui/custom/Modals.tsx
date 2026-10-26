@@ -1,4 +1,9 @@
+"use client";
+
+import { useEffect, useId } from "react";
 import { X } from "lucide-react";
+
+import Button from "@/components/ui/app/Button";
 
 export function Modal({
   icon,
@@ -17,37 +22,75 @@ export function Modal({
   actions: React.ReactNode;
   children?: React.ReactNode;
 }) {
+  const titleId = useId();
+  const descriptionId = useId();
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl">
-        {/* Modal header */}
-        <div className="flex items-center justify-between p-5 pb-0">
-          <div className="flex items-center gap-3">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-brand-navy/35 p-4 backdrop-blur-sm"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        className="w-full max-w-sm overflow-hidden rounded-card border border-app-line bg-app-card shadow-float"
+      >
+        <div className="flex items-start justify-between gap-3 p-5 pb-0">
+          <div className="flex min-w-0 items-center gap-3">
             <div
-              className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center`}
+              className={`flex size-10 shrink-0 items-center justify-center rounded-control ${iconBg}`}
             >
               {icon}
             </div>
-            <h3 className="text-base font-black text-gray-900">{title}</h3>
+            <h2
+              id={titleId}
+              className="truncate text-base font-bold text-app-ink"
+            >
+              {title}
+            </h2>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 hover:bg-gray-100 rounded-xl transition-colors"
+            aria-label="Close dialog"
+            className="app-focus -mr-1 flex size-11 shrink-0 items-center justify-center rounded-full text-app-muted transition-colors hover:bg-app-soft hover:text-app-ink"
           >
-            <X size={18} className="text-gray-400" />
+            <X className="size-5" aria-hidden="true" />
           </button>
         </div>
 
-        <p className="text-sm text-gray-500 px-5 pt-3 pb-4 leading-relaxed">
+        <p
+          id={descriptionId}
+          className="px-5 pb-4 pt-3 text-sm leading-relaxed text-app-muted"
+        >
           {description}
         </p>
 
-        {/* Scrollable content */}
-        <div className="px-5 space-y-2 max-h-52 overflow-y-auto">
-          {children}
-        </div>
+        {children && (
+          <div className="max-h-52 space-y-2 overflow-y-auto px-5">
+            {children}
+          </div>
+        )}
 
-        {/* Actions */}
         <div className="flex gap-2.5 p-5">{actions}</div>
       </div>
     </div>
@@ -60,22 +103,19 @@ export function ModalButton({
   disabled,
   children,
 }: {
-  variant: "ghost" | "primary";
+  variant: "ghost" | "primary" | "destructive";
   onClick: () => void;
   disabled?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <button
+    <Button
+      variant={variant === "ghost" ? "secondary" : variant}
       onClick={onClick}
       disabled={disabled}
-      className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all active:scale-95 disabled:opacity-50 ${
-        variant === "ghost"
-          ? "border border-gray-200 text-gray-600 hover:bg-gray-50"
-          : "bg-primary text-white shadow-md shadow-primary/20 hover:opacity-90"
-      }`}
+      className="h-12 flex-1"
     >
       {children}
-    </button>
+    </Button>
   );
 }

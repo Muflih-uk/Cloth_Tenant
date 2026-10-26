@@ -19,6 +19,7 @@ import { variantColorLabel } from "@/lib/colorLabel";
 type QRPrintItem = {
     id: number;
     name: string;
+    design_number?: string;
     price_per_meter: string;
     image: string | null;
     variants: FabricVariant[];
@@ -53,6 +54,7 @@ export default function QRPrintPageContent() {
                     const parsedItem: QRPrintItem = {
                         id: data.id,
                         name: data.name,
+                        design_number: data.design_number,
                         price_per_meter: data.price_per_meter,
                         image: data.variants[0]?.image || null,
                         variants: data.variants,
@@ -66,6 +68,7 @@ export default function QRPrintPageContent() {
                     const parsedItem: QRPrintItem = {
                         id: data.id,
                         name: data.name,
+                        design_number: data.design_number,
                         price_per_meter: data.price_per_meter,
                         image: matchedVariant?.image || null,
                         variants: matchedVariant ? [matchedVariant] : [],
@@ -223,6 +226,11 @@ export default function QRPrintPageContent() {
                                 <p className="text-[24px] font-bold text-center">
                                     {item.name}
                                 </p>
+                                {item.design_number && (
+                                    <p className="text-[16px] text-gray-600 text-center">
+                                        Design: {item.design_number}
+                                    </p>
+                                )}
                                 <p className="text-[18px] bg-gray-100 px-2 py-1 rounded">
                                     {variantColorLabel(variant.display_order, index + 1)}
                                 </p>

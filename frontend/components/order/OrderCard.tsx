@@ -89,7 +89,7 @@ export default function OrderCard({
         viewed
           ? "border-gray-100 bg-white"
           : "border-gray-300 bg-gray-50 shadow-sm"
-      } p-4 rounded-2xl hover:border-primary/30 hover:shadow-md transition-all cursor-pointer active:scale-[0.99] relative`}
+      } p-3 sm:p-4 rounded-2xl hover:border-primary/30 hover:shadow-md transition-all cursor-pointer active:scale-[0.99] relative`}
     >
       {!viewed && (
         <div className="absolute top-2 right-2 w-4 h-4 rounded-full animate-pulse bg-green-600" />

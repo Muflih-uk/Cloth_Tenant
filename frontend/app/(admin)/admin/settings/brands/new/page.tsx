@@ -106,9 +106,9 @@ export default function NewBrandPage() {
     };
 
     return (
-        <div className="w-full px-4 py-8 flex flex-col min-h-screen bg-white">
+        <div className="w-full px-0 py-4 flex flex-col min-h-screen bg-white sm:px-4 sm:py-8">
             {/* Header */}
-            <div className="flex items-center gap-3 mb-8">
+            <div className="flex items-center gap-3 mb-4 sm:mb-8">
                 <button
                     onClick={() => router.back()}
                     className="p-2 -ml-2 rounded-full hover:bg-gray-50"
@@ -134,7 +134,7 @@ export default function NewBrandPage() {
                 </span>
             </div>
 
-            <div className="bg-gray-50/50 border border-gray-100 rounded-3xl p-6 mb-8">
+            <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-3 mb-4 sm:rounded-3xl sm:p-6 sm:mb-8">
                 <FieldGroup className="space-y-6 flex-1">
                     {/* Logo upload */}
                     <Field>
@@ -295,7 +295,7 @@ export default function NewBrandPage() {
             </div>
 
             {/* CTA */}
-            <div className="flex gap-4 items-center mt-auto pb-10">
+            <div className="flex gap-3 items-center mt-auto pb-6 sm:gap-4 sm:pb-10">
                 <StockFlowButton
                     variant="outline"
                     text="Cancel"

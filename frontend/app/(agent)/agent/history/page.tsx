@@ -14,7 +14,7 @@ export default function History() {
     }, [router]),
   });
   return (
-    <div className="min-h-screen min-w-full px-4 bg-gray-50/30">
+    <div className="min-h-screen min-w-full px-0 bg-gray-50/30 sm:px-4">
       <AgentOrderList pageOrderStatus="COMPLETED" />
     </div>
   );

@@ -38,7 +38,7 @@ export default function OrderCard({ order, onClick }: OrderCardProps) {
   return (
     <div
       onClick={handleClick}
-      className="bg-white border border-gray-100 p-4 rounded-2xl hover:border-primary/30 hover:shadow-md transition-all cursor-pointer active:scale-[0.99] relative"
+      className="bg-white border border-gray-100 p-3 sm:p-4 rounded-2xl hover:border-primary/30 hover:shadow-md transition-all cursor-pointer active:scale-[0.99] relative"
     >
       {!viewed && (
         <div className="absolute top-3 right-3 w-2.5 h-2.5 bg-primary rounded-full" />

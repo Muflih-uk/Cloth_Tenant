@@ -2,13 +2,21 @@
 
 import { useState } from "react";
 import DatePicker from "@/components/ui/date-picker";
-import StockFlowButton from "@/components/ui/custom/stockFlowButton";
+import Button from "@/components/ui/app/Button";
+import SegmentedControl from "@/components/ui/app/SegmentedControl";
 
 interface RangePresetsProps {
   onRangeChange: (from: string, to: string) => void;
 }
 
 type Preset = "today" | "7d" | "30d" | "custom";
+
+const PRESETS: { value: Preset; label: string }[] = [
+  { value: "today", label: "Today" },
+  { value: "7d", label: "7 days" },
+  { value: "30d", label: "30 days" },
+  { value: "custom", label: "Custom" },
+];
 
 export default function RangePresets({ onRangeChange }: RangePresetsProps) {
   const [activePreset, setActivePreset] = useState<Preset>("30d");
@@ -59,46 +67,37 @@ export default function RangePresets({ onRangeChange }: RangePresetsProps) {
     onRangeChange(finalFrom, finalTo);
   };
 
+  const hasCustomDates = Boolean(customFrom || customTo);
+
   return (
-    <div className="sticky flex flex-col top-0 z-10 bg-white/90 backdrop-blur py-2 -mx-1.5 px-1.5">
-      <div className="flex gap-2 mb-2">
-        {[
-          { key: "today" as Preset, label: "Today" },
-          { key: "7d" as Preset, label: "7d" },
-          { key: "30d" as Preset, label: "30d" },
-          { key: "custom" as Preset, label: "Custom" },
-        ].map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => {
-              if (key === "custom") {
-                setActivePreset(key);
-              } else {
-                applyPreset(key);
-              }
-            }}
-            className={`flex-1 py-1.5 text-xs font-bold rounded-full transition-all ${
-              activePreset === key
-                ? "bg-primary text-white shadow"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+    <div className="sticky top-0 z-20 -mx-4 bg-app-bg/95 px-4 py-2 backdrop-blur-md sm:-mx-6 sm:px-6">
+      <SegmentedControl
+        options={PRESETS}
+        value={activePreset}
+        onChange={(preset) => {
+          if (preset === "custom") {
+            setActivePreset(preset);
+          } else {
+            applyPreset(preset);
+          }
+        }}
+        ariaLabel="Analytics date range"
+      />
+
       {activePreset === "custom" && (
-        <div className="flex flex-col gap-2">
+        <div className="mt-2 rounded-card border border-app-line bg-app-card p-3 shadow-card">
           <div className="flex items-center gap-2">
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 flex-1 [&_button]:h-11 [&_button]:rounded-control [&_button]:text-xs">
               <DatePicker
                 value={customFrom}
                 onChange={setCustomFrom}
                 placeholder="From"
               />
             </div>
-            <span className="text-gray-400 text-xs shrink-0">to</span>
-            <div className="flex-1 min-w-0">
+            <span className="shrink-0 text-[11px] font-medium text-app-muted">
+              to
+            </span>
+            <div className="min-w-0 flex-1 [&_button]:h-11 [&_button]:rounded-control [&_button]:text-xs">
               <DatePicker
                 value={customTo}
                 onChange={setCustomTo}
@@ -106,21 +105,23 @@ export default function RangePresets({ onRangeChange }: RangePresetsProps) {
               />
             </div>
           </div>
-          <div className="flex gap-1">
-            <StockFlowButton
-              disabled={!customFrom && !customTo}
-              text="Apply"
-              variant="outline"
-              fullWidth
+
+          <div className="mt-2 flex gap-2">
+            <Button
               onClick={handleCustomApply}
-            />
-            <StockFlowButton
-              disabled={!customFrom && !customTo}
-              text="Clear"
-              variant="outline"
-              fullWidth
+              disabled={!hasCustomDates}
+              className="h-11 flex-1 text-xs"
+            >
+              Apply range
+            </Button>
+            <Button
+              variant="secondary"
               onClick={handleClear}
-            />
+              disabled={!hasCustomDates}
+              className="h-11 flex-1 text-xs"
+            >
+              Clear
+            </Button>
           </div>
         </div>
       )}

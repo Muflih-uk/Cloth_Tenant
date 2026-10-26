@@ -10,11 +10,16 @@ import { ImagePreview } from "@/components/pages/ImagePreview";
 import StockFlowButton from "@/components/ui/custom/stockFlowButton";
 import { fabricApi } from "@/lib/api/item";
 import { updateFabric } from "@/lib/updateItem";
+import { nextColorNumber } from "@/lib/color-number";
 import { toastError, toastSuccess } from "@/lib/toast";
 import EditVariantRow from "./editVariantRow";
 import CropModal from "../../new/cropModal";
 import PhysicalRollsPanel from "@/components/items/physicalRollsPanel";
-import type { EditableVariant, FabricDetails } from "@/types/item";
+import type {
+  EditableVariant,
+  FabricDetails,
+  VariantRollsResponse,
+} from "@/types/item";
 import { formatMeters, toMeters } from "@/types/item";
 import { useAuth } from "@/context/AuthContext";
 import PinDeleteDialog from "@/components/ui/pinDeleteDialog";
@@ -56,9 +61,12 @@ export default function FabricEditPage() {
     src: string;
     localId: string;
   } | null>(null);
+  const [receiveOpenFor, setReceiveOpenFor] = useState<string | null>(null);
 
   const [common, setCommon] = useState<FabricDetails>({
     name: "",
+    design_number: "",
+    category: "",
     description: "",
     price_per_meter: "",
   });
@@ -74,6 +82,8 @@ export default function FabricEditPage() {
       .then((data) => {
         setCommon({
           name: data.name,
+          design_number: data.design_number ?? "",
+          category: data.category ?? "",
           description: data.description ?? "",
           price_per_meter: data.price_per_meter,
         });
@@ -122,7 +132,7 @@ export default function FabricEditPage() {
         baseOpening: "0",
         initialBaseOpening: "0",
         stockMeters: "0",
-        displayOrder: "",
+        displayOrder: nextColorNumber(prev),
         imageUrl: null,
         newImage: null,
         imagePreview: null,
@@ -157,6 +167,15 @@ export default function FabricEditPage() {
               isRollTracked,
               rollCount,
             }
+          : v,
+      ),
+    );
+
+  const handleRollData = (localId: string, data: VariantRollsResponse) =>
+    setVariants((prev) =>
+      prev.map((v) =>
+        v.localId === localId
+          ? { ...v, activeRollCount: data.active_roll_count }
           : v,
       ),
     );
@@ -252,7 +271,7 @@ export default function FabricEditPage() {
   const heroImage = variants[0]?.imagePreview ?? variants[0]?.imageUrl;
 
   return (
-    <div className="w-full px-4 py-8 flex flex-col min-h-screen bg-white">
+    <div className="flex min-h-screen w-full flex-col bg-white px-0 py-3 sm:px-4 sm:py-8">
       <PinDeleteDialog
         open={pinDialogOpen}
         onClose={() => setPinDialogOpen(false)}
@@ -262,8 +281,8 @@ export default function FabricEditPage() {
       />
 
       {deleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-8">
-          <div className="w-full max-w-sm bg-white rounded-2xl p-6 shadow-xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-3 pb-6 sm:px-4 sm:pb-8">
+          <div className="w-full max-w-sm space-y-4 rounded-2xl bg-white p-4 shadow-xl sm:p-6">
             <div className="space-y-1">
               <h3 className="text-base font-black">
                 Remove {deleteConfirm.label}?
@@ -300,17 +319,18 @@ export default function FabricEditPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-5 flex items-center justify-between gap-2 sm:mb-8">
         <button
           type="button"
           onClick={() => router.back()}
-          className="p-2 -ml-2 rounded-full hover:bg-gray-50"
+          className="-ml-2 shrink-0 rounded-full p-2 hover:bg-gray-50"
+          aria-label="Back"
         >
-          <ArrowLeft size={24} />
+          <ArrowLeft className="h-[22px] w-[22px] sm:h-6 sm:w-6" />
         </button>
-        <div className="text-center flex-1">
-          <h1 className="text-xl font-black">Edit Fabric</h1>
-          <p className="text-[10px] text-gray-400 uppercase tracking-widest">
+        <div className="min-w-0 flex-1 text-center">
+          <h1 className="text-lg font-black sm:text-xl">Edit Fabric</h1>
+          <p className="truncate text-[10px] uppercase tracking-widest text-gray-400">
             ID #{id}
           </p>
         </div>
@@ -318,31 +338,34 @@ export default function FabricEditPage() {
           type="button"
           onClick={handleDelete}
           disabled={deleting}
-          className="p-2 rounded-xl text-red-400 hover:bg-red-50 transition-colors"
+          className="shrink-0 rounded-xl p-2 text-red-400 transition-colors hover:bg-red-50 disabled:opacity-50"
+          aria-label="Delete fabric"
         >
           <Trash2 size={20} />
         </button>
       </div>
 
       {/* Hero */}
-      <div className="flex flex-col items-center mb-8">
-        <div className="relative w-20 h-20 bg-primary/10 rounded-3xl flex items-center justify-center mb-3 overflow-hidden">
+      <div className="mb-6 flex flex-col items-center sm:mb-8">
+        <div className="relative mb-3 flex h-16 w-16 items-center justify-center overflow-hidden rounded-3xl bg-primary/10 sm:h-20 sm:w-20">
           {heroImage ? (
             <ImagePreview src={heroImage} alt={common.name} />
           ) : (
-            <Package size={36} className="text-primary" />
+            <Package className="h-8 w-8 text-primary sm:h-9 sm:w-9" />
           )}
         </div>
-        <h2 className="text-xl font-black">{common.name || "—"}</h2>
-        <p className="text-sm text-gray-400 font-medium">
-            {formatMeters(totalMetres)} m on hand across {variants.length} colour
+        <h2 className="max-w-full truncate px-2 text-center text-lg font-black sm:text-xl">
+          {common.name || "—"}
+        </h2>
+        <p className="px-2 text-center text-xs font-medium text-gray-400 sm:text-sm">
+          {formatMeters(totalMetres)} m on hand across {variants.length} colour
           {variants.length !== 1 ? "s" : ""}
         </p>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {/* ── Fabric details ── */}
-        <div className="bg-gray-50 border border-gray-100 rounded-2xl px-5 py-5 space-y-4">
+        <div className="space-y-4 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-4 sm:px-5 sm:py-5">
           <p className="text-[10px] text-gray-400 uppercase tracking-widest">
             Fabric Details
           </p>
@@ -353,6 +376,26 @@ export default function FabricEditPage() {
               value={common.name}
               onChange={(e) =>
                 setCommon((p) => ({ ...p, name: e.target.value }))
+              }
+            />
+          </Field>
+
+          <Field>
+            <FieldLabel>Design number</FieldLabel>
+            <Input
+              value={common.design_number}
+              onChange={(e) =>
+                setCommon((p) => ({ ...p, design_number: e.target.value }))
+              }
+            />
+          </Field>
+
+          <Field>
+            <FieldLabel>Category</FieldLabel>
+            <Input
+              value={common.category}
+              onChange={(e) =>
+                setCommon((p) => ({ ...p, category: e.target.value }))
               }
             />
           </Field>
@@ -389,9 +432,11 @@ export default function FabricEditPage() {
 
         {/* ── Colours ── */}
         <div>
-          <div className="flex items-center justify-between mb-3 px-1">
-            <h2 className="font-bold text-sm">Colours</h2>
-            <span className="text-[10px] text-gray-400 uppercase tracking-widest">
+          <div className="mb-3 flex items-center justify-between gap-2 px-1">
+            <h2 className="min-w-0 text-sm font-bold">
+              Colours &amp; Fabric Inventory
+            </h2>
+            <span className="shrink-0 text-[10px] uppercase tracking-widest text-gray-400">
               {variants.length} colour{variants.length !== 1 ? "s" : ""}
             </span>
           </div>
@@ -432,12 +477,21 @@ export default function FabricEditPage() {
                   onPickImage={() =>
                     fileRefs.current[variant.localId]?.click()
                   }
+                  onRequestReceive={
+                    variant.backendId > 0
+                      ? () => setReceiveOpenFor(variant.localId)
+                      : undefined
+                  }
                 >
                   {variant.backendId > 0 && (
                     <PhysicalRollsPanel
                       variantId={variant.backendId}
-                      label={common.name || "Fabric"}
+                      label={`${common.name || "Fabric"} — ${variant.displayOrder || "Colour"}`}
                       embedded
+                      receiveOpen={receiveOpenFor === variant.localId}
+                      onReceiveOpenChange={(open) =>
+                        setReceiveOpenFor(open ? variant.localId : null)
+                      }
                       onStockChanged={(stock, rollCount, untracked, tracked) =>
                         handleRollStockChanged(
                           variant.localId,
@@ -447,6 +501,7 @@ export default function FabricEditPage() {
                           tracked,
                         )
                       }
+                      onData={(data) => handleRollData(variant.localId, data)}
                     />
                   )}
                 </EditVariantRow>
@@ -457,17 +512,16 @@ export default function FabricEditPage() {
           <button
             type="button"
             onClick={addVariant}
-            className="mt-3 w-full flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl py-3 text-sm text-gray-400 hover:border-primary hover:text-primary transition-colors"
+            className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-200 py-3 text-sm text-gray-400 transition-colors hover:border-primary hover:text-primary"
           >
             <Plus size={16} />
             Add Colour
           </button>
 
           <p className="mt-3 text-[11px] text-gray-400 leading-relaxed">
-            Edit the opening base for available-to-order stock here. On-hand
-            physical stock is shown separately; manage rolls in the Physical
-            Rolls panel. For roll-less colours, manual packing changes physical
-            stock without changing the order-stock base.
+            Use Adjust stock to change order availability. Receive Rolls adds
+            physical cloth without changing the order-stock base; packing cuts
+            from the oldest roll first.
           </p>
 
           {variantCrop && (
@@ -482,7 +536,7 @@ export default function FabricEditPage() {
         </div>
       </div>
 
-      <div className="mt-8 mb-24">
+      <div className="mb-10 mt-6 sm:mb-24 sm:mt-8">
         <StockFlowButton
           variant="filled"
           text={saving ? "Saving…" : "Save Changes"}

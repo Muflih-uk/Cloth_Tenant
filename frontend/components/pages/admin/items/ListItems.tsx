@@ -16,6 +16,8 @@ export function normalizeAdminItem(item: FabricStockEntry): UIItem {
   return {
     id: item.id,
     name: item.name,
+    design_number: item.design_number,
+    category: item.category,
     price_per_meter: item.price_per_meter,
     variants: item.variants.map((variant) => ({
       id: variant.id,

@@ -18,6 +18,10 @@ class Fabric(models.Model):
 
     name = models.CharField(max_length=100)
 
+    design_number = models.CharField(max_length=100, blank=True, default="")
+
+    category = models.CharField(max_length=100, blank=True, default="")
+
     description = models.TextField(blank=True)
 
     price_per_meter = models.DecimalField(max_digits=10, decimal_places=2)
@@ -174,19 +178,54 @@ class FabricRoll(models.Model):
         return (self.remaining_meters or Decimal("0")) <= Decimal("0")
 
     @property
-    def consumed_meters(self):
-        """Metres cut off this roll so far."""
-        return (self.original_meters or Decimal("0")) - (
-            self.remaining_meters or Decimal("0")
+    def packed_meters(self):
+        """Metres actually cut from this roll by packing.
+
+        ``original_meters - remaining_meters`` also includes manual corrections,
+        so it cannot answer "how much went to orders?".  Live
+        :class:`~apps.orders.models.RollAllocation` rows are the record of the
+        cloth that physically left on a packing round; reversed rows returned
+        their metres to the roll and are excluded.
+        """
+        cached = getattr(self, "_packed_meters", None)
+        if cached is not None:
+            return cached
+
+        prefetched = getattr(self, "_prefetched_objects_cache", None) or {}
+        allocations = prefetched.get("roll_allocations")
+        if allocations is not None:
+            return sum(
+                (
+                    Decimal(str(entry.metres or 0))
+                    for entry in allocations
+                    if not entry.is_reversed
+                ),
+                Decimal("0"),
+            )
+
+        from apps.orders.models import RollAllocation
+
+        return (
+            RollAllocation.objects.filter(roll=self, is_reversed=False).aggregate(
+                total=models.Sum("metres")
+            )["total"]
+            or Decimal("0")
         )
+
+    @property
+    def consumed_meters(self):
+        """Backwards-compatible alias for metres packed out, not adjusted away."""
+        return self.packed_meters
 
 
 class StockMovement(models.Model):
-    """Legacy stock adjustment records kept for historical compatibility."""
+    """Audit records for changes to a colour's physical stock."""
 
     OPENING_FIGURE_DISCARDED = "opening_figure_discarded"
+    ROLL_ADJUSTMENT = "roll_adjustment"
     REASON_CHOICES = [
         (OPENING_FIGURE_DISCARDED, "Legacy opening stock adjustment"),
+        (ROLL_ADJUSTMENT, "Manual roll adjustment"),
     ]
 
     variant = models.ForeignKey(
@@ -207,6 +246,9 @@ class StockMovement(models.Model):
     #: The warehouse label of the roll that triggered it, snapshotted so the
     #: record still reads properly if that roll is later deleted.
     roll_number = models.CharField(max_length=32, blank=True, default="")
+
+    #: The admin's explanation, when they gave one for a manual roll correction.
+    note = models.CharField(max_length=200, blank=True, default="")
 
     #: Who did it, where known. Receiving can also come from a service call.
     created_by = models.ForeignKey(

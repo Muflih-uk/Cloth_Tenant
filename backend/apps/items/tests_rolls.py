@@ -16,9 +16,8 @@ way a warehouse loses track of its own cloth:
    from, rather than on an arbitrary roll that happens to be active.
 
 Roll selection itself is covered by :class:`RollSelectionTests` (best fit, in the
-documented priority order) and by :class:`RollOverrideTests` (the admin's own
-breakdown, and the server re-checking it). Both run against the same rolls the
-packing tests use, so a change to one cannot quietly break the other.
+documented priority order). It runs against the same rolls the packing tests use,
+so a change to one cannot quietly break the other.
 """
 
 from decimal import Decimal
@@ -117,12 +116,21 @@ class RollTestBase(FabricTestBase):
             f"/api/orders/{order.pk}/bundles/create/", {}, format="json"
         ).data["bundle"]
 
-    def scan(self, order, bundle, roll):
-        """Cut all of ``roll`` into ``bundle``."""
+    def scan(self, order, bundle, roll, metres=None):
+        """Resolve ``roll`` and cut ``metres`` (or all of it) into ``bundle``."""
         self.auth()
+        base = f"/api/orders/{order.pk}/bundles/{bundle['id']}"
+        resolved = self.client.post(
+            f"{base}/scan/resolve/", {"roll": str(roll.pk)}, format="json"
+        )
+        if resolved.status_code != status.HTTP_201_CREATED:
+            return resolved
         return self.client.post(
-            f"/api/orders/{order.pk}/bundles/{bundle['id']}/scan/",
-            {"roll": roll.pk},
+            f"{base}/scan/",
+            {
+                "token": resolved.data["token"],
+                "metres": str(metres) if metres is not None else resolved.data["remaining_meters"],
+            },
             format="json",
         )
 
@@ -134,18 +142,10 @@ class RollTestBase(FabricTestBase):
         )
 
     def pack(self, order, line, metres, rolls=None):
-        """Pack one line through the single-line endpoint, optionally by roll."""
-        self.auth()
-        payload = {"metres": str(metres)}
-        if rolls is not None:
-            payload["rolls"] = [
-                {"roll": row["roll"], "metres": str(row["metres"])} for row in rolls
-            ]
-        # JSON, because a breakdown is a list of objects and multipart cannot
-        # carry one.
-        return self.client.post(
-            f"/api/orders/{order.pk}/items/{line.pk}/pack/", payload, format="json"
-        )
+        """Scan the named roll into a fresh bundle, cutting ``metres`` from it."""
+        roll = FabricRoll.objects.get(pk=rolls[0]["roll"])
+        bundle = self.open_bundle(order)
+        return self.scan(order, bundle, roll, metres=rolls[0]["metres"])
 
 
 # --------------------------------------------------------------------------- #
@@ -440,6 +440,89 @@ class RollAdjustmentTests(RollTestBase):
         roll = self.receive(D("10"))
         with self.assertRaises(RollError):
             adjust_roll(roll, ZERO)
+
+    def test_a_manual_shortening_is_not_packed_consumption(self):
+        roll = self.receive(D("210"))
+        self.auth()
+
+        response = self.client.post(
+            f"/api/items/rolls/{roll.pk}/adjust/",
+            {"meters": "-110", "reason": "Physical recount"},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data["remaining_meters"], "100.000")
+        self.assertEqual(response.data["packed_meters"], "0.000")
+        self.assertEqual(response.data["consumed_meters"], "0.000")
+        self.assertFalse(response.data["is_exhausted"])
+
+        movement = StockMovement.objects.get(reason=StockMovement.ROLL_ADJUSTMENT)
+        self.assertEqual(movement.metres, D("-110.000"))
+        self.assertEqual(movement.stock_before, D("210.000"))
+        self.assertEqual(movement.stock_after, D("100.000"))
+        self.assertEqual(movement.roll_number, roll.roll_number)
+        self.assertEqual(movement.note, "Physical recount")
+        self.assertEqual(movement.created_by, self.admin_user)
+
+    def test_a_partly_packed_roll_keeps_packed_and_adjusted_metres_separate(self):
+        roll = self.receive(D("210"))
+        order = self.make_order(self.customer1)
+        line = self.make_line(order, D("60"), variant=self.tracked)
+        packed = self.pack(
+            order, line, 60, rolls=[{"roll": roll.pk, "metres": "60"}]
+        )
+        self.assertEqual(packed.status_code, status.HTTP_201_CREATED, packed.data)
+        self.auth()
+
+        response = self.client.post(
+            f"/api/items/rolls/{roll.pk}/adjust/",
+            {"meters": "-50", "reason": "Recount"},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data["remaining_meters"], "100.000")
+        self.assertEqual(response.data["packed_meters"], "60.000")
+        self.assertEqual(response.data["consumed_meters"], "60.000")
+        self.assertFalse(response.data["is_exhausted"])
+
+        summary = self.client.get(
+            f"/api/items/variants/{self.tracked.pk}/rolls/"
+        )
+        self.assertEqual(summary.data["packed_meters"], "60.000")
+        self.assertEqual(summary.data["consumed_meters"], "60.000")
+        self.assertEqual(summary.data["roll_stock_meters"], "100.000")
+        self.assertEqual(summary.data["total_received_meters"], "210.000")
+
+    def test_packing_a_roll_to_zero_is_packed_consumption(self):
+        roll = self.receive(D("100"))
+        order = self.make_order(self.customer1)
+        line = self.make_line(order, D("100"), variant=self.tracked)
+        self.pack(order, line, 100, rolls=[{"roll": roll.pk, "metres": "100"}])
+        self.auth()
+
+        response = self.client.get(f"/api/items/rolls/{roll.pk}/")
+
+        self.assertEqual(response.data["remaining_meters"], "0.000")
+        self.assertEqual(response.data["packed_meters"], "100.000")
+        self.assertEqual(response.data["consumed_meters"], "100.000")
+        self.assertTrue(response.data["is_exhausted"])
+
+    def test_returned_packing_metres_are_not_still_packed(self):
+        roll = self.receive(D("100"))
+        order = self.make_order(self.customer1)
+        self.make_line(order, D("100"), variant=self.tracked)
+        bundle = self.open_bundle(order)
+        self.scan(order, bundle, roll)
+
+        self.cancel_bundle(order, bundle)
+        self.auth()
+
+        response = self.client.get(f"/api/items/rolls/{roll.pk}/")
+
+        self.assertEqual(response.data["remaining_meters"], "100.000")
+        self.assertEqual(response.data["packed_meters"], "0.000")
+        self.assertEqual(response.data["consumed_meters"], "0.000")
+        self.assertFalse(response.data["is_exhausted"])
 
 
 # --------------------------------------------------------------------------- #
@@ -744,7 +827,7 @@ class PackingConsumesRollsTests(RollTestBase):
 
         entries = RollAllocation.objects.order_by("allocation_id")
         self.assertEqual([e.roll_id for e in entries], [first.pk, second.pk])
-        # A scan cuts the whole roll, so each entry is that roll's full length.
+        # With no cut given, the helper takes each roll's full remaining length.
         self.assertEqual([e.metres for e in entries], [D("300.000"), D("200.000")])
         self.assertEqual([e.sequence for e in entries], [1, 1])
         self.assertFalse(any(e.is_reversed for e in entries))
@@ -878,34 +961,6 @@ class PackingConsumesRollsTests(RollTestBase):
         self.assertEqual(second.remaining_meters, D("100.000"))
         self.assert_in_step()
         self.assertTrue(all(e.is_reversed for e in RollAllocation.objects.all()))
-
-    def test_the_single_line_pack_endpoint_reports_the_roll_it_cut(self):
-        roll = self.receive(D("100"))
-        order = self.make_order(self.customer1)
-        line = self.make_line(order, D("50"), variant=self.tracked)
-
-        response = self.pack(
-            order, line, 30, rolls=[{"roll": roll.pk, "metres": "30"}]
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data["rolls"]), 1)
-        self.assertEqual(response.data["rolls"][0]["roll_number"], roll.roll_number)
-        self.assertEqual(response.data["rolls"][0]["metres"], "30.000")
-        self.assertEqual(response.data["stock_meters"], "70.000")
-        self.assert_in_step()
-
-    def test_the_single_line_pack_endpoint_refuses_what_the_rolls_do_not_hold(self):
-        self.receive(D("10"))
-        order = self.make_order(self.customer1)
-        line = self.make_line(order, D("500"), variant=self.tracked)
-
-        response = self.pack(order, line, 50)
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assert_in_step()
-        self.assertEqual(Allocation.objects.count(), 0)
-
 
 class RollPreviewHelperTests(RollTestBase):
     def test_preview_is_best_fit_and_writes_nothing(self):
@@ -1110,156 +1165,3 @@ class RollSelectionTests(RollTestBase):
 
     def test_a_colour_with_no_rolls_cannot_be_selected_from(self):
         self.assertEqual(self.plan(D("100")), [])
-
-
-class RollOverrideTests(RollTestBase):
-    """The admin's own breakdown, and the server refusing a bad one."""
-
-    def test_an_override_is_cut_and_recorded_rather_than_the_suggestion(self):
-        first = self.receive(D("900"))
-        second = self.receive(D("450"))
-        order = self.make_order(self.customer1)
-        line = self.make_line(order, D("400"), variant=self.tracked)
-
-        response = self.pack(
-            order,
-            line,
-            400,
-            rolls=[{"roll": first.pk, "metres": "400"}],
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Best fit would have suggested the 450 m roll, so this proves the
-        # override is what was used.
-        second.refresh_from_db()
-        self.assertEqual(second.remaining_meters, D("450.000"))
-        entry = RollAllocation.objects.get()
-        self.assertEqual(entry.roll_id, first.pk)
-        self.assertEqual(entry.metres, D("400.000"))
-        self.assert_in_step()
-
-    def test_an_override_spanning_two_rolls_is_recorded_as_two_rows(self):
-        first = self.receive(D("900"))
-        second = self.receive(D("450"))
-        order = self.make_order(self.customer1)
-        line = self.make_line(order, D("700"), variant=self.tracked)
-
-        response = self.pack(
-            order,
-            line,
-            700,
-            rolls=[{"roll": second.pk, "metres": "450"}, {"roll": first.pk, "metres": "250"}],
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        entries = RollAllocation.objects.order_by("sequence")
-        # Recorded oldest roll first, whatever order the admin listed them in, so
-        # the rows read the same way every time.
-        self.assertEqual([e.roll_id for e in entries], [first.pk, second.pk])
-        self.assertEqual([e.metres for e in entries], [D("250.000"), D("450.000")])
-        self.assert_in_step()
-
-    def test_cancelling_restores_the_override_not_the_suggestion(self):
-        first = self.receive(D("900"))
-        second = self.receive(D("450"))
-        order = self.make_order(self.customer1)
-        line = self.make_line(order, D("400"), variant=self.tracked)
-        self.pack(order, line, 400, rolls=[{"roll": first.pk, "metres": "400"}])
-
-        packing_round = PackingRound.objects.get()
-        cancel_round(packing_round, user=self.admin_user)
-
-        first.refresh_from_db()
-        second.refresh_from_db()
-        self.assertEqual(first.remaining_meters, D("900.000"))
-        self.assertEqual(second.remaining_meters, D("450.000"))
-        self.assert_in_step()
-        self.assertEqual(self.tracked.stock_meters, D("1350.000"))
-        self.assertTrue(all(e.is_reversed for e in RollAllocation.objects.all()))
-
-    def test_a_pack_naming_no_roll_is_refused_rather_than_guessed(self):
-        self.receive(D("900"))
-        fitting = self.receive(D("450"))
-        order = self.make_order(self.customer1)
-        line = self.make_line(order, D("400"), variant=self.tracked)
-
-        response = self.pack(order, line, 400)
-
-        # Which roll the metres come off is decided by scanning its label, not by
-        # the server picking the convenient one, so no breakdown is a refusal.
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("scanning", response.data["error"])
-        self.assertEqual(RollAllocation.objects.count(), 0)
-        self.assertFalse(
-            FabricRoll.objects.filter(pk=fitting.pk, remaining_meters=D("0")).exists()
-        )
-        self.assert_in_step()
-
-    def test_an_override_that_does_not_add_up_is_refused(self):
-        roll = self.receive(D("900"))
-        order = self.make_order(self.customer1)
-        line = self.make_line(order, D("400"), variant=self.tracked)
-
-        response = self.pack(order, line, 400, rolls=[{"roll": roll.pk, "metres": "300"}])
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("add up", response.data["error"])
-        self.assertEqual(RollAllocation.objects.count(), 0)
-        self.assert_in_step()
-
-    def test_an_override_asking_more_than_a_roll_holds_is_refused(self):
-        self.receive(D("900"))
-        small = self.receive(D("450"))
-        order = self.make_order(self.customer1)
-        line = self.make_line(order, D("700"), variant=self.tracked)
-
-        # The total is right, but it asks 700 m off a 450 m roll.
-        response = self.pack(
-            order, line, 700, rolls=[{"roll": small.pk, "metres": "700"}]
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("left", response.data["error"])
-        self.assertEqual(RollAllocation.objects.count(), 0)
-        self.assert_in_step()
-
-    def test_an_override_naming_another_colours_roll_is_refused(self):
-        self.receive(D("900"))
-        stray = FabricVariant.objects.create(
-            fabric=self.fabric, display_order="Stray", stock_meters=D("600")
-        )
-        stray_roll = receive_roll(stray, D("600"))
-        order = self.make_order(self.customer1)
-        line = self.make_line(order, D("400"), variant=self.tracked)
-
-        response = self.pack(
-            order, line, 400, rolls=[{"roll": stray_roll.pk, "metres": "400"}]
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(RollAllocation.objects.count(), 0)
-        self.assert_in_step()
-
-    def test_an_override_giving_a_roll_nothing_is_refused(self):
-        roll = self.receive(D("900"))
-        order = self.make_order(self.customer1)
-        line = self.make_line(order, D("400"), variant=self.tracked)
-
-        response = self.pack(order, line, 400, rolls=[{"roll": roll.pk, "metres": "0"}])
-
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(RollAllocation.objects.count(), 0)
-        self.assert_in_step()
-
-    def test_the_breakdown_is_rechecked_against_the_rolls_as_they_are_now(self):
-        # The server is the source of truth: a breakdown that was fine when the
-        # admin saw it is refused once the roll no longer holds that much.
-        roll = self.receive(D("900"))
-
-        with self.assertRaises(RollError):
-            resolve_roll_plan(
-                self.tracked,
-                D("400"),
-                rolls=[roll],
-                roll_override=[{"roll": roll.pk, "metres": "399"}],
-            )

@@ -1,13 +1,11 @@
-from rest_framework import viewsets, permissions, status
+from rest_framework import viewsets, permissions
 from rest_framework.response import Response
 from rest_framework.decorators import action
+
+from apps.accounts.permissions import IsAdminWithPin
+
 from .models import Transport
 from .serializers import TransportSerializer
-
-
-class IsAdminUser(permissions.BasePermission):
-    def has_permission(self, request, view):
-        return request.user and request.user.is_staff
 
 
 class TransportViewSet(viewsets.ModelViewSet):
@@ -15,8 +13,11 @@ class TransportViewSet(viewsets.ModelViewSet):
     serializer_class = TransportSerializer
 
     def get_permissions(self):
+        # Anyone may read the list -- an order has to be able to offer the
+        # transports a customer can pick from. Writing it is an admin action and,
+        # for a non-superuser, needs the PIN like every other admin write.
         if self.action in ["create", "update", "partial_update", "destroy"]:
-            return [IsAdminUser()]
+            return [IsAdminWithPin()]
         return [permissions.AllowAny()]
 
     @action(detail=False, methods=["get"])

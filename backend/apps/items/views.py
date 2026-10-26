@@ -118,6 +118,8 @@ def _sync_fabrics_payload(request, qs, page, page_size):
                 "id": fabric.id,
                 "rev": fabric.catalog_updated_at.isoformat(),
                 "name": fabric.name,
+                "design_number": fabric.design_number,
+                "category": fabric.category,
                 "price_per_meter": str(fabric.price_per_meter),
                 "thumb": (
                     request.build_absolute_uri(first.image.url)
@@ -213,6 +215,8 @@ class FabricViewSet(ModelViewSet):
                 {
                     "id": fabric.id,
                     "name": fabric.name,
+                    "design_number": fabric.design_number,
+                    "category": fabric.category,
                     "price_per_meter": str(fabric.price_per_meter),
                     "image": (
                         request.build_absolute_uri(variants[0].image.url)
@@ -383,6 +387,8 @@ class FabricViewSet(ModelViewSet):
             {
                 "id": fabric.id,
                 "name": fabric.name,
+                "design_number": fabric.design_number,
+                "category": fabric.category,
                 "price_per_meter": str(fabric.price_per_meter),
                 "description": fabric.description,
                 "variants": [
@@ -515,7 +521,11 @@ class FabricRollViewSet(ModelViewSet):
     lookup_value_regex = "[0-9]+"
 
     def get_queryset(self):
-        qs = FabricRoll.objects.select_related("variant__fabric").all()
+        qs = (
+            FabricRoll.objects.select_related("variant__fabric")
+            .prefetch_related("roll_allocations")
+            .all()
+        )
         variant_id = self.request.query_params.get("variant")
         if variant_id:
             qs = qs.filter(variant_id=variant_id)
@@ -579,7 +589,12 @@ class FabricRollViewSet(ModelViewSet):
         serializer = RollAdjustSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         try:
-            adjust_roll(roll, serializer.validated_data["meters"])
+            adjust_roll(
+                roll,
+                serializer.validated_data["meters"],
+                reason=serializer.validated_data.get("reason", ""),
+                created_by=request.user,
+            )
         except RollError as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(FabricRollSerializer(roll).data)

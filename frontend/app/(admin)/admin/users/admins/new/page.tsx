@@ -94,7 +94,7 @@ export default function NewAdminPage() {
   };
 
   return (
-    <div className="w-full px-4 py-8 flex flex-col min-h-screen bg-white">
+    <div className="w-full px-0 py-4 flex flex-col min-h-screen bg-white sm:px-4 sm:py-8">
       <div className="mb-8">
         <h1 className="text-2xl font-black text-gray-900 tracking-tight">
           New Admin
@@ -104,7 +104,7 @@ export default function NewAdminPage() {
         </p>
       </div>
 
-      <div className="bg-gray-50/50 border border-gray-100 rounded-3xl p-6 mb-8">
+      <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-3 mb-4 sm:rounded-3xl sm:p-6 sm:mb-8">
         <FieldGroup className="space-y-6 flex-1">
           {/* Display Name */}
           <Field>
@@ -248,7 +248,7 @@ export default function NewAdminPage() {
         </FieldGroup>
       </div>
 
-      <div className="flex gap-4 items-center mt-auto pb-10">
+      <div className="flex gap-3 items-center mt-auto pb-6 sm:gap-4 sm:pb-10">
         <StockFlowButton
           variant="outline"
           text="Cancel"

@@ -1,40 +1,41 @@
-"use client";
-
-import React from "react";
 import { OrderStatus } from "@/types/order";
+import { cn } from "@/lib/utils";
 
 interface StatusBadgeProps {
   status: OrderStatus | string | undefined;
+  className?: string;
 }
 
-const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
-  const getStatusStyles = (status: string | undefined) => {
-    if (!status) return "bg-gray-50 text-gray-400 border-gray-200";
-    switch (status.toUpperCase()) {
-      case "PENDING":
-        return "bg-amber-50 text-amber-600 border-amber-200";
-      case "PACKED":
-        return "bg-red-50 text-red-700 border-red-200";
-      // Somewhere between the two: some boxes have gone out on a truck and others are
-      // still here, so it is deliberately not the full green of DISPATCHED.
-      case "PARTIALLY_DISPATCHED":
-        return "bg-teal-50 text-teal-700 border-teal-200";
-      case "DISPATCHED":
-        return "bg-green-50 text-green-700 border-green-200";
-      default:
-        return "bg-gray-50 text-gray-600 border-gray-200";
-    }
-  };
-
-  return (
-    <div
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${getStatusStyles(
-        status
-      )}`}
-    >
-      {status}
-    </div>
-  );
+const LABELS: Record<string, string> = {
+  DRAFT: "Draft",
+  PENDING: "Pending",
+  EDITING: "Editing",
+  PACKED: "Packed",
+  PARTIALLY_DISPATCHED: "Partially dispatched",
+  DISPATCHED: "Dispatched",
 };
 
-export default StatusBadge;
+export default function StatusBadge({
+  status,
+  className,
+}: StatusBadgeProps) {
+  const normalized = status?.toLowerCase().replace(/\s+/g, "_") ?? "draft";
+  const safeStatus =
+    normalized === "partial" || normalized === "partially-dispatched"
+      ? "partially_dispatched"
+      : normalized;
+  const label =
+    LABELS[safeStatus.toUpperCase()] ??
+    status ??
+    "Unknown";
+
+  return (
+    <span
+      data-status={safeStatus}
+      className={cn("status-badge", className)}
+    >
+      <span className="status-badge__dot" aria-hidden="true" />
+      <span className="truncate">{label}</span>
+    </span>
+  );
+}

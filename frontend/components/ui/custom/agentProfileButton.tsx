@@ -9,16 +9,16 @@ const AgentProfileButton: React.FC = () => {
   const { user } = useAuth();
 
   return (
-    <div
-      className="flex relative w-full justify-end  pt-2 pr-2"
-      title="View Profile"
-    >
-      <div
-        className="cursor-pointer"
+    <div className="relative flex w-full justify-end px-4 py-3">
+      <button
+        type="button"
         onClick={() => router.push("/agent/profile")}
+        aria-label="Open profile"
+        title="View profile"
+        className="app-focus -m-1 flex size-12 items-center justify-center rounded-full p-1 transition-colors hover:bg-app-soft"
       >
         <StockflowAvatar user={user} />
-      </div>
+      </button>
     </div>
   );
 };

@@ -11,7 +11,6 @@ import type {
     OutstandingDemandRow,
     ReceiveRollResponse,
     RollCutPlan,
-    RollHistoryResponse,
     RollSummary,
     VariantAllResponse,
     VariantRollsResponse,
@@ -152,11 +151,6 @@ export const rollApi = {
                 reason,
             })
             .then((r) => r.data);
-    },
-
-    /** What was cut from a roll, and what was handed back. */
-    history(rollId: number): Promise<RollHistoryResponse> {
-        return api.get<RollHistoryResponse>(`/api/items/rolls/${rollId}/history/`).then((r) => r.data);
     },
 
     /** Which rolls packing this many metres would come off, by best fit. */

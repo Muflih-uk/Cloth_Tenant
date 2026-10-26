@@ -46,7 +46,7 @@ export default function TransportsList() {
 
     return (
         <div>
-            <div className="flex w-full justify-end px-4 mb-4">
+            <div className="flex w-full justify-end px-0 mb-3 sm:px-4 sm:mb-4">
                 <StockFlowButton
                     text="Add Transport"
                     variant="filled"
@@ -59,18 +59,18 @@ export default function TransportsList() {
             </div>
 
             {data.length === 0 ? (
-                <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4 px-4">
+                <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4 px-0 sm:px-4">
                     <Truck size={48} className="text-gray-300" />
                     <h2 className="text-xl font-bold text-gray-400">
                         No Transports
                     </h2>
                 </div>
             ) : (
-                <div className="px-4 space-y-3 pb-20">
+                <div className="px-0 space-y-2 pb-20 sm:px-4 sm:space-y-3">
                     {data.map((transport) => (
                         <div
                             key={transport.id}
-                            className="flex items-center gap-4 bg-white border border-gray-100 p-4 hover:border-primary/30 hover:shadow-md transition-all rounded-2xl group"
+                            className="flex items-center gap-3 bg-white border border-gray-100 p-3 sm:gap-4 sm:p-4 hover:border-primary/30 hover:shadow-md transition-all rounded-2xl group"
                         >
                             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                                 <Truck size={20} className="text-primary" />

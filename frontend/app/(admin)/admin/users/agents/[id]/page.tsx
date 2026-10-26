@@ -279,7 +279,7 @@ export default function AgentDetailPage() {
     return <div className="p-8 text-center text-red-400">Agent not found.</div>;
 
   return (
-    <div className="w-full px-4 py-8 flex flex-col min-h-screen bg-white">
+    <div className="w-full px-0 py-4 flex flex-col min-h-screen bg-white sm:px-4 sm:py-8">
       <DeleteWithTransferDialog
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
@@ -307,7 +307,7 @@ export default function AgentDetailPage() {
             if (e.target === e.currentTarget && !deletingAllItems) setDeleteAllDialogOpen(false);
           }}
         >
-          <div className="w-full sm:max-w-sm bg-white rounded-3xl shadow-2xl p-6 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col items-center text-center">
+          <div className="w-full sm:max-w-sm bg-white rounded-3xl shadow-2xl p-4 sm:p-6 overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col items-center text-center">
             <div className="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center mb-4">
               <Trash2 className="w-6 h-6 text-red-500" />
             </div>
@@ -450,7 +450,7 @@ export default function AgentDetailPage() {
       {/* User Details Section */}
       {isEditing ? (
         <>
-          <div className="bg-gray-50/50 border border-gray-100 rounded-[2rem] p-6 space-y-6 mb-6">
+          <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-3 space-y-4 mb-4 sm:rounded-[2rem] sm:p-6 sm:space-y-6 sm:mb-6">
             <FieldGroup className="space-y-6">
               <Field>
                 <FieldLabel className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">

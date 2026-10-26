@@ -277,7 +277,7 @@ frontend/
 │   │   │   │   + addColor/colorCard/colorList/commonDetails(+Badge)/cropModal
 │   │   │   ├── edit/[id]/page.tsx (433)     /admin/items/edit/:id
 │   │   │   │   + editVariantRow.tsx        (read-only stock + roll badge when roll-tracked)
-│   │   │   │   + components/items/physicalRollsPanel.tsx  ★ rolls, adjust, history per colour
+│   │   │   │   + components/items/physicalRollsPanel.tsx  ★ rolls, receive, adjust per colour
 │   │   │   │   + components/items/receiveRollsDialog.tsx ★ one-roll or atomic bulk receive
 │   │   │   └── ordered/[id]/page.tsx (207)  /admin/items/ordered/:id — demand by customer
 │   │   ├── packing/
@@ -590,7 +590,7 @@ touch), and moves `FabricVariant.stock_meters` in the same transaction.
 |---|---|
 | `roll_summary(variant)` / `variant_roll_info(variant)` | Counts and totals for the roll UI; a variant with no rolls reports `is_roll_tracked=False` and its plain stock |
 | `receive_roll(variant, meters, note, roll_number)` / `receive_rolls(...)` | One roll or an **atomic** bulk delivery — a bad figure halfway down leaves stock untouched |
-| `adjust_roll(roll, delta, note)` | Signed correction to one roll (negative allowed, down to zero remaining) |
+| `adjust_roll(roll, delta, note, reason, created_by)` | Signed correction to one roll (negative allowed, down to zero remaining); writes a `StockMovement` audit row |
 | `preview_consumption(variant, metres)` | Which rolls a cut would come off, oldest first, without changing anything |
 | `consume_for_allocation(allocation)` | The packing write path: take metres off rolls FIFO, recording one `RollAllocation` per roll touched |
 | `return_metres_for_allocations(...)` / `return_metres_for_lines(...)` | **Exact** reversal — each allocation credits the same roll it debited; reversed rows stay for history |
@@ -598,6 +598,11 @@ touch), and moves `FabricVariant.stock_meters` in the same transaction.
 
 FIFO order is `(created_at, id)`. `move_variant_stock()` is the single choke point for
 stock changes, so an adjustment, a pack and a delete all move it identically.
+
+`packed_meters` is the live sum of non-reversed `RollAllocation` rows, not the gap
+between received and remaining metres. A manual adjustment therefore changes the
+physical/remaining figure without being reported as packing consumption.
+`consumed_meters` remains as a compatibility alias for the same value.
 
 #### `apps/notification/utils.py` (53 lines)
 
@@ -633,8 +638,8 @@ Notably `transports/views.py:11-13` defines a **separate, local** `IsAdminUser` 
 | `lib/form-utils.ts` | 3502 B | ★ Multipart encoding protocol |
 | `lib/updateItem.ts` | 2461 B | ★ Fabric update payload rules |
 | `lib/toast.ts` | 3759 B | ★ Error extraction across axios/DRF/proxy/HTML |
-| `lib/api/item.ts` | | `itemApi` + `rollApi` (receive, bulk-receive, adjust, history, preview, sync) |
-| `components/items/physicalRollsPanel.tsx` | | ★ Rolls of one colour: summary, per-roll adjust, history dialog |
+| `lib/api/item.ts` | | `itemApi` + `rollApi` (receive, bulk-receive, adjust, preview, sync) |
+| `components/items/physicalRollsPanel.tsx` | | ★ Rolls of one colour: summary, receive, per-roll adjust and label printing |
 | `components/items/receiveRollsDialog.tsx` | | ★ Receive a delivery as one roll or several, in one request |
 | `components/pages/admin/packing/PackingBoard.tsx` | 27722 B | ★ The three-step roll-splitting UI |
 
@@ -938,7 +943,7 @@ colour only becomes roll-tracked once a roll is actually received against it.
 | GET/PATCH/DELETE | `/rolls/{id}/` | one roll. DELETE 409s once it is non-empty or has history |
 | POST | `/rolls/{id}/adjust/` | `{delta, note?}` — signed correction |
 | GET | `/rolls/{id}/history/` | `{roll, entries[]}` — every cut, with order/customer/round, and `is_reversed` |
-| GET | `/variants/{id}/rolls/` | `{variant, fabric, display_order, stock_meters, is_roll_tracked, roll_count, active_roll_count, exhausted_roll_count, total_received_meters, roll_stock_meters, consumed_meters, rolls[]}` |
+| GET | `/variants/{id}/rolls/` | `{variant, fabric, display_order, stock_meters, is_roll_tracked, roll_count, active_roll_count, exhausted_roll_count, total_received_meters, roll_stock_meters, packed_meters, consumed_meters, rolls[]}` |
 | POST | `/variants/{id}/rolls/` | receive one roll: `{meters, note?, roll_number?}` |
 | POST | `/variants/{id}/rolls/bulk-add/` | `{rolls: [{meters, note?, roll_number?}]}` — **one transaction** |
 | POST | `/variants/{id}/rolls/preview/` | `{meters}` → which rolls a cut would come off, oldest first; changes nothing |

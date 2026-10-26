@@ -34,7 +34,7 @@ export default function OrderTotals({
   isEditTotalDisabled = false,
 }: OrderTotalsProps) {
   return (
-    <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-3xl p-4 border border-primary/20">
+    <div className="bg-gradient-to-r from-primary/5 to-primary/10 rounded-2xl p-3 sm:rounded-3xl sm:p-4 border border-primary/20">
       <p className="text-[10px] text-primary/60 uppercase font-black tracking-widest mb-2">
         Order Summary
       </p>

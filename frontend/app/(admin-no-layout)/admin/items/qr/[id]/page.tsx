@@ -86,6 +86,20 @@ const QRPage: React.FC = () => {
           {fabric.name}
         </p>
 
+        {fabric.design_number && (
+          <p
+            style={{
+              fontSize: "9px",
+              fontWeight: 600,
+              color: "#444",
+              textAlign: "center",
+              margin: 0,
+            }}
+          >
+            Design: {fabric.design_number}
+          </p>
+        )}
+
         {/* QR code */}
         <div style={{ padding: "4px", background: "white" }}>
           <QRCode value={id} size={130} />

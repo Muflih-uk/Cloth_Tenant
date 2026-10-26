@@ -39,7 +39,10 @@ function DialogOverlay({
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
-      className={cn("fixed inset-0 z-50", className)}
+      className={cn(
+        "fixed inset-0 z-50 bg-brand-navy/35 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        className,
+      )}
       {...props}
     />
   );
@@ -61,42 +64,20 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "bg-white data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] rounded-lg border shadow-lg duration-50 outline-none sm:max-w-lg",
+          "fixed left-[50%] top-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-card border border-app-line bg-app-card p-5 text-app-ink shadow-float outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 duration-150 sm:max-w-lg",
           className,
         )}
         {...props}
       >
         {children}
-        <ShareImageButton imageUrl={src!} />
+        {src && <ShareImageButton imageUrl={src} />}
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="
-              fixed
-              top-4
-              left-4
-              z-[100]
-              flex
-              items-center
-              justify-center
-              rounded-lg
-              border-2
-              border-black
-              bg-white
-              px-4
-              py-2
-              text-sm
-              font-semibold
-              text-black
-              shadow-lg
-              transition-colors
-              hover:bg-black
-              hover:text-white
-              active:scale-95
-            "
+            aria-label="Close dialog"
+            className="app-focus fixed right-4 top-4 z-[100] flex size-11 items-center justify-center rounded-full border border-app-line bg-app-card text-app-ink shadow-card transition-colors hover:bg-app-soft"
           >
-            Close
-            <span className="sr-only">Close dialog</span>
+            <XIcon className="size-5" aria-hidden="true" />
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Content>

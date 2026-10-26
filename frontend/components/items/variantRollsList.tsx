@@ -21,9 +21,9 @@ interface Props {
  * This is a reading of the rolls, not a place to change them: the rows are the
  * Physical Rolls panel's own, and the labels are its own label, so what the
  * warehouse reads here is the same wording as on the Edit Inventory screen. What
- * it does not bring with it is any of the panel's editing -- receiving, adjusting
- * and roll history stay where they are, on the fabric form, because this list is
- * for looking up a roll number and printing its label.
+ * it does not bring with it is any of the panel's editing -- receiving and
+ * adjusting stay where they are, on the fabric form, because this list is for
+ * looking up a roll number and printing its label.
  *
  * The stock list that builds this page carries no roll counts, so the rolls are
  * read once when the colour is opened rather than guessed at from the metre
@@ -101,7 +101,7 @@ export default function VariantRollsList({ variantId, label }: Props) {
 
   return (
     <div className="mt-2 border-t border-gray-100 pt-2">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
         <p className="text-[9px] uppercase tracking-widest text-gray-400">
           Physical Rolls
         </p>
@@ -112,16 +112,11 @@ export default function VariantRollsList({ variantId, label }: Props) {
                 data.roll_count === 1 ? "" : "s"
               }`}
         </p>
-        {data.exhausted_roll_count > 0 && (
-          <p className="text-[10px] text-gray-400">
-            {data.exhausted_roll_count} used up
-          </p>
-        )}
       </div>
 
       {rolls.length === 0 ? (
-        <p className="mt-1.5 text-[11px] text-gray-400 leading-relaxed">
-          This colour has no physical rolls. Rolls are received on the Edit
+        <p className="mt-1.5 text-[11px] leading-relaxed text-gray-400">
+          This colour has no physical rolls. Receive them from the Edit
           Inventory screen.
         </p>
       ) : (
@@ -129,7 +124,7 @@ export default function VariantRollsList({ variantId, label }: Props) {
           {rolls.map((roll) => (
             <div
               key={roll.id}
-              className="rounded-lg border border-gray-100 px-2.5 py-1.5 bg-white flex items-center gap-2"
+              className="flex items-center gap-1.5 rounded-lg border border-gray-100 bg-white px-2 py-1.5 sm:gap-2 sm:px-2.5"
             >
               <RollSummary roll={roll} />
               {/*
@@ -143,7 +138,7 @@ export default function VariantRollsList({ variantId, label }: Props) {
               <button
                 type="button"
                 onClick={() => setPrintingRoll(roll)}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/5 transition-colors flex-shrink-0"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-primary/5 hover:text-primary sm:h-8 sm:w-8"
                 aria-label={`Print label for ${roll.roll_number}`}
                 title="View/print label"
               >
@@ -160,7 +155,7 @@ export default function VariantRollsList({ variantId, label }: Props) {
         <button
           type="button"
           onClick={() => setPrinting(true)}
-          className="mt-2 w-full h-8 rounded-lg border border-gray-200 text-[11px] font-bold text-gray-600 flex items-center justify-center gap-1.5 hover:bg-gray-50 transition-colors"
+          className="mt-2 flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-gray-200 text-[11px] font-bold text-gray-600 transition-colors hover:bg-gray-50"
         >
           <QrCode size={12} />
           Print all QR labels

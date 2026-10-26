@@ -13,11 +13,19 @@ import { fabricToFormData } from "./form-utils";
  *    packing, and is never submitted from this form.
  */
 export function buildFabricUpdatePayload(
-  common: { name: string; description?: string; price_per_meter: string },
+  common: {
+    name: string;
+    design_number?: string;
+    category?: string;
+    description?: string;
+    price_per_meter: string;
+  },
   variants: EditableVariant[],
 ): FabricRequest {
   return {
     name: common.name,
+    design_number: common.design_number ?? "",
+    category: common.category ?? "",
     description: common.description ?? "",
     price_per_meter: common.price_per_meter,
     variants: variants.map((variant) => {
@@ -40,7 +48,13 @@ export function buildFabricUpdatePayload(
 
 export async function updateFabric(
   fabricId: number,
-  common: { name: string; description?: string; price_per_meter: string },
+  common: {
+    name: string;
+    design_number?: string;
+    category?: string;
+    description?: string;
+    price_per_meter: string;
+  },
   variants: EditableVariant[],
 ): Promise<void> {
   // Multipart, not JSON: a replaced photo is a File, and JSON.stringify turns a

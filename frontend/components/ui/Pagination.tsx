@@ -1,3 +1,7 @@
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
@@ -42,62 +46,86 @@ export default function Pagination({
     return pages;
   };
 
-  if (totalPages <= 1) return null;
+  if (totalCount === 0) return null;
+
+  const navButtonClass =
+    "app-focus inline-flex h-11 min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-control border border-app-line bg-app-card px-3 text-xs font-semibold text-app-ink transition-colors hover:bg-app-soft disabled:cursor-not-allowed disabled:opacity-40";
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
-      <div className="flex items-center gap-2 text-sm text-gray-600">
+    <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-app-muted">
         <span className="whitespace-nowrap">
-          Showing {start}-{end} of {totalCount}
+          Showing {start}–{end} of {totalCount}
         </span>
+        <label className="sr-only" htmlFor="pagination-page-size">
+          Rows per page
+        </label>
         <select
+          id="pagination-page-size"
           value={pageSize}
-          onChange={(e) => onPageSizeChange(Number(e.target.value))}
-          className="px-2 py-1 border border-gray-300 rounded-md text-sm"
+          onChange={(event) => onPageSizeChange(Number(event.target.value))}
+          className="app-focus h-11 rounded-control border border-app-line bg-app-card px-3 text-xs font-semibold text-app-ink"
         >
           {PAGE_SIZE_OPTIONS.map((size) => (
-            <option key={size} value={size}>{size} per page</option>
+            <option key={size} value={size}>
+              {size} per page
+            </option>
           ))}
         </select>
       </div>
 
-      <div className="flex items-center gap-1 overflow-x-auto pb-2">
-        <button
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage <= 1}
-          className="min-w-[40px] min-h-[40px] px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-        >
-          Previous
-        </button>
+      {totalPages > 1 && (
+        <div className="flex items-center gap-1 overflow-x-auto pb-1">
+          <button
+            type="button"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage <= 1}
+            aria-label="Previous page"
+            className={navButtonClass}
+          >
+            <ChevronLeft className="size-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Previous</span>
+          </button>
 
-        {getVisiblePages().map((page, idx) =>
-          typeof page === "string" ? (
-            <span key={`ellipsis-${idx}`} className="px-2 text-gray-400">
-              ...
-            </span>
-          ) : (
-            <button
-              key={page}
-              onClick={() => onPageChange(page)}
-              className={`min-w-[40px] min-h-[40px] px-3 py-1 text-sm border rounded-md ${
-                currentPage === page
-                  ? "bg-primary text-white border-primary"
-                  : "border-gray-300 hover:bg-gray-50"
-              }`}
-            >
-              {page}
-            </button>
-          )
-        )}
+          {getVisiblePages().map((page, index) =>
+            typeof page === "string" ? (
+              <span
+                key={`ellipsis-${index}`}
+                className="px-1.5 text-xs text-app-subtle"
+              >
+                ...
+              </span>
+            ) : (
+              <button
+                key={page}
+                type="button"
+                onClick={() => onPageChange(page)}
+                aria-current={currentPage === page ? "page" : undefined}
+                aria-label={`Page ${page}`}
+                className={cn(
+                  "app-focus inline-flex h-11 min-h-11 min-w-11 items-center justify-center rounded-control border text-xs font-semibold transition-colors",
+                  currentPage === page
+                    ? "border-brand-navy bg-brand-navy text-white"
+                    : "border-app-line bg-app-card text-app-muted hover:bg-app-soft hover:text-app-ink",
+                )}
+              >
+                {page}
+              </button>
+            ),
+          )}
 
-        <button
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage >= totalPages}
-          className="min-w-[40px] min-h-[40px] px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
-        >
-          Next
-        </button>
-      </div>
+          <button
+            type="button"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+            aria-label="Next page"
+            className={navButtonClass}
+          >
+            <span className="hidden sm:inline">Next</span>
+            <ChevronRight className="size-4" aria-hidden="true" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

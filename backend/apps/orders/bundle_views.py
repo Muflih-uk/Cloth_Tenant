@@ -1,9 +1,10 @@
 """Order-level packing bundles.
 
 A :class:`~apps.orders.models.PackingBundle` is the unit of handover: a box that
-leaves the warehouse carrying whole rolls, possibly of different colours, against
-one order. This module is the whole public surface for that -- open a bundle, scan
-rolls into it, take a roll back out, seal it, or throw it away.
+leaves the warehouse carrying metres cut from scanned rolls, possibly of different
+colours, against one order. This module is the whole public surface for that --
+open a bundle, scan a roll and enter its cut, take a roll back out, seal it, or
+throw it away.
 
 Everything here delegates the stock movement. A scan creates the same one-entry
 ``PackingRound`` and hands it to :func:`~apps.orders.packing_views._apply_plan`
@@ -14,9 +15,10 @@ and the audit log all behave identically no matter which door the cloth came
 through; a bundle is a label on top of that, never a second way of moving stock.
 """
 
+from datetime import timedelta
 from decimal import Decimal
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Max, Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -39,6 +41,7 @@ from apps.orders.models import (
     OrderLog,
     PackingBundle,
     PackingRound,
+    PackingScan,
     RollAllocation,
 )
 from apps.orders.packing_views import _SCAN_NOTE, _apply_plan
@@ -47,14 +50,40 @@ from transports.models import Transport
 ZERO = Decimal("0")
 
 
-class _ScanIntoBundleSerializer(serializers.Serializer):
-    """The roll a warehouse scan resolved to, named by its own identifier.
+class _ResolveScanSerializer(serializers.Serializer):
+    """The raw value read from a roll label.
 
-    A roll's label carries its primary key, which is what makes a scan resolve to
-    exactly one roll row rather than to a colour with several lengths on it.
+    The label carries the roll's primary key. It is parsed here rather than pickled
+    into the request as a trusted integer: a value that is not a roll label is
+    rejected before it reaches a lookup.
     """
 
-    roll = serializers.IntegerField(min_value=1)
+    roll = serializers.CharField(max_length=64, trim_whitespace=True)
+
+    def validate_roll(self, value):
+        try:
+            roll_id = int(value)
+        except (TypeError, ValueError):
+            raise serializers.ValidationError(
+                "That is not a roll label. Scan the label on the roll itself."
+            )
+        if roll_id < 1:
+            raise serializers.ValidationError(
+                "That is not a roll label. Scan the label on the roll itself."
+            )
+        return roll_id
+
+
+class _ConfirmScanSerializer(serializers.Serializer):
+    """A resolved scan and the metres actually being cut from that roll."""
+
+    token = serializers.UUIDField()
+    metres = serializers.DecimalField(max_digits=14, decimal_places=3)
+
+    def validate_metres(self, value):
+        if value <= ZERO:
+            raise serializers.ValidationError("Must be greater than zero.")
+        return value
 
 
 def _bundle_rolls(bundle):
@@ -275,6 +304,73 @@ def _resolve_target_line(order, roll):
     return None
 
 
+SCAN_TOKEN_MINUTES = 10
+
+
+def _issue_scan(bundle, order, roll, line, user):
+    """Reuse or create the one pending token for this roll and admin.
+
+    Two scans of the same label while the first is still waiting for a cut must
+    not create two independent ways to spend the roll. The conditional unique
+    constraint backs that up when both requests race past the lookup.
+    """
+    expires_at = timezone.now() + timedelta(minutes=SCAN_TOKEN_MINUTES)
+    pending = (
+        PackingScan.objects.select_for_update()
+        .filter(
+            bundle=bundle,
+            roll=roll,
+            created_by=user,
+            consumed_at__isnull=True,
+        )
+        .first()
+    )
+    if pending is not None:
+        pending.order = order
+        pending.order_item = line
+        pending.expires_at = expires_at
+        pending.save(update_fields=["order", "order_item", "expires_at"])
+        return pending
+
+    try:
+        with transaction.atomic():
+            return PackingScan.objects.create(
+                order=order,
+                bundle=bundle,
+                roll=roll,
+                order_item=line,
+                created_by=user,
+                expires_at=expires_at,
+            )
+    except IntegrityError:
+        return PackingScan.objects.select_for_update().get(
+            bundle=bundle,
+            roll=roll,
+            created_by=user,
+            consumed_at__isnull=True,
+        )
+
+
+def _scan_payload(scan, roll, line):
+    """What the scanner needs to show the metres prompt."""
+    remaining = Decimal(str(roll.remaining_meters))
+    outstanding = Decimal(str(line.outstanding_quantity))
+    suggested = min(remaining, outstanding) if outstanding > ZERO else remaining
+    return {
+        "token": str(scan.token),
+        "expires_at": scan.expires_at.isoformat(),
+        "roll_id": roll.pk,
+        "roll_number": roll.roll_number,
+        "fabric": roll.variant.fabric.name,
+        "colour": roll.variant.display_order,
+        "remaining_meters": str(remaining),
+        "suggested_meters": str(suggested),
+        "item_id": line.pk,
+        "fabric_name": line.fabric_name,
+        "variant_display_order": line.variant_display_order,
+    }
+
+
 @extend_schema(
     methods=["GET"],
     summary="List the packing bundles on an order",
@@ -356,22 +452,18 @@ def create_bundle(request, order_id):
 
 @extend_schema(
     methods=["POST"],
-    summary="Scan a roll into an open bundle",
-    request=_ScanIntoBundleSerializer,
+    summary="Resolve a roll label before asking for a cut",
+    request=_ResolveScanSerializer,
 )
 @api_view(["POST"])
 @permission_classes([IsAdmin])
-def scan_into_bundle(request, order_id, pk):
-    """Add one whole scanned roll to an open bundle.
+def resolve_scan(request, order_id, pk):
+    """Check a scanned label and issue the short-lived token used to pack it.
 
-    The roll's colour decides which order line it lands on, so the scanner needs
-    no line selection at all: the colour on the label picks the line, the whole
-    remaining length is cut for it, and the roll joins the bundle's running list.
-
-    The whole operation is one transaction under three locks -- the bundle, the
-    colour and the roll -- so two scanners hitting the same bundle serialise, a
-    scan cannot slip into a bundle that has just been sealed, and the same label
-    cannot be scanned twice at once.
+    Resolving does not move cloth. It proves the roll exists, belongs to a colour
+    this order still wants, has metres left, and that the bundle is open right
+    now. The response carries the remaining metres and a sensible starting cut so
+    the packer only has to confirm or change the figure.
     """
     order = get_object_or_404(Order, pk=order_id)
 
@@ -380,7 +472,7 @@ def scan_into_bundle(request, order_id, pk):
             f"Order #{order.pk} is {order.status.lower()}, not open for packing."
         )
 
-    serializer = _ScanIntoBundleSerializer(data=request.data)
+    serializer = _ResolveScanSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     roll_id = serializer.validated_data["roll"]
 
@@ -388,11 +480,12 @@ def scan_into_bundle(request, order_id, pk):
         with transaction.atomic():
             bundle = _locked_open_bundle(order, pk)
 
-            # Re-read the roll under its own lock: it may have moved since the
-            # client read it. Unknown, spent and wrong-colour rolls are refused
-            # with the reason spelled out, because a mis-scan at a scanner is
-            # otherwise a silent mystery.
-            roll = FabricRoll.objects.select_for_update().filter(pk=roll_id).first()
+            roll = (
+                FabricRoll.objects.select_for_update()
+                .select_related("variant__fabric")
+                .filter(pk=roll_id)
+                .first()
+            )
             if roll is None:
                 raise _BundleError(
                     "That label does not belong to any roll in this warehouse."
@@ -408,9 +501,101 @@ def scan_into_bundle(request, order_id, pk):
                     f"({wanted.display_order or 'unlabelled'})."
                 )
 
+            scan = _issue_scan(bundle, order, roll, line, request.user)
+    except _BundleError as exc:
+        return _reject(str(exc))
+    except ValueError as exc:
+        return _reject(str(exc))
+
+    return Response(_scan_payload(scan, roll, line), status=status.HTTP_201_CREATED)
+
+
+@extend_schema(
+    methods=["POST"],
+    summary="Cut metres from a resolved roll into the open bundle",
+    request=_ConfirmScanSerializer,
+)
+@api_view(["POST"])
+@permission_classes([IsAdmin])
+def scan_into_bundle(request, order_id, pk):
+    """Cut a chosen number of metres from the roll the admin scanned.
+
+    The token makes the roll, order, bundle and admin the server checked at scan
+    time non-negotiable. The cut itself is re-checked under the roll lock, so two
+    confirms racing for the same token cannot both succeed and a cut can never
+    exceed what is physically left.
+    """
+    order = get_object_or_404(Order, pk=order_id)
+
+    if order.status not in OPEN_STATUSES:
+        return _reject(
+            f"Order #{order.pk} is {order.status.lower()}, not open for packing."
+        )
+
+    serializer = _ConfirmScanSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    token = serializer.validated_data["token"]
+    metres = serializer.validated_data["metres"]
+
+    try:
+        with transaction.atomic():
+            bundle = _locked_open_bundle(order, pk)
+
+            scan = (
+                PackingScan.objects.select_for_update()
+                .filter(token=token, order=order, bundle=bundle)
+                .first()
+            )
+            if scan is None:
+                raise _BundleError(
+                    "That scan is no longer valid for this bundle. Scan the roll again."
+                )
+            if scan.created_by_id not in (None, request.user.pk):
+                raise _BundleError(
+                    "That scan belongs to another admin. Scan the roll again."
+                )
+            if scan.consumed_at is not None:
+                raise _BundleError(
+                    "That scan has already been packed. Scan the roll again."
+                )
+            if scan.expires_at <= timezone.now():
+                raise _BundleError("That scan has expired. Scan the roll again.")
+
+            # Re-read the roll under its own lock: it may have been cut by another
+            # order since the label was resolved. The token names the roll, so no
+            # other roll's stock can be counted against this cut.
+            roll = (
+                FabricRoll.objects.select_for_update()
+                .select_related("variant__fabric")
+                .filter(pk=scan.roll_id)
+                .first()
+            )
+            if roll is None:
+                raise _BundleError(
+                    "That roll no longer exists. Scan the roll again."
+                )
+            if not roll.is_active or Decimal(str(roll.remaining_meters)) <= ZERO:
+                raise _BundleError(f"Roll {roll.roll_number} has already been used up.")
+
+            line = scan.order_item
+            if line is None or line.order_id != order.pk:
+                raise _BundleError(
+                    "That order line is no longer available. Scan the roll again."
+                )
+            if line.variant_id != roll.variant_id:
+                raise _BundleError(
+                    "That roll no longer matches this order line. Scan the roll again."
+                )
+
+            remaining = Decimal(str(roll.remaining_meters))
+            if metres > remaining:
+                raise _BundleError(
+                    f"Roll {roll.roll_number} only has {remaining.normalize()} m left, "
+                    f"so {metres.normalize()} m cannot be cut from it."
+                )
+
             variant = FabricVariant.objects.select_for_update().get(pk=roll.variant_id)
 
-            metres = Decimal(str(roll.remaining_meters))
             plan = [
                 {
                     "order_item": line.pk,
@@ -432,14 +617,14 @@ def scan_into_bundle(request, order_id, pk):
             # it. Deliberately the only writer of stock_meters on this path.
             _apply_plan(packing_round, plan, request.user, note)
 
-            # Tag the roll with the bundle *after* the plan is applied, because the
-            # bundle row is already locked above and re-locking it here would be a
-            # no-op at best.
             entry = RollAllocation.objects.get(
                 allocation__round=packing_round, roll=roll, is_reversed=False
             )
             entry.bundle = bundle
             entry.save(update_fields=["bundle"])
+
+            scan.consumed_at = timezone.now()
+            scan.save(update_fields=["consumed_at"])
     except _BundleError as exc:
         return _reject(str(exc))
     except ValueError as exc:
@@ -448,16 +633,19 @@ def scan_into_bundle(request, order_id, pk):
     line.refresh_from_db()
     order.refresh_from_db()
     bundle.refresh_from_db()
+    roll.refresh_from_db()
 
     return Response(
         {
             "message": (
-                f"Added roll {roll.roll_number} ({metres.normalize()} m) to "
+                f"Packed {metres.normalize()} m from roll {roll.roll_number} into "
                 f"{bundle.code}"
             ),
             "item_id": line.pk,
             "fabric_name": line.fabric_name,
             "variant_display_order": line.variant_display_order,
+            "metres": str(metres),
+            "remaining_meters": str(roll.remaining_meters),
             "order_status": order.status,
             "bundle": _serialise_bundle(bundle, order),
         },

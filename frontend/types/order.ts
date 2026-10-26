@@ -274,50 +274,29 @@ export interface PlanOverrideEntry {
 }
 
 /* ------------------------------------------------------------------ */
-/* Packing a single order line                                         */
+/* Scan-only packing                                                   */
 /* ------------------------------------------------------------------ */
 
 /**
- * What packing one line from the order page gives back.
+ * A roll label the server has checked, before any cloth moves.
  *
- * `item` is the whole line as the server now sees it, and `stock_meters` is what
- * is left on the roll, so the page can update both in place instead of
- * refetching the order. `round` is the packing round the backend built to do it,
- * which is what makes the shortcut auditable rather than a private shortcut.
- *
- * `rolls` names the physical rolls the metres were cut from, for a colour tracked
- * by rolls: empty otherwise, which is every colour that predates roll tracking.
+ * The token is the only thing the pack request may name; the browser never sends
+ * a roll id straight to the cutting endpoint. `suggested_meters` is the smaller of
+ * the roll's remaining length and what this line still owes, which is a sensible
+ * starting figure the packer can edit.
  */
-/**
- * One roll of an admin's own breakdown for a single-line pack: which roll, and how
- * much to take off it. Only needed for a colour with physical rolls, where the
- * server refuses to guess which roll to cut; a scan sends the roll's primary key
- * instead. The server re-validates every figure here against the rolls as they are
- * now.
- */
-export interface PackLineRollOverride {
-  roll: number;
-  metres: string;
-}
-
-export interface PackLineResponse {
-  message: string;
-  round: number;
-  order: number;
-  order_status: OrderStatus;
-  item: OrderItem;
-  stock_meters: string;
-  rolls?: RollHistoryEntry[];
-  /**
-   * The sealed bundle these metres were packed into.
-   *
-   * Packing a line always puts the cloth in a box, so it can be dispatched like any
-   * other bundle. There is no state to work through first, so this bundle is created
-   * already sealed.
-   */
-  bundle_id: number | null;
-  /** Its human-readable code, for a confirmation the user can read back. */
-  bundle_code: string | null;
+export interface ResolveRollScanResponse {
+  token: string;
+  expires_at: string;
+  roll_id: number;
+  roll_number: string;
+  fabric: string;
+  colour: string;
+  remaining_meters: string;
+  suggested_meters: string;
+  item_id: number;
+  fabric_name: string;
+  variant_display_order: string;
 }
 
 /**
@@ -413,6 +392,9 @@ export interface ScanIntoBundleResponse {
   item_id: number;
   fabric_name: string;
   variant_display_order: string;
+  /** The cut the admin confirmed, and what is left on that roll afterwards. */
+  metres: string;
+  remaining_meters: string;
   order_status: OrderStatus;
   bundle: PackingBundle;
 }

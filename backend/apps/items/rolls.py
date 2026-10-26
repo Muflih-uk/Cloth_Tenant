@@ -34,7 +34,7 @@ from django.db import IntegrityError, transaction
 from django.db.models import Max, Sum
 from django.utils import timezone
 
-from .models import FabricRoll, FabricVariant
+from .models import FabricRoll, FabricVariant, StockMovement
 from .services import sync_out_of_stock
 
 logger = logging.getLogger(__name__)
@@ -88,6 +88,31 @@ def roll_stock(variant):
     )
 
 
+def packed_meters_by_roll(rolls):
+    """Packed-out metres for a set of rolls, in one query.
+
+    The figure comes from live ``RollAllocation`` rows, never from
+    ``original_meters - remaining_meters``: the difference also contains manual
+    corrections, which are part of the roll's audit history but not cloth packed
+    for an order. The per-roll totals are cached on the instances for the
+    serializer that follows this read.
+    """
+    from apps.orders.models import RollAllocation
+
+    rolls = list(rolls)
+    ids = [roll.pk for roll in rolls if roll.pk]
+    totals = {}
+    if ids:
+        totals = dict(
+            RollAllocation.objects.filter(roll_id__in=ids, is_reversed=False)
+            .values_list("roll_id")
+            .annotate(total=Sum("metres"))
+        )
+    for roll in rolls:
+        setattr(roll, "_packed_meters", totals.get(roll.pk, ZERO))
+    return totals
+
+
 def roll_summary(variant, rows=None):
     """Counts and totals the inventory screens show for one colour.
 
@@ -108,6 +133,8 @@ def roll_summary(variant, rows=None):
     remaining = sum((Decimal(str(r.remaining_meters or ZERO)) for r in active), ZERO)
     original = sum((Decimal(str(r.original_meters or ZERO)) for r in rolls), ZERO)
     sizes = [Decimal(str(r.original_meters or ZERO)) for r in rolls]
+    packed_totals = packed_meters_by_roll(rolls) if tracked else {}
+    packed = sum(packed_totals.values(), ZERO)
 
     if not tracked:
         remaining = Decimal(str(variant.stock_meters or ZERO))
@@ -121,7 +148,8 @@ def roll_summary(variant, rows=None):
         ),
         "total_received_meters": original,
         "roll_stock_meters": remaining,
-        "consumed_meters": original - remaining if tracked else ZERO,
+        "packed_meters": packed,
+        "consumed_meters": packed,
         "largest_roll_meters": max(sizes) if sizes else ZERO,
         "smallest_roll_meters": min(sizes) if sizes else ZERO,
     }
@@ -142,7 +170,8 @@ def roll_payload(variant, rows=None):
         "total_received_meters": str(summary["total_received_meters"]),
         "roll_stock_meters": str(summary["roll_stock_meters"]),
         "untracked_stock_meters": str(variant.untracked_stock_meters),
-        "consumed_meters": str(summary["consumed_meters"]),
+        "packed_meters": format(summary["packed_meters"], ".3f"),
+        "consumed_meters": format(summary["consumed_meters"], ".3f"),
         "largest_roll_meters": str(summary["largest_roll_meters"]),
         "smallest_roll_meters": str(summary["smallest_roll_meters"]),
     }
@@ -418,13 +447,15 @@ def receive_rolls(variant, lengths):
     return created, total, locked
 
 
-def adjust_roll(roll, delta, *, reason=""):
+def adjust_roll(roll, delta, *, reason="", created_by=None):
     """Move a single roll's metres by ``delta``, keeping the variant in step.
 
     Used to correct a miscounted delivery (a negative delta) or to add cloth to a
     roll already on the shelf (positive). Refuses to leave a roll in a state the
     database would not accept, and never lets a roll take more back than it
-    originally held.
+    originally held. Each successful correction is written to ``StockMovement``
+    so the metres the admin removed are retained as audit data even though they
+    are not packing consumption.
     """
     delta = Decimal(str(delta))
     if delta == ZERO:
@@ -433,6 +464,7 @@ def adjust_roll(roll, delta, *, reason=""):
     with transaction.atomic():
         locked_variant = lock_variant(roll.variant)
         locked = FabricRoll.objects.select_for_update().get(pk=roll.pk)
+        stock_before = Decimal(str(locked_variant.stock_meters))
 
         new_remaining = locked.remaining_meters + delta
         if new_remaining < ZERO:
@@ -460,6 +492,16 @@ def adjust_roll(roll, delta, *, reason=""):
             ]
         )
         move_variant_stock(locked_variant, delta)
+        StockMovement.objects.create(
+            variant=locked_variant,
+            metres=delta,
+            stock_before=stock_before,
+            stock_after=Decimal(str(locked_variant.stock_meters)),
+            reason=StockMovement.ROLL_ADJUSTMENT,
+            roll_number=locked.roll_number,
+            note=(reason or "").strip()[:200],
+            created_by=created_by,
+        )
 
     roll.refresh_from_db()
     return roll

@@ -27,7 +27,12 @@ export const brandApi = {
     return api.post<BrandResponse>("/api/business/", fd).then((r) => r.data);
   },
 
-  update(id: number, data: Partial<BrandFormData>): Promise<BrandResponse> {
+  update(
+    id: number,
+    data: Partial<BrandFormData>,
+    /** Required for a non-superuser admin; superusers are exempt server-side. */
+    pin?: string,
+  ): Promise<BrandResponse> {
     const fd = new FormData();
     if (data.name !== undefined) fd.append("name", data.name);
     if (data.phone !== undefined) fd.append("phone", data.phone);
@@ -36,6 +41,7 @@ export const brandApi = {
     if (data.address_line2 !== undefined) fd.append("address_line2", data.address_line2);
     if (data.gst !== undefined) fd.append("gst", data.gst);
     if (data.logo !== undefined && data.logo !== null) fd.append("logo", data.logo);
+    if (pin) fd.append("pin", pin);
     return api.patch<BrandResponse>(`/api/business/${id}/`, fd).then((r) => r.data);
   },
 

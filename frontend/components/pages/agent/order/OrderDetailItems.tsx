@@ -76,7 +76,7 @@ export default function OrderDetailItems({
 
       {showDeleteDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 max-w-sm w-full shadow-xl">
             <h3 className="text-lg font-bold text-gray-900 mb-2">
               Delete Item?
             </h3>
@@ -88,13 +88,13 @@ export default function OrderDetailItems({
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteDialog(false)}
-                className="flex-1 py-3 px-4 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                className="flex-1 py-2.5 px-3 sm:py-3 sm:px-4 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={confirmDelete}
-                className="flex-1 py-3 px-4 rounded-xl bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
+                className="flex-1 py-2.5 px-3 sm:py-3 sm:px-4 rounded-xl bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
               >
                 Delete
               </button>

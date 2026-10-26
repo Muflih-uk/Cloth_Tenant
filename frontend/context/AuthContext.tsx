@@ -23,6 +23,8 @@ type AuthContextType = {
 
   login: (data: LoginResponse) => void;
   logout: () => void;
+  /** Merge freshly edited profile fields into the signed-in user and its cookie. */
+  updateUser: (data: Partial<AuthUser>) => void;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -105,6 +107,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     Cookies.set(COOKIE_KEYS.isSuperuser, String(data.is_superuser));
   };
 
+  const updateUser = (data: Partial<AuthUser>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...data };
+      // The cookie is what the rest of the app (and a reload) reads, so it has to
+      // move with the state or the page comes back showing the old name.
+      Cookies.set(COOKIE_KEYS.user, JSON.stringify(next));
+      return next;
+    });
+  };
+
   const logout = useCallback(() => {
     setUser(null);
     setAccessToken(null);
@@ -183,6 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!accessToken,
         login,
         logout,
+        updateUser,
       }}
     >
       {children}

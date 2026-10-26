@@ -119,7 +119,7 @@ export default function Step2AddColor({
         />
       )}
 
-      <div className="flex flex-col min-h-screen bg-white px-4 py-8">
+      <div className="flex flex-col min-h-screen bg-white px-0 py-4 sm:px-4 sm:py-8">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <button
@@ -211,11 +211,11 @@ export default function Step2AddColor({
             onChange={handleFile}
           />
 
-          {/* Colour name — this is what the picker shows on the order screen */}
+          {/* Colour number — auto-assigned, editable here and on the edit page */}
           <Field>
-            <FieldLabel>Colour / finish</FieldLabel>
+            <FieldLabel>Colour number</FieldLabel>
             <Input
-              placeholder="e.g. Maroon, Ivory, Navy"
+              placeholder="e.g. 1"
               value={variant.displayOrder}
               onChange={(e) => set("displayOrder", e.target.value)}
             />

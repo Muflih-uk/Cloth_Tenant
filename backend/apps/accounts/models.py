@@ -49,3 +49,33 @@ class PasswordResetToken(models.Model):
 
     def __str__(self):
         return f"PasswordResetToken({self.user.email}, used={self.used})"
+
+
+class PinResetCode(models.Model):
+    """A short-lived code an admin types in to change their PIN.
+
+    The PIN is what stands between a mistyped delete and a lost order, so it is
+    never changed just because someone is signed in: the admin asks for a code,
+    the code is emailed to them, and only the holder of the mailbox can finish.
+    It is a code rather than a link because the whole flow happens inside the
+    profile settings page the admin is already on.
+
+    Only the admin's own unused codes are ever read, so a code only ever has to
+    be good against the one account that asked for it.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="pin_reset_codes",
+    )
+    code = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"PinResetCode({self.user.email}, used={self.used})"

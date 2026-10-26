@@ -36,6 +36,26 @@ ROLL_TRACKED_MESSAGE = (
 )
 
 
+def _next_color_number(fabric):
+    """Next auto-incrementing colour number for a fabric.
+
+    Colour numbers are stored in ``display_order``. Legacy colours may still
+    hold names, so only numeric labels advance the sequence; the row count keeps
+    the first number at 1 when none do.
+    """
+    numbers = []
+    for value in fabric.variants.values_list("display_order", flat=True):
+        try:
+            number = int(value)
+        except (TypeError, ValueError):
+            continue
+        if number > 0:
+            numbers.append(number)
+
+    highest = max(numbers, default=0)
+    return str(max(highest + 1, fabric.variants.count() + 1))
+
+
 class FabricVariantSerializer(serializers.ModelSerializer):
     """One colour/finish of a fabric: its own QR label, image and metre stock."""
 
@@ -117,6 +137,8 @@ class FabricSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "design_number",
+            "category",
             "description",
             "price_per_meter",
             "variants",
@@ -271,6 +293,12 @@ class FabricVariantRequestSerializer(serializers.Serializer):
 
 class CreateFabricSerializer(serializers.Serializer):
     name = serializers.CharField(max_length=100)
+    design_number = serializers.CharField(
+        max_length=100, required=False, allow_blank=True, default=""
+    )
+    category = serializers.CharField(
+        max_length=100, required=False, allow_blank=True, default=""
+    )
     description = serializers.CharField(required=False, allow_blank=True, default="")
     price_per_meter = serializers.DecimalField(max_digits=10, decimal_places=2)
     variants = FormVariantListSerializer(child=FabricVariantRequestSerializer())
@@ -308,6 +336,8 @@ class CreateFabricSerializer(serializers.Serializer):
         roll_drafts = variant_data.pop("rolls", None)
         opening = variant_data.pop("base_opening", None) or 0
         display_order = variant_data.pop("display_order", None) or None
+        if display_order is None:
+            display_order = _next_color_number(fabric)
 
         lengths = _roll_lengths(roll_drafts or [])
         variant = FabricVariant.objects.create(
@@ -359,6 +389,10 @@ class CreateFabricSerializer(serializers.Serializer):
         variants_data = validated_data.pop("variants", [])
 
         instance.name = validated_data.get("name", instance.name)
+        instance.design_number = validated_data.get(
+            "design_number", instance.design_number
+        )
+        instance.category = validated_data.get("category", instance.category)
         instance.description = validated_data.get(
             "description", instance.description
         )
@@ -412,6 +446,7 @@ class FabricRollSerializer(serializers.ModelSerializer):
     """One physical roll, as the warehouse sees it."""
 
     consumed_meters = serializers.SerializerMethodField()
+    packed_meters = serializers.SerializerMethodField()
     is_exhausted = serializers.BooleanField(read_only=True)
     fabric_name = serializers.CharField(source="variant.fabric.name", read_only=True)
     display_order = serializers.CharField(
@@ -428,6 +463,7 @@ class FabricRollSerializer(serializers.ModelSerializer):
             "original_meters",
             "remaining_meters",
             "consumed_meters",
+            "packed_meters",
             "is_active",
             "is_exhausted",
             "fabric_name",
@@ -440,6 +476,7 @@ class FabricRollSerializer(serializers.ModelSerializer):
             "original_meters",
             "remaining_meters",
             "consumed_meters",
+            "packed_meters",
             "is_active",
             "is_exhausted",
             "created_at",
@@ -447,7 +484,10 @@ class FabricRollSerializer(serializers.ModelSerializer):
         ]
 
     def get_consumed_meters(self, obj):
-        return str(obj.consumed_meters)
+        return format(obj.consumed_meters, ".3f")
+
+    def get_packed_meters(self, obj):
+        return format(obj.packed_meters, ".3f")
 
 
 class FabricRollCreateSerializer(serializers.Serializer):

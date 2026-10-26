@@ -30,7 +30,7 @@ export default function ColorListScreen({
   onBack,
 }: Props) {
   return (
-    <div className="flex flex-col min-h-screen bg-white px-4 py-8">
+    <div className="flex flex-col min-h-screen bg-white px-0 py-4 sm:px-4 sm:py-8">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <button

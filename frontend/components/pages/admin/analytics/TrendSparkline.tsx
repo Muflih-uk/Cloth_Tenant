@@ -1,14 +1,17 @@
 "use client";
 
-import type { TrendPoint } from "@/types/dashboard";
+import type { DotItemDotProps } from "recharts";
 import {
-  AreaChart,
-  Area,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  Tooltip,
-  ResponsiveContainer,
 } from "recharts";
+import type { TrendPoint } from "@/types/dashboard";
+import AnalyticsCard from "./AnalyticsCard";
 
 interface TrendSparklineProps {
   data: TrendPoint[];
@@ -16,98 +19,138 @@ interface TrendSparklineProps {
   to: string;
 }
 
+function fillDates(data: TrendPoint[], from: string, to: string) {
+  const dateMap = new Map<string, number>();
+  data.forEach((point) => dateMap.set(point.day, point.count));
+
+  const start = new Date(from + "T00:00:00");
+  const end = new Date(to + "T00:00:00");
+  const filled: { day: string; count: number }[] = [];
+
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return filled;
+  }
+
+  for (let day = new Date(start); day <= end; day.setDate(day.getDate() + 1)) {
+    const key = day.toISOString().split("T")[0];
+    filled.push({ day: key, count: dateMap.get(key) ?? 0 });
+  }
+
+  return filled;
+}
+
+function formatDay(value: string): string {
+  const date = new Date(value + "T00:00:00");
+  if (Number.isNaN(date.getTime())) return value;
+
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function TrendDot({ cx, cy, payload }: DotItemDotProps) {
+  const count = Number((payload as TrendPoint | undefined)?.count ?? 0);
+
+  if (typeof cx !== "number" || typeof cy !== "number" || count <= 0) {
+    return <g />;
+  }
+
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={8} fill="var(--app-blue)" opacity={0.16} />
+      <circle
+        cx={cx}
+        cy={cy}
+        r={3.5}
+        fill="var(--app-blue)"
+        stroke="var(--app-card)"
+        strokeWidth={2}
+      />
+    </g>
+  );
+}
+
 export default function TrendSparkline({
   data,
   from,
   to,
 }: TrendSparklineProps) {
-  if (data.length === 0) {
-    return (
-      <div className="bg-white rounded-xl border p-4 shadow-sm mb-4">
-        <div className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-2">
-          Orders Trend
-        </div>
-        <div className="h-24 flex items-center justify-center text-gray-400 text-xs">
-          No data in range
-        </div>
-      </div>
-    );
-  }
-
-  const mapDates = () => {
-    const dateMap = new Map<string, number>();
-    data.forEach((d) => dateMap.set(d.day, d.count));
-
-    const start = new Date(from + "T00:00:00");
-    const end = new Date(to + "T00:00:00");
-    const filled: { day: string; count: number }[] = [];
-
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const key = d.toISOString().split("T")[0];
-      filled.push({ day: key, count: dateMap.get(key) || 0 });
-    }
-
-    return filled;
-  };
-
-  const filled = mapDates();
-
-  const CustomXAxisTick = (props: any) => {
-    const { x, y, payload } = props;
-    const dayValue = payload?.value as string;
-    const index = filled.findIndex((d) => d.day === dayValue);
-    const total = filled.length;
-    const mid = Math.floor(total / 2);
-
-    if (index !== 0 && index !== mid && index !== total - 1) {
-      return null;
-    }
-
-    return (
-      <text x={x} y={y + 10} textAnchor="middle" fontSize="8" fill="#9ca3af">
-        {new Date(dayValue + "T00:00:00").toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        })}
-      </text>
-    );
-  };
+  const filled = fillDates(data, from, to);
+  const totalCount = filled.reduce((sum, point) => sum + point.count, 0);
+  const maxCount = Math.max(1, ...filled.map((point) => point.count));
 
   return (
-    <div className="bg-white rounded-xl border p-4 shadow-sm mb-4">
-      <div className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-2">
-        Orders Trend
+    <AnalyticsCard title="Orders trend">
+      {filled.length === 0 || totalCount === 0 ? (
+        <div className="flex h-[144px] items-center justify-center rounded-control bg-app-soft px-4 text-center">
+          <p className="text-xs font-normal text-app-muted">
+            No orders in this range
+          </p>
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={144}>
+          <LineChart
+            data={filled}
+            margin={{ top: 10, right: 10, bottom: 0, left: 10 }}
+          >
+            <CartesianGrid
+              vertical={false}
+              stroke="var(--app-line)"
+              strokeDasharray="3 6"
+            />
+            <XAxis dataKey="day" hide />
+            <YAxis
+              hide
+              domain={[0, Math.max(1, Math.ceil(maxCount * 1.25))]}
+            />
+            <Tooltip
+              cursor={{ stroke: "var(--app-blue)", strokeWidth: 1 }}
+              contentStyle={{
+                borderRadius: 12,
+                border: "1px solid var(--app-line)",
+                background: "var(--app-card)",
+                boxShadow: "var(--shadow-card)",
+                fontSize: 11,
+                color: "var(--app-ink)",
+              }}
+              labelStyle={{ color: "var(--app-muted)", fontWeight: 600 }}
+              formatter={(value) => [Number(value), "Orders"]}
+              labelFormatter={(label) => {
+                const day = String(label);
+                const date = new Date(day + "T00:00:00");
+                if (Number.isNaN(date.getTime())) return day;
+
+                return date.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                });
+              }}
+            />
+            <Line
+              type="monotone"
+              dataKey="count"
+              stroke="var(--app-blue)"
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              dot={TrendDot}
+              activeDot={{
+                r: 5,
+                fill: "var(--app-blue)",
+                stroke: "var(--app-card)",
+                strokeWidth: 2,
+              }}
+              isAnimationActive={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+
+      <div className="mt-2 flex items-center justify-between text-[11px] font-medium text-app-muted">
+        <span>{formatDay(from)}</span>
+        <span>{formatDay(to)}</span>
       </div>
-      <ResponsiveContainer width="100%" height={80}>
-        <AreaChart data={filled}>
-          <XAxis
-            dataKey="day"
-            tick={CustomXAxisTick}
-            axisLine={false}
-            tickLine={false}
-          />
-          <YAxis hide />
-          <Tooltip
-            formatter={(value) => [Number(value), "Orders"]}
-            labelFormatter={(label) => {
-              const day = String(label);
-              return new Date(day + "T00:00:00").toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              });
-            }}
-          />
-          <Area
-            type="monotone"
-            dataKey="count"
-            stroke="#3b82f6"
-            strokeWidth={2}
-            fill="#3b82f6"
-            fillOpacity={0.1}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
+    </AnalyticsCard>
   );
 }

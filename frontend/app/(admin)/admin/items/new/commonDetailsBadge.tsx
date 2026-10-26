@@ -15,6 +15,11 @@ export default function CommonDetailsBadge({ common, onEdit }: Props) {
         <p className="text-sm font-semibold truncate leading-tight">
           {common.name || <span className="text-gray-300 font-normal">No name</span>}
         </p>
+        {(common.design_number || common.category) && (
+          <p className="text-xs text-gray-500 truncate">
+            {[common.design_number, common.category].filter(Boolean).join(" • ")}
+          </p>
+        )}
         <p className="text-xs text-gray-400">
           {common.price_per_meter
             ? `₹${common.price_per_meter}/m`

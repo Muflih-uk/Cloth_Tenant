@@ -17,7 +17,7 @@ export default function SubmitButton({
   onClick,
 }: SubmitButtonProps) {
   return (
-    <div className="px-4">
+    <div className="px-0 sm:px-4">
       <StockFlowButton
         text={isEditMode ? "Update Quantity" : "Add to Order"}
         variant="filled"

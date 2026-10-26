@@ -30,17 +30,17 @@ urlpatterns = [
     path("packing-rounds/<int:pk>/confirm/", packing_views.confirm, name="packing-confirm"),
     path("packing-rounds/<int:pk>/cancel/", packing_views.cancel, name="packing-cancel"),
     path("packing-rounds/", packing_views.create_round, name="packing-create"),
-    path(
-        "<int:order_id>/items/<int:item_id>/pack/",
-        packing_views.pack_line,
-        name="packing-pack-line",
-    ),
     # Bundles are an order-level concept, so their paths hang off the order too
     # and likewise precede the router. "bundles" is a literal segment here and
     # never reaches the router's catch-all detail route.
     path("<int:order_id>/bundles/", bundle_views.list_bundles, name="bundle-list"),
     path(
         "<int:order_id>/bundles/create/", bundle_views.create_bundle, name="bundle-create"
+    ),
+    path(
+        "<int:order_id>/bundles/<int:pk>/scan/resolve/",
+        bundle_views.resolve_scan,
+        name="bundle-scan-resolve",
     ),
     path(
         "<int:order_id>/bundles/<int:pk>/scan/",

@@ -33,7 +33,7 @@ function StatCard({
   detail?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm">
+    <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm sm:p-6">
       <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-gray-400">
         {label}
       </p>
@@ -146,7 +146,7 @@ const Summary: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen px-4 py-10 font-sans sm:px-8">
+    <div className="min-h-screen px-0 py-4 font-sans sm:px-8 sm:py-10">
       <div>
         <button onClick={() => router.push("/admin/profile")}>
           <ArrowBigLeft />

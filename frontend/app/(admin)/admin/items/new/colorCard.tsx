@@ -3,6 +3,7 @@
 import { ImagePlus, Pencil, Trash2 } from "lucide-react";
 import type { ColorVariant } from "@/types/item";
 import { formatMeters } from "@/types/item";
+import { colorLabel } from "@/lib/color-number";
 import { ImagePreview } from "@/components/pages/ImagePreview";
 
 interface Props {
@@ -26,7 +27,7 @@ export default function ColorCard({ variant, index, onEdit, onDelete, isOnly }: 
 
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm truncate">
-          {variant.displayOrder || `Colour #${index + 1}`}
+          {colorLabel(variant.displayOrder, index)}
         </p>
         <p className="text-[11px] text-gray-400 mt-0.5">
           Available to order: {formatMeters(variant.stockMeters)} m

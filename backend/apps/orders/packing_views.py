@@ -7,18 +7,16 @@ check who gets the leftover metres before committing. ``create_round`` freezes a
 plan (optionally hand-adjusted) as a DRAFT round; ``confirm`` moves the stock and
 writes the audit trail; ``cancel`` reverses it.
 
-``pack_line`` is the shortcut for filling one order line from the order page
-without opening the board. It is not a second way of moving stock: it builds the
-same one-entry round and hands it to the same applier, so the trail is identical.
-
-Scanning a roll's label is handled in :mod:`apps.orders.bundle_views`, because a
-scanned roll must belong to a bundle and a bundle is an order-level thing.
+Packing an order line happens by scanning a roll's label. That scan belongs to a
+bundle and is handled in :mod:`apps.orders.bundle_views`; the bundle path builds
+the same one-entry round and hands it to the same applier as the board, so the
+stock movement and audit trail are identical. There is deliberately no typed
+metres shortcut from the order page.
 """
 
 from decimal import Decimal, InvalidOperation
 
 from django.db import transaction
-from django.db.models import F, Max
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -47,15 +45,10 @@ from apps.orders.models import (
     Allocation,
     Order,
     OrderItem,
-    PackingBundle,
     PackingRound,
     RollAllocation,
 )
-from apps.orders.serializers import (
-    MIN_ORDER_METERS,
-    AllocationSerializer,
-    OrderItemSerializer,
-)
+from apps.orders.serializers import AllocationSerializer
 
 ZERO = Decimal("0")
 
@@ -212,32 +205,6 @@ class _CreateRoundSerializer(serializers.Serializer):
             )
         attrs["plan_override"] = cleaned
         return attrs
-
-
-class _PackLineRollSerializer(serializers.Serializer):
-    """One roll of the admin's own breakdown for a single-line pack."""
-
-    roll = serializers.IntegerField()
-    metres = serializers.DecimalField(max_digits=14, decimal_places=3)
-
-
-class _PackLineSerializer(serializers.Serializer):
-    """Metres to hand one order line, typed in from the order page."""
-
-    metres = serializers.DecimalField(max_digits=14, decimal_places=3)
-    #: Optional: the roll breakdown to cut these metres from. Required in practice
-    #: for a colour tracked by physical rolls, which is refused rather than guessed
-    #: at when it is absent -- scan the roll into a bundle instead (see
-    #: :mod:`apps.orders.bundle_views`). Re-validated against the rolls under lock
-    #: before anything is cut.
-    rolls = _PackLineRollSerializer(many=True, required=False)
-
-    def validate_metres(self, value):
-        if value < MIN_ORDER_METERS:
-            raise serializers.ValidationError(
-                f"Must be at least {MIN_ORDER_METERS.normalize()} m."
-            )
-        return value
 
 
 @extend_schema(
@@ -520,174 +487,6 @@ def _apply_plan(packing_round, stored, user, note=""):
     packing_round.roll_entries = roll_entries
     return packing_round
 
-
-def _create_implicit_bundle(order, user):
-    """Wrap a hand-packed line in a bundle that is finished the moment it is born.
-
-    Packing a line by typing a figure rather than scanning it still puts the cloth
-    in a box, so it still has to be a bundle -- otherwise dispatch, which works in
-    bundles, would have nothing to send for a colour the warehouse does not track in
-    rolls. The bundle is created already ``SEALED``: there is no partial state to
-    work through, because the metres are entered in one go and are final the moment
-    the request succeeds. That is what makes it *implicit* -- the user never names
-    or opens it, it simply exists as the thing these metres left in.
-
-    One action makes one bundle. A bundle here means "one box, handed over once",
-    and a single typed figure is exactly that; grouping several clicks into a shared
-    box would need to guess where one box ends and the next begins, which is not a
-    decision this should be making on the warehouse's behalf.
-
-    Numbering is taken under the order lock by the caller, matching
-    ``create_bundle``, so a hand pack and a scanned bundle cannot claim the same
-    number at the same moment.
-    """
-    highest = (
-        PackingBundle.objects.filter(order=order).aggregate(top=Max("number")).get("top")
-    )
-    return PackingBundle.objects.create(
-        order=order,
-        number=(highest or 0) + 1,
-        status="SEALED",
-        sealed_at=timezone.now(),
-        created_by=user,
-    )
-
-
-@extend_schema(
-    methods=["POST"],
-    summary="Pack a single order line straight from the order page",
-    request=_PackLineSerializer,
-)
-@api_view(["POST"])
-@permission_classes([IsAdmin])
-def pack_line(request, order_id, item_id):
-    """Fill one order line without opening the packing board.
-
-    This is the same stock-moving event as a multi-order round, just scoped to a
-    single line: the metres go out as a one-entry ``PackingRound`` and are applied
-    by :func:`_apply_plan`, the very function ``confirm`` uses for a hand-adjusted
-    plan. So the round, the ``Allocation``, the ``_adjust_stock`` call and the
-    ``ALLOCATION_MADE`` order log all land exactly as they would from
-    ``/admin/packing``, and the round is visible (and cancellable) in the same
-    history. The note says where it came from, so a single-line pack is
-    distinguishable from a board round after the fact.
-
-Unlike placing an order, this really does take cloth off the roll, so a
-    figure the warehouse cannot cover is refused rather than reported. That is the
-    *only* limit: the admin may enter less than the line still owes (leaving
-    the remainder owed) or more than it owes (a roll is cut whole, and rounding it
-    up is deliberate). Either way exactly the metres entered come off the roll.
-
-    The metres also leave in a bundle. Whatever the cloth was packed against, this
-    is a box handed over once, so it is sealed into an implicit bundle for dispatch
-    to act on -- for a roll-tracked colour the named rolls are linked to that bundle
-    as well, so the packing slip still names the roll each metre came off.
-    """
-    order = get_object_or_404(Order, pk=order_id)
-    line = get_object_or_404(
-        OrderItem.objects.select_related("variant__fabric"),
-        pk=item_id,
-        order=order,
-    )
-
-    if line.variant_id is None:
-        return Response(
-            {"error": f"Order #{order.pk} line #{line.pk} has no fabric variant."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-    if order.status not in OPEN_STATUSES:
-        return Response(
-            {"error": f"Order #{order.pk} is {order.status.lower()}, not open for packing."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    serializer = _PackLineSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    metres = serializer.validated_data["metres"]
-
-    plan = [{"order_item": line.pk, "metres": str(metres)}]
-    # Only present when the caller named the rolls to cut from. A roll-tracked
-    # colour with no breakdown is refused downstream, so an untouched line cannot
-    # quietly take cloth off whichever roll the server likes.
-    chosen_rolls = serializer.validated_data.get("rolls")
-    if chosen_rolls:
-        plan[0]["rolls"] = [
-            {"roll": row["roll"], "metres": str(row["metres"])} for row in chosen_rolls
-        ]
-    note = f"Packed directly from order #{order.pk}"
-
-    bundle = None
-    try:
-        with transaction.atomic():
-            # Re-read the roll under a lock: a round confirmed from the packing
-            # board, or another single-line pack, may have moved it since the
-            # checks above ran. Every ValueError raised from here on leaves the
-            # block, so the transaction rolls back rather than half-applying the
-            # plan. The order line is locked by _apply_plan itself.
-            locked_variant = FabricVariant.objects.select_for_update().get(
-                pk=line.variant_id
-            )
-
-            # Physical stock is the only hard limit, and it is read under the
-            # same lock the deduction will take it with.
-            if metres > locked_variant.stock_meters:
-                raise ValueError(
-                    f"That is {metres} m but only {locked_variant.stock_meters} m of "
-                    f"{locked_variant.fabric.name} "
-                    f"({locked_variant.display_order or 'unlabelled'}) are in stock."
-                )
-
-            packing_round = PackingRound.objects.create(
-                variant=locked_variant,
-                round_size=metres,
-                status="DRAFT",
-                note=note,
-                plan_override=plan,
-                created_by=request.user,
-            )
-            # Moves the stock, writes the allocation, promotes the order and logs
-            # it. Deliberately the only writer of stock_meters on this path.
-            _apply_plan(packing_round, plan, request.user)
-
-            # Everything this call just packed belongs to one box. Taken under the
-            # order lock so the bundle number cannot collide with a bundle being
-            # opened at the same moment.
-            locked_order = Order.objects.select_for_update().get(pk=order.pk)
-            bundle = _create_implicit_bundle(locked_order, request.user)
-            packed = Allocation.objects.filter(round=packing_round)
-            packed.update(bundle=bundle)
-            # A named roll keeps its own link so the slip can name it; without this
-            # the metres would reach the bundle through the allocation alone and the
-            # roll numbers would be lost.
-            RollAllocation.objects.filter(
-                allocation__round=packing_round, is_reversed=False
-            ).update(bundle=bundle)
-    except ValueError as exc:
-        return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-
-    # _apply_plan works on its own instances of these rows, and may have promoted
-    # the order to PACKED, so re-read before answering.
-    line.refresh_from_db()
-    order.refresh_from_db()
-    locked_variant.refresh_from_db()
-
-    return Response(
-        {
-            "message": (
-                f"Packed {metres} m of {line.fabric_name}"
-                f"{f' ({line.variant_display_order})' if line.variant_display_order else ''}"
-                f" for order #{order.pk}"
-            ),
-            "round": packing_round.pk,
-            "order": order.pk,
-            "order_status": order.status,
-            "item": OrderItemSerializer(line).data,
-            "stock_meters": str(locked_variant.stock_meters),
-            "rolls": _roll_usage(packing_round),
-            "bundle_id": bundle.pk if bundle is not None else None,
-            "bundle_code": bundle.code if bundle is not None else None,
-        }
-    )
 
 
 @extend_schema(

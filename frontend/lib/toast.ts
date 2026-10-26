@@ -6,32 +6,49 @@ interface ToastOptions {
   description?: string;
 }
 
-function parseApiError(error: any): string {
-  try {
-    const status = error?.response?.status;
+interface ApiErrorLike {
+  response?: {
+    status?: number;
+    data?: unknown;
+  };
+  request?: unknown;
+  code?: string;
+  data?: {
+    detail?: unknown;
+    message?: unknown;
+  };
+  message?: string;
+}
 
-    // Reverse proxy rejected the body before it reached Django. Browsers
-    // surface this as a bare "Network Error" when CORS headers are missing.
+export function formatApiError(error: unknown): string {
+  return parseApiError(error);
+}
+
+function parseApiError(error: unknown): string {
+  try {
+    const apiError: ApiErrorLike =
+      typeof error === "object" && error !== null
+        ? (error as ApiErrorLike)
+        : {};
+    const status = apiError.response?.status;
+
     if (status === 413) {
       return "Image is too large. Please pick a smaller photo and try again.";
     }
 
-    // Request never got a response (offline, server down, or proxy reset).
-    if (!error?.response && error?.request) {
-      if (error?.code === "ERR_NETWORK") {
+    if (!apiError.response && apiError.request) {
+      if (apiError.code === "ERR_NETWORK") {
         return "Server unreachable. Check your connection and try again.";
       }
-      if (error?.code === "ECONNABORTED") {
+      if (apiError.code === "ECONNABORTED") {
         return "Request timed out. Try again.";
       }
       return "Could not reach the server. Check your connection and try again.";
     }
 
-    // Axios-style response
-    const data = error?.response?.data;
+    const data = apiError.response?.data;
 
     if (data) {
-      // Django sent HTML (e.g. 500 debug page)
       if (typeof data === "string") {
         const message = data.includes("<html")
           ? "Server error, please try again"
@@ -40,17 +57,25 @@ function parseApiError(error: any): string {
       }
 
       if (typeof data === "object") {
-        // { error: "..." } or { detail: "..." }
-        if (typeof data.error === "string")
-          return status ? `${data.error} (HTTP ${status})` : data.error;
-        if (typeof data.detail === "string")
-          return status ? `${data.detail} (HTTP ${status})` : data.detail;
+        const payload = data as Record<string, unknown>;
 
-        // DRF field errors: { username: ["..."], email: ["..."] }
-        const messages = Object.entries(data)
-          .flatMap(([field, val]) => {
-            if (Array.isArray(val)) return val.map((m) => `${field}: ${m}`);
-            if (typeof val === "string") return [`${field}: ${val}`];
+        if (typeof payload.error === "string") {
+          return status
+            ? `${payload.error} (HTTP ${status})`
+            : payload.error;
+        }
+        if (typeof payload.detail === "string") {
+          return status
+            ? `${payload.detail} (HTTP ${status})`
+            : payload.detail;
+        }
+
+        const messages = Object.entries(payload)
+          .flatMap(([field, value]) => {
+            if (Array.isArray(value)) {
+              return value.map((message) => `${field}: ${String(message)}`);
+            }
+            if (typeof value === "string") return [`${field}: ${value}`];
             return [];
           })
           .join("\n");
@@ -58,10 +83,13 @@ function parseApiError(error: any): string {
       }
     }
 
-    // Flat error object (no response wrapper)
-    if (error?.data?.detail) return error.data.detail;
-    if (error?.data?.message) return error.data.message;
-    if (error?.message) return error.message;
+    if (typeof apiError.data?.detail === "string") {
+      return apiError.data.detail;
+    }
+    if (typeof apiError.data?.message === "string") {
+      return apiError.data.message;
+    }
+    if (apiError.message) return apiError.message;
     if (error instanceof Error) return error.message;
     if (typeof error === "string") return error;
   } catch {
@@ -93,9 +121,8 @@ export function toastSuccess(title: string, description?: string) {
   showToast("success", { title, description });
 }
 
-export function toastError(titleOrError: string | any, error?: any) {
+export function toastError(titleOrError: string | unknown, error?: unknown) {
   if (typeof titleOrError !== "string") {
-    // called as toastError(e) — treat it like toastErrorFromError
     const message = parseApiError(titleOrError);
     showToast("error", { title: message });
     return;
@@ -104,7 +131,7 @@ export function toastError(titleOrError: string | any, error?: any) {
   showToast("error", { title: titleOrError, description });
 }
 
-export function toastErrorFromError(error: any) {
+export function toastErrorFromError(error: unknown) {
   const message = parseApiError(error);
   showToast("error", { title: message });
 }

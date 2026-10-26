@@ -55,7 +55,7 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="flex min-h-screen min-w-full bg-gray-50 justify-center items-center px-6 py-10">
+    <div className="flex min-h-screen min-w-full bg-gray-50 justify-center items-center px-2 py-4 sm:px-6 sm:py-10">
       <AuthCard shake={shake} onShakeEnd={() => setShake(false)}>
         <AuthBranding />
 

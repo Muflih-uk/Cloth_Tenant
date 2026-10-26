@@ -2,6 +2,7 @@
 
 import AdminNavBar from "@/components/ui/AdminNavBar";
 import AdminProfileButton from "@/components/ui/custom/adminProfileButton";
+import BackToParent from "@/components/ui/app/BackToParent";
 import PushNotificationInit from "@/lib/pushInit";
 import { usePathname } from "next/navigation";
 
@@ -31,6 +32,7 @@ export default function AdminLayout({
             className={`admin-order-layout ${isFullscreenPage ? "" : "pb-32"}`}
         >
             <PushNotificationInit />
+            <BackToParent />
             <AdminProfileButton />
             {children}
             {!isFullscreenPage && <AdminNavBar />}

@@ -48,7 +48,7 @@ function DeleteConfirmDialog({
         {/* Top accent strip */}
         <div className="h-1 w-full bg-red-500" />
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {/* Icon + heading */}
           <div className="flex items-start gap-4 mb-4">
             <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
@@ -134,6 +134,8 @@ interface OrderItemRowProps {
   isPacked?: boolean;
   isOutOfStock?: boolean;
   isLoading?: boolean;
+  /** Show ordered/packed progress instead of the awaiting-packing note. */
+  showPackingProgress?: boolean;
   /**
    * Rendered inside this line's card, underneath the summary row. Used by the
    * admin order page to hang the per-line packing control off the same card
@@ -154,6 +156,7 @@ export default function OrderItemRow({
   isPacked = false,
   isOutOfStock = false,
   isLoading = false,
+  showPackingProgress = false,
   footer,
 }: OrderItemRowProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -189,7 +192,7 @@ export default function OrderItemRow({
           isPacked ? "bg-green-50" : isOutOfStock ? "bg-red-50" : "bg-white"
         }`}
       >
-        <div className="flex items-center gap-3 py-4 px-1">
+        <div className="flex items-center gap-2 py-3 px-1 sm:gap-3 sm:py-4">
           <div>
             {showEdit && onEdit && (
               <button
@@ -254,16 +257,25 @@ export default function OrderItemRow({
                     : "text-gray-600"
               }`}
             >
-              {formatMeters(ordered)} m ordered
-              {outstanding > 0 ? (
+              {showPackingProgress ? (
                 <>
-                  {" · "}
-                  <span className="font-bold text-amber-600">
-                    {formatMeters(outstanding)} m awaiting packing
-                  </span>
+                  {formatMeters(ordered)} m ordered ·{" "}
+                  {formatMeters(allocated)} m packed
                 </>
               ) : (
-                <span className="text-green-600"> · fully packed</span>
+                <>
+                  {formatMeters(ordered)} m ordered
+                  {outstanding > 0 ? (
+                    <>
+                      {" · "}
+                      <span className="font-bold text-amber-600">
+                        {formatMeters(outstanding)} m awaiting packing
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-green-600"> · fully packed</span>
+                  )}
+                </>
               )}
             </p>
             <p className="text-[10px] text-gray-400 mt-0.5">

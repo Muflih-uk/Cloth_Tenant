@@ -13,7 +13,6 @@ vi.mock("@/lib/api/item", () => ({
     bulkReceive: vi.fn(),
     adjust: vi.fn(),
     syncStock: vi.fn(),
-    history: vi.fn(),
   },
 }));
 
@@ -47,7 +46,6 @@ const receive = vi.mocked(rollApi.receive);
 const bulkReceive = vi.mocked(rollApi.bulkReceive);
 const adjust = vi.mocked(rollApi.adjust);
 const syncStock = vi.mocked(rollApi.syncStock);
-const history = vi.mocked(rollApi.history);
 
 function rollsResponse(overrides: Partial<VariantRollsResponse> = {}) {
   return {
@@ -63,6 +61,7 @@ function rollsResponse(overrides: Partial<VariantRollsResponse> = {}) {
     total_received_meters: "150.000",
     roll_stock_meters: "90.000",
     untracked_stock_meters: "0.000",
+    packed_meters: "60.000",
     consumed_meters: "60.000",
     largest_roll_meters: "100.000",
     smallest_roll_meters: "50.000",
@@ -74,6 +73,7 @@ function rollsResponse(overrides: Partial<VariantRollsResponse> = {}) {
         note: "",
         original_meters: "100.000",
         remaining_meters: "40.000",
+        packed_meters: "60.000",
         consumed_meters: "60.000",
         is_active: true,
         is_exhausted: false,
@@ -87,6 +87,7 @@ function rollsResponse(overrides: Partial<VariantRollsResponse> = {}) {
         note: "second batch",
         original_meters: "50.000",
         remaining_meters: "50.000",
+        packed_meters: "0.000",
         consumed_meters: "0.000",
         is_active: true,
         is_exhausted: false,
@@ -136,7 +137,36 @@ describe("PhysicalRollsPanel", () => {
     expect(onStockChanged).toHaveBeenCalledWith("90.000", 2, "0.000", true);
   });
 
-  it("lists each roll with what is left when opened", async () => {
+  it("reports the full roll summary when it loads", async () => {
+    const onData = vi.fn();
+    render(
+      <PhysicalRollsPanel
+        variantId={7}
+        label="Cotton Cambric"
+        onData={onData}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(onData).toHaveBeenCalledWith(
+        expect.objectContaining({ active_roll_count: 2, roll_count: 2 }),
+      ),
+    );
+  });
+
+  it("shows only the on-hand and packed-out summary cards", async () => {
+    render(<PhysicalRollsPanel variantId={7} label="Cotton Cambric" />);
+
+    await waitFor(() => screen.getByText(/2 rolls/i));
+    await expand();
+
+    expect(screen.getByText("On hand")).toBeTruthy();
+    expect(screen.getByText("Packed out")).toBeTruthy();
+    expect(screen.queryByText("Received")).toBeNull();
+    expect(screen.queryByText("all time")).toBeNull();
+  });
+
+  it("shows only the roll number, current length and status for a partly packed roll", async () => {
     render(<PhysicalRollsPanel variantId={7} label="Cotton Cambric" />);
 
     await waitFor(() => screen.getByText(/2 rolls/i));
@@ -144,17 +174,37 @@ describe("PhysicalRollsPanel", () => {
 
     expect(screen.getByText("NAT-0001")).toBeTruthy();
     expect(screen.getByText("NAT-0002")).toBeTruthy();
-    expect(screen.getByText(/40 m left of 100/)).toBeTruthy();
-    expect(screen.getByText(/second batch/)).toBeTruthy();
-    expect(screen.getByText("Used")).toBeTruthy();
-    expect(screen.queryByText("Used up")).toBeNull();
-    expect(screen.getByText("Used").className).toContain("bg-red-100");
-    expect(screen.getByText("Used").className).toContain("text-red-700");
-    expect(screen.getByText("NAT-0001").className).toContain("text-red-700");
-    expect(screen.getByText("NAT-0002").className).toContain("text-gray-700");
+    expect(screen.getByText("40 m")).toBeTruthy();
+    expect(screen.getByText("50 m")).toBeTruthy();
+    expect(screen.getAllByText("Available")).toHaveLength(2);
+    expect(screen.queryByText("Used")).toBeNull();
+    expect(screen.queryByText(/left of/)).toBeNull();
+    expect(screen.queryByText(/second batch/)).toBeNull();
+    expect(screen.queryByText(/Receipt/)).toBeNull();
+    expect(screen.queryByText(/Received 01 Jan/)).toBeNull();
+    expect(screen.queryByText(/Received 03 Jan/)).toBeNull();
   });
 
-  it("shows exhausted rolls in light red", async () => {
+  it("can be opened from a card-level Receive Rolls action", async () => {
+    const onReceiveOpenChange = vi.fn();
+    render(
+      <PhysicalRollsPanel
+        variantId={7}
+        label="Cotton Cambric"
+        receiveOpen
+        onReceiveOpenChange={onReceiveOpenChange}
+      />,
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Receive Rolls" }),
+    ).toBeTruthy();
+
+    await userEvent.click(screen.getByRole("button", { name: /cancel/i }));
+    expect(onReceiveOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it("shows a fully used roll at zero as Used", async () => {
     const response = rollsResponse();
     getForVariant.mockResolvedValue({
       ...response,
@@ -162,7 +212,9 @@ describe("PhysicalRollsPanel", () => {
         {
           ...response.rolls[0],
           remaining_meters: "0.000",
+          packed_meters: "100.000",
           consumed_meters: "100.000",
+          is_active: false,
           is_exhausted: true,
         },
         response.rolls[1],
@@ -173,9 +225,26 @@ describe("PhysicalRollsPanel", () => {
     await waitFor(() => screen.getByText(/2 rolls/i));
     await expand();
 
-    expect(screen.getByText("Used up").className).toContain("bg-red-100");
-    expect(screen.getByText("Used up").className).toContain("text-red-700");
-    expect(screen.getByText("NAT-0001").className).toContain("text-red-700");
+    expect(screen.getByText("0 m")).toBeTruthy();
+    expect(screen.getByText("Used").className).toContain("bg-red-100");
+    expect(screen.getByText("Used").className).toContain("text-red-700");
+    expect(screen.getByText("Available")).toBeTruthy();
+  });
+
+  it("shows an explicitly inactive roll as Used even when metres remain", async () => {
+    const response = rollsResponse();
+    getForVariant.mockResolvedValue({
+      ...response,
+      rolls: [{ ...response.rolls[0], is_active: false }, response.rolls[1]],
+    });
+    render(<PhysicalRollsPanel variantId={7} label="Cotton Cambric" />);
+
+    await waitFor(() => screen.getByText(/2 rolls/i));
+    await expand();
+
+    expect(screen.getByText("40 m")).toBeTruthy();
+    expect(screen.getByText("Used").className).toContain("bg-red-100");
+    expect(screen.getByText("Available")).toBeTruthy();
   });
 
   it("sends a single figure as one roll", async () => {
@@ -243,12 +312,26 @@ describe("PhysicalRollsPanel", () => {
     expect(receive).not.toHaveBeenCalled();
   });
 
-  it("adjusts a roll by a signed difference and refreshes", async () => {
-    adjust.mockResolvedValue(rollsResponse().rolls[0] as never);
+  it("refreshes the visible length after a manual adjustment", async () => {
+    const response = rollsResponse();
+    const adjustedRoll = {
+      ...response.rolls[0],
+      remaining_meters: "37.500",
+    };
+    getForVariant
+      .mockResolvedValueOnce(response)
+      .mockResolvedValueOnce(
+        rollsResponse({
+          rolls: [adjustedRoll, response.rolls[1]],
+        }),
+      );
+    adjust.mockResolvedValue(adjustedRoll as never);
     render(<PhysicalRollsPanel variantId={7} label="Cotton Cambric" />);
 
     await waitFor(() => screen.getByText(/2 rolls/i));
     await expand();
+    expect(screen.getByText("40 m")).toBeTruthy();
+
     await userEvent.click(screen.getByRole("button", { name: /adjust NAT-0001/i }));
     await userEvent.type(
       screen.getByLabelText("Adjustment for NAT-0001"),
@@ -257,6 +340,10 @@ describe("PhysicalRollsPanel", () => {
     await userEvent.click(screen.getByRole("button", { name: /^Apply$/i }));
 
     await waitFor(() => expect(adjust).toHaveBeenCalledWith(1, "-2.5"));
+    expect(await screen.findByText("37.5 m")).toBeTruthy();
+    expect(screen.queryByText("40 m")).toBeNull();
+    expect(screen.getAllByText("Available")).toHaveLength(2);
+    expect(screen.queryByText(/left of/)).toBeNull();
     expect(getForVariant).toHaveBeenCalledTimes(2);
   });
 
@@ -274,33 +361,43 @@ describe("PhysicalRollsPanel", () => {
     expect(screen.getByLabelText("Roll 1 metres")).toBeTruthy();
   });
 
-  it("shows where metres were cut from in a roll's history", async () => {
-    history.mockResolvedValue({
-      roll: rollsResponse().rolls[0] as never,
-      entries: [
-        {
-          id: 11,
-          roll_number: "NAT-0001",
-          metres: "60.000",
-          is_reversed: false,
-          created_at: "2026-02-01T00:00:00Z",
-          round: 3,
-          round_status: "CONFIRMED",
-          order: 42,
-          order_status: "PACKED",
-          customer: "Riya Textiles",
-          order_item: 5,
-        },
-      ],
-    } as never);
+  it("has no per-roll history control", async () => {
     render(<PhysicalRollsPanel variantId={7} label="Cotton Cambric" />);
 
     await waitFor(() => screen.getByText(/2 rolls/i));
     await expand();
-    await userEvent.click(screen.getByRole("button", { name: /history for NAT-0001/i }));
 
-    expect(await screen.findByText(/Riya Textiles · order #42/)).toBeTruthy();
-    expect(screen.getByText(/round #3/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /history for/i })).toBeNull();
+  });
+
+  it("shows a manually shortened roll as available, not used", async () => {
+    const response = rollsResponse();
+    getForVariant.mockResolvedValue({
+      ...response,
+      packed_meters: "0.000",
+      consumed_meters: "0.000",
+      rolls: [
+        {
+          ...response.rolls[0],
+          original_meters: "210.000",
+          remaining_meters: "100.000",
+          packed_meters: "0.000",
+          consumed_meters: "0.000",
+          is_exhausted: false,
+        },
+        response.rolls[1],
+      ],
+    });
+    render(<PhysicalRollsPanel variantId={7} label="Cotton Cambric" />);
+
+    await waitFor(() => screen.getByText(/2 rolls/i));
+    await expand();
+
+    expect(screen.getAllByText("Available")).toHaveLength(2);
+    expect(screen.queryByText("Used")).toBeNull();
+    expect(screen.getByText("100 m")).toBeTruthy();
+    expect(screen.queryByText(/210/)).toBeNull();
+    expect(screen.queryByText(/left of/)).toBeNull();
   });
 
   it("offers receiving but no rolls when the colour has none yet", async () => {

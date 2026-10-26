@@ -1,28 +1,25 @@
 "use client";
 
-import { Trash2, ImagePlus, X } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { ImagePlus, Pencil, Plus, Scale, Trash2, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import type { EditableVariant } from "@/types/item";
-import { toMeters } from "@/types/item";
 import { ImagePreview } from "@/components/pages/ImagePreview";
-import type { ReactNode } from "react";
+import { colorLabel } from "@/lib/color-number";
+import { toMeters, type EditableVariant } from "@/types/item";
+import StockAdjustmentDialog from "./stockAdjustmentDialog";
 
 interface Props {
   variant: EditableVariant;
-  index: number; // 0-based
+  index: number;
   isOnly: boolean;
-  /** New colours initialize physical stock from their opening figure. */
   isNew: boolean;
   onChange: (updated: EditableVariant) => void;
   onDelete: () => void;
   onPickImage: () => void;
+  onRequestReceive?: () => void;
   children?: ReactNode;
 }
 
-/**
- * The editable figure is the opening order-stock base. Physical stock is shown
- * separately and remains controlled by rolls or packing.
- */
 export default function EditVariantRow({
   variant,
   index,
@@ -31,15 +28,19 @@ export default function EditVariantRow({
   onChange,
   onDelete,
   onPickImage,
+  onRequestReceive,
   children,
 }: Props) {
+  const [editingName, setEditingName] = useState(false);
+  const [adjustingStock, setAdjustingStock] = useState(false);
+
   const set = <K extends keyof EditableVariant>(
     key: K,
     val: EditableVariant[K],
   ) => onChange({ ...variant, [key]: val });
 
   const imageSrc = variant.imagePreview ?? variant.imageUrl;
-  const label = variant.displayOrder.trim();
+  const label = colorLabel(variant.displayOrder, index);
   const rollTracked = !isNew && variant.isRollTracked === true;
   const available =
     toMeters(variant.availableMeters ?? variant.baseOpening) +
@@ -47,104 +48,183 @@ export default function EditVariantRow({
     toMeters(variant.initialBaseOpening ?? variant.baseOpening);
   const physicalStock =
     isNew && !rollTracked ? variant.baseOpening : variant.stockMeters;
+  const activeRolls =
+    variant.activeRollCount ?? (rollTracked ? undefined : 0);
+  const displayMetres = (value: string | number) =>
+    toMeters(value).toLocaleString(undefined, { maximumFractionDigits: 3 });
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-100 bg-gray-50">
-      <div className="flex items-center gap-3 px-3 py-2.5">
-      {/* Thumbnail */}
-      <button
-        type="button"
-        onClick={onPickImage}
-        className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center relative"
-        aria-label="Change photo"
-      >
-        {imageSrc ? (
-          <>
-            <ImagePreview src={imageSrc} alt={label || `Colour ${index + 1}`} />
-            <span className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center">
-              <ImagePlus size={13} className="text-white opacity-0 hover:opacity-100 transition-opacity" />
-            </span>
-          </>
-        ) : (
-          <ImagePlus size={15} className="text-gray-300" />
-        )}
-      </button>
+    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_1px_0_rgba(0,0,0,0.02)]">
+      <div className="p-2.5 sm:p-3">
+        <div className="flex items-start gap-2.5 sm:gap-3">
+          <div className="relative shrink-0">
+            <button
+              type="button"
+              onClick={onPickImage}
+              className="relative flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-gray-100 sm:h-14 sm:w-14"
+              aria-label="Change colour photo"
+            >
+              {imageSrc ? (
+                <>
+                  <ImagePreview
+                    src={imageSrc}
+                    alt={label}
+                    enlargeDisabled
+                  />
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/0 text-white opacity-0 transition hover:bg-black/25 hover:opacity-100">
+                    <ImagePlus size={14} />
+                  </span>
+                </>
+              ) : (
+                <ImagePlus size={17} className="text-gray-300" />
+              )}
+            </button>
+            {imageSrc && (
+              <button
+                type="button"
+                onClick={() =>
+                  onChange({
+                    ...variant,
+                    imageUrl: null,
+                    imagePreview: null,
+                    newImage: null,
+                  })
+                }
+                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400 shadow-sm transition-colors hover:text-red-500"
+                aria-label="Remove colour photo"
+              >
+                <X size={11} />
+              </button>
+            )}
+          </div>
 
-      <div className="flex-1 min-w-0 space-y-1.5">
-        <Input
-          value={variant.displayOrder}
-          placeholder="Colour / finish"
-          onChange={(e) => set("displayOrder", e.target.value)}
-          className="h-8 text-sm"
-        />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              {editingName ? (
+                <Input
+                  value={variant.displayOrder}
+                  placeholder="Colour number"
+                  inputMode="numeric"
+                  autoFocus
+                  onChange={(event) => set("displayOrder", event.target.value)}
+                  onBlur={() => setEditingName(false)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === "Escape") {
+                      setEditingName(false);
+                    }
+                  }}
+                  className="h-7 min-w-0 flex-1 border-0 bg-transparent px-0 text-sm font-black shadow-none focus-visible:ring-0"
+                  aria-label="Colour number"
+                />
+              ) : (
+                <p className="min-w-0 flex-1 truncate text-[13px] font-black text-gray-800 sm:text-sm">
+                  {label}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => setEditingName(true)}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-300 transition-colors hover:bg-gray-50 hover:text-primary sm:h-6 sm:w-6"
+                aria-label="Edit colour name"
+                title="Edit colour name"
+              >
+                <Pencil size={12} />
+              </button>
+              {!isOnly && (
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500 sm:h-6 sm:w-6"
+                  aria-label="Remove colour"
+                  title="Remove colour"
+                >
+                  <Trash2 size={13} />
+                </button>
+              )}
+            </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] text-gray-400 flex-shrink-0">
-            Opening stock (order-stock base)
-          </span>
-          <Input
-            type="number"
-            min={0}
-            step="0.5"
-            inputMode="decimal"
-            value={variant.baseOpening}
-            placeholder="0"
-            onChange={(e) => set("baseOpening", e.target.value)}
-            onFocus={(e) => e.target.select()}
-            className="h-8 text-sm w-24"
-          />
-          <span className="text-[11px] text-gray-400">m</span>
+            <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-2">
+              <Metric
+                label="Available to order"
+                value={`${displayMetres(available)} m`}
+                warning={available < 0}
+              />
+              <Metric
+                label="Physical stock"
+                value={`${displayMetres(physicalStock)} m`}
+              />
+              <Metric
+                className="col-span-2 sm:col-span-1"
+                label="Active rolls"
+                value={activeRolls === undefined ? "—" : String(activeRolls)}
+              />
+            </div>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-x-3 text-[11px] text-gray-500">
-          <span className={available < 0 ? "text-red-600 font-semibold" : ""}>
-            Available to order: {toMeters(variant.baseOpening) === 0 && isNew
-              ? "0"
-              : available.toLocaleString()} m
-          </span>
-          <span>
-            {rollTracked ? "On rolls" : "Physical stock"}: {toMeters(physicalStock).toLocaleString()} m
-          </span>
-          {toMeters(variant.untrackedStockMeters ?? "0") > 0 && (
-            <span className="text-amber-700">
-              Untracked physical (not packable):{" "}
-              {toMeters(variant.untrackedStockMeters ?? "0").toLocaleString()} m
-            </span>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {onRequestReceive && (
+            <button
+              type="button"
+              onClick={onRequestReceive}
+              className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary/10 px-3 text-[11px] font-bold text-primary transition-colors hover:bg-primary/15 sm:h-8 sm:flex-none sm:px-2.5"
+            >
+              <Plus size={13} />
+              Receive Rolls
+            </button>
           )}
-          {rollTracked && (
-            <span>{variant.rollCount ?? 0} physical roll{variant.rollCount === 1 ? "" : "s"}</span>
-          )}
+          <button
+            type="button"
+            onClick={() => setAdjustingStock(true)}
+            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg border border-gray-100 bg-gray-50 px-3 text-[11px] font-semibold text-gray-500 transition-colors hover:border-gray-200 hover:text-gray-700 sm:h-8 sm:flex-none sm:px-2.5"
+          >
+            <Scale size={13} />
+            Adjust stock
+          </button>
         </div>
       </div>
 
-      {imageSrc && (
-        <button
-          type="button"
-          onClick={() => onChange({ ...variant, imageUrl: null, imagePreview: null, newImage: null })}
-          className="flex-shrink-0 p-1.5 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
-          aria-label="Remove photo"
-          title="Remove photo"
-        >
-          <X size={14} />
-        </button>
-      )}
-
-      {!isOnly && (
-        <button
-          type="button"
-          onClick={onDelete}
-          className="flex-shrink-0 p-1.5 rounded-md text-red-400 hover:text-white hover:bg-red-400 transition-colors"
-          aria-label="Remove colour"
-        >
-          <Trash2 size={15} />
-        </button>
-      )}
-      </div>
       {children}
+
+      {adjustingStock && (
+        <StockAdjustmentDialog
+          current={variant.baseOpening}
+          label={label}
+          onClose={() => setAdjustingStock(false)}
+          onSave={(value) => set("baseOpening", value)}
+        />
+      )}
     </div>
   );
 }
 
-/** Kept for the callers that still import it; metres live on the row itself now. */
+function Metric({
+  label,
+  value,
+  warning = false,
+  className = "",
+}: {
+  label: string;
+  value: string;
+  warning?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={`min-w-0 rounded-lg bg-gray-50 px-2 py-1.5 ${className}`}>
+      <p className="truncate text-[9px] uppercase tracking-wide text-gray-400">
+        {label}
+      </p>
+      <p
+        className={`mt-0.5 truncate text-sm font-black ${
+          warning ? "text-red-600" : "text-gray-700"
+        }`}
+      >
+        {value}
+      </p>
+    </div>
+  );
+}
+
 export function stockMetersOf(variant: EditableVariant): number {
   return toMeters(variant.stockMeters);
 }

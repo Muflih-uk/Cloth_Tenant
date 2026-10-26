@@ -23,9 +23,9 @@ export default function Step1CommonDetails({ value, onChange, onNext, onBack }: 
   const isValid = value.name.trim() !== "" && priceValid;
 
   return (
-    <div className="flex flex-col min-h-screen bg-white px-4 py-8">
+    <div className="flex flex-col min-h-screen bg-white px-0 py-4 sm:px-4 sm:py-8">
       {/* Header */}
-      <div className="flex items-center gap-3 mb-8">
+      <div className="flex items-center gap-3 mb-4 sm:mb-8">
         <button
           type="button"
           onClick={onBack}
@@ -52,6 +52,24 @@ export default function Step1CommonDetails({ value, onChange, onNext, onBack }: 
             placeholder="e.g. Cotton Lawn, Rayon Cambric"
             value={value.name}
             onChange={(e) => set("name", e.target.value)}
+          />
+        </Field>
+
+        <Field>
+          <FieldLabel>Design number</FieldLabel>
+          <Input
+            placeholder="e.g. RJ-1042"
+            value={value.design_number}
+            onChange={(e) => set("design_number", e.target.value)}
+          />
+        </Field>
+
+        <Field>
+          <FieldLabel>Category</FieldLabel>
+          <Input
+            placeholder="e.g. Cotton, Rayon"
+            value={value.category}
+            onChange={(e) => set("category", e.target.value)}
           />
         </Field>
 

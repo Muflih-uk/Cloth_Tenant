@@ -14,7 +14,13 @@ import { toMeters } from "@/types/item";
  * independently and never replace or add to that base.
  */
 export function buildFabricPayload(
-  common: { name: string; description?: string; price_per_meter: string },
+  common: {
+    name: string;
+    design_number?: string;
+    category?: string;
+    description?: string;
+    price_per_meter: string;
+  },
   variants: ColorVariant[],
 ): FabricRequest {
   const variantPayload: FabricVariantRequest[] = variants.map((variant) => ({
@@ -25,6 +31,8 @@ export function buildFabricPayload(
   }));
   return {
     name: common.name,
+    design_number: common.design_number || "",
+    category: common.category || "",
     description: common.description || "",
     price_per_meter: common.price_per_meter,
     variants: variantPayload,
@@ -32,7 +40,13 @@ export function buildFabricPayload(
 }
 
 export async function submitFabric(
-  common: { name: string; description?: string; price_per_meter: string },
+  common: {
+    name: string;
+    design_number?: string;
+    category?: string;
+    description?: string;
+    price_per_meter: string;
+  },
   variants: ColorVariant[],
 ): Promise<void> {
   await fabricApi.create(fabricToFormData(buildFabricPayload(common, variants)));

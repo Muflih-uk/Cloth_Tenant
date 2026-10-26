@@ -1,11 +1,12 @@
 "use client";
 import BrandsList from "@/components/pages/admin/settings/BrandsList";
 import TransportsList from "@/components/pages/admin/settings/TransportsList";
+import SubAdminsList from "@/components/pages/admin/settings/SubAdminsList";
 import { useAuth } from "@/context/AuthContext";
 import { useState } from "react";
-import { Store, Truck } from "lucide-react";
+import { Store, Truck, Users } from "lucide-react";
 
-type Tab = "Brands" | "Transports";
+type Tab = "Brands" | "Transports" | "Sub Admins";
 
 export default function SettingsPage() {
   const { isSuperuser } = useAuth();
@@ -25,16 +26,21 @@ export default function SettingsPage() {
 
   if (!isSuperuser) return null;
 
-  const settingsTabs: Tab[] = ["Brands", "Transports"];
+  const settingsTabs: { tab: Tab; icon: React.ReactNode }[] = [
+    { tab: "Brands", icon: <Store size={14} /> },
+    { tab: "Transports", icon: <Truck size={14} /> },
+    { tab: "Sub Admins", icon: <Users size={14} /> },
+  ];
 
   const renderContent = () => {
     if (activeTab === "Brands") return <BrandsList />;
     if (activeTab === "Transports") return <TransportsList />;
+    if (activeTab === "Sub Admins") return <SubAdminsList />;
   };
 
   return (
     <div className="min-h-screen min-w-full px-0">
-      <div className="pt-2 flex justify-between items-center px-4 mb-6">
+      <div className="pt-2 flex justify-between items-center px-0 mb-4 sm:px-4 sm:mb-6">
         <div className="flex flex-col">
           <h2 className="text-xl font-extrabold text-gray-900 leading-tight">
             {activeTab}
@@ -47,8 +53,8 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="bg-gray-100/50 p-1.5 mt-2 mx-4 flex items-center justify-between space-x-1 border border-gray-200 rounded-full mb-6">
-        {settingsTabs.map((tab) => (
+      <div className="bg-gray-100/50 p-1.5 mt-2 mx-0 flex items-center justify-between space-x-1 border border-gray-200 rounded-full mb-4 sm:mx-4 sm:mb-6">
+        {settingsTabs.map(({ tab, icon }) => (
           <button
             key={tab}
             onClick={() => handleTabChange(tab)}
@@ -58,11 +64,7 @@ export default function SettingsPage() {
                 : "text-gray-400 hover:text-gray-600 hover:bg-gray-100/80"
             }`}
           >
-            {tab === "Brands" ? (
-              <Store size={14} />
-            ) : (
-              <Truck size={14} />
-            )}
+            {icon}
             {tab}
           </button>
         ))}

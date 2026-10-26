@@ -71,6 +71,8 @@ export function fabricToFormData(data: FabricRequest): FormData {
   const formData = new FormData();
 
   formData.append("name", data.name);
+  formData.append("design_number", data.design_number || "");
+  formData.append("category", data.category || "");
   formData.append("description", data.description || "");
   formData.append("price_per_meter", String(data.price_per_meter));
 

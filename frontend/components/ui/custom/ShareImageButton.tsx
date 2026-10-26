@@ -18,32 +18,12 @@ const ShareImageButton: React.FC<Props> = ({ imageUrl }) => {
 
   return (
     <button
-      className="
-        fixed
-        top-4
-        right-4
-        z-[100]
-        flex
-        items-center
-        justify-center
-        rounded-lg
-        border-2
-        border-black
-        bg-white
-        px-4
-        py-2
-        text-sm
-        font-semibold
-        text-black
-        shadow-lg
-        transition-colors
-        hover:bg-black
-        hover:text-white
-        active:scale-95
-      "
+      type="button"
+      aria-label="Share on WhatsApp"
+      className="app-focus fixed left-4 top-4 z-[100] flex size-11 items-center justify-center rounded-full border border-app-line bg-app-card text-app-ink shadow-card transition-colors hover:bg-app-soft"
       onClick={share}
     >
-      <Share />
+      <Share className="size-5" aria-hidden="true" />
     </button>
   );
 };

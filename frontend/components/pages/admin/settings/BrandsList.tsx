@@ -33,7 +33,7 @@ export default function BrandsList() {
 
     if (data.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4 px-4">
+            <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4 px-0 sm:px-4">
                 <Store size={48} className="text-gray-300" />
                 <h2 className="text-xl font-bold text-gray-400">No Brands</h2>
                 <StockFlowButton
@@ -48,8 +48,8 @@ export default function BrandsList() {
     }
 
     return (
-        <div className="px-4 space-y-3 pb-20">
-            <div className="flex w-full justify-end px-4 mb-4">
+        <div className="px-0 space-y-2 pb-20 sm:px-4 sm:space-y-3">
+            <div className="flex w-full justify-end px-0 mb-3 sm:px-4 sm:mb-4">
                 <StockFlowButton
                     text="Add Brand"
                     variant="filled"
@@ -65,7 +65,7 @@ export default function BrandsList() {
                     onClick={() =>
                         router.push(`/admin/settings/brands/${brand.id}`)
                     }
-                    className="flex items-center gap-4 bg-white border border-gray-100 p-4 hover:border-primary/30 hover:shadow-md transition-all rounded-2xl group cursor-pointer active:scale-[0.98]"
+                    className="flex items-center gap-3 bg-white border border-gray-100 p-3 sm:gap-4 sm:p-4 hover:border-primary/30 hover:shadow-md transition-all rounded-2xl group cursor-pointer active:scale-[0.98]"
                 >
                     <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 overflow-hidden">
                         {brand.logo_url ? (

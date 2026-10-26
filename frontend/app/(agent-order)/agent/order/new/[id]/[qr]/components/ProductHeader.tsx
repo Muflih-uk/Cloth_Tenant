@@ -9,7 +9,7 @@ interface ProductHeaderProps {
 
 export default function ProductHeader({ isEditMode, onBack }: ProductHeaderProps) {
   return (
-    <div className="bg-white border-b border-gray-100 px-6 py-6 sticky top-0 z-10">
+    <div className="bg-white border-b border-gray-100 px-0 py-3 sticky top-0 z-10 sm:px-6 sm:py-6">
       <div className="max-w-md mx-auto flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button

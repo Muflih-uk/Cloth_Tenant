@@ -196,8 +196,8 @@ export default function ReceiveRollsDialog({
         if (e.target === e.currentTarget && !saving) onClose();
       }}
     >
-      <div className="w-full sm:max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
-        <div className="flex items-start justify-between px-6 pt-6 pb-4">
+      <div className="max-h-[calc(100dvh-3rem)] w-full overflow-y-auto rounded-3xl bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:max-w-md">
+        <div className="flex items-start justify-between gap-3 px-4 pb-4 pt-5 sm:px-6 sm:pt-6">
           <div>
             <h2 className="text-base font-black">Receive Rolls</h2>
             <p className="text-xs text-gray-400 mt-0.5">
@@ -219,54 +219,59 @@ export default function ReceiveRollsDialog({
 
         <div className="h-px bg-gray-100" />
 
-        <div className="px-6 py-5 space-y-2 max-h-[50vh] overflow-y-auto">
+        <div className="max-h-[45vh] space-y-2 overflow-y-auto px-4 py-4 sm:max-h-[50vh] sm:px-6 sm:py-5">
           {rolls.map((roll, index) => {
             const count = Math.max(1, rollCount(roll));
             return (
-              <div key={index} className="flex items-center gap-2">
-                <span className="w-6 text-xs font-bold text-gray-300 flex-shrink-0">
-                  {index + 1}
-                </span>
-                <Input
-                  type="number"
-                  min={0}
-                  step="0.001"
-                  inputMode="decimal"
-                  placeholder="Metres"
-                  value={roll.meters}
-                  onChange={(e) => setRoll(index, { meters: e.target.value })}
-                  onFocus={(e) => e.target.select()}
-                  disabled={saving}
-                  className="h-10 text-sm"
-                  aria-label={`Roll ${index + 1} metres`}
-                />
-                <span className="text-xs text-gray-300 flex-shrink-0">×</span>
-                <Input
-                  type="number"
-                  min={1}
-                  step={1}
-                  inputMode="numeric"
-                  value={roll.count}
-                  onChange={(e) => setRoll(index, { count: e.target.value })}
-                  onFocus={(e) => e.target.select()}
-                  disabled={saving}
-                  className="h-10 text-sm w-16 flex-shrink-0"
-                  aria-label={`Roll ${index + 1} count`}
-                />
-                <button
-                  type="button"
-                  onClick={() => removeRoll(index)}
-                  disabled={saving || rolls.length === 1}
-                  className="p-2 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-30"
-                  aria-label={`Remove roll ${index + 1}`}
-                >
-                  <X className="w-4 h-4" />
-                </button>
+              <div
+                key={index}
+                className="rounded-xl border border-gray-100 p-2 sm:rounded-none sm:border-0 sm:p-0"
+              >
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <span className="w-5 shrink-0 text-xs font-bold text-gray-300">
+                    {index + 1}
+                  </span>
+                  <Input
+                    type="number"
+                    min={0}
+                    step="0.001"
+                    inputMode="decimal"
+                    placeholder="Metres"
+                    value={roll.meters}
+                    onChange={(e) => setRoll(index, { meters: e.target.value })}
+                    onFocus={(e) => e.target.select()}
+                    disabled={saving}
+                    className="h-10 min-w-0 flex-1 text-sm"
+                    aria-label={`Roll ${index + 1} metres`}
+                  />
+                  <span className="shrink-0 text-xs text-gray-300">×</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    step={1}
+                    inputMode="numeric"
+                    value={roll.count}
+                    onChange={(e) => setRoll(index, { count: e.target.value })}
+                    onFocus={(e) => e.target.select()}
+                    disabled={saving}
+                    className="h-10 w-14 shrink-0 text-sm sm:w-16"
+                    aria-label={`Roll ${index + 1} count`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeRoll(index)}
+                    disabled={saving || rolls.length === 1}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500 disabled:opacity-30 sm:h-8 sm:w-8"
+                    aria-label={`Remove roll ${index + 1}`}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
                 {count > 1 && (
                   // Only worth saying once a row really is several rolls.
-                  <span className="text-[11px] text-gray-400 flex-shrink-0">
+                  <p className="mt-1 pl-7 text-[10px] text-gray-400 sm:text-[11px]">
                     = {count} rolls
-                  </span>
+                  </p>
                 )}
               </div>
             );
@@ -299,7 +304,7 @@ export default function ReceiveRollsDialog({
           )}
         </div>
 
-        <div className="px-6 pb-6 flex gap-3">
+        <div className="flex gap-2.5 px-4 pb-5 sm:gap-3 sm:px-6 sm:pb-6">
           <button
             type="button"
             onClick={onClose}

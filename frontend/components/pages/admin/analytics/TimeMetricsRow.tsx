@@ -1,6 +1,7 @@
 "use client";
 
 import type { TimeMetrics } from "@/types/dashboard";
+import AnalyticsCard from "./AnalyticsCard";
 
 interface TimeMetricsRowProps {
   metrics: TimeMetrics;
@@ -19,38 +20,54 @@ function formatPct(pct: number | null): string {
 export default function TimeMetricsRow({ metrics }: TimeMetricsRowProps) {
   const cards = [
     {
-      label: "Avg Dispatch",
+      label: "Avg dispatch",
       value: formatHours(metrics.avg_dispatch_hours),
       unit: metrics.avg_dispatch_hours !== null ? "hrs" : "",
+      hasData: metrics.avg_dispatch_hours !== null,
     },
     {
-      label: "Median Dispatch",
+      label: "Median dispatch",
       value: formatHours(metrics.median_dispatch_hours),
       unit: metrics.median_dispatch_hours !== null ? "hrs" : "",
+      hasData: metrics.median_dispatch_hours !== null,
     },
     {
       label: "Within 24h",
       value: formatPct(metrics.dispatched_within_24h_pct),
       unit: "",
+      hasData: metrics.dispatched_within_24h_pct !== null,
     },
   ];
 
   return (
-    <div className="grid grid-cols-3 gap-3 mb-4">
-      {cards.map(({ label, value, unit }) => (
-        <div
-          key={label}
-          className="bg-white rounded-xl border p-3 text-center shadow-sm"
-        >
-          <div className="text-lg font-black text-blue-600">
-            {value}
-            {unit && <span className="text-xs ml-0.5">{unit}</span>}
+    <AnalyticsCard title="Dispatch speed">
+      <div className="grid grid-cols-3 gap-2">
+        {cards.map(({ label, value, unit, hasData }) => (
+          <div
+            key={label}
+            className="flex min-h-[76px] flex-col justify-center rounded-control bg-app-soft px-1.5 py-3 text-center"
+          >
+            <p
+              className={`text-xl font-bold leading-none tracking-tight tabular-nums ${
+                hasData ? "text-app-ink" : "text-app-subtle"
+              }`}
+            >
+              {value}
+              {unit && (
+                <span className="ml-0.5 text-[10px] font-semibold text-app-muted">
+                  {unit}
+                </span>
+              )}
+            </p>
+            <p className="mt-2 text-[10px] font-medium leading-tight text-app-muted">
+              {label}
+            </p>
           </div>
-          <div className="text-sm font-bold uppercase tracking-wider text-gray-400 mt-0.5">
-            {label}
-          </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+      <p className="mt-3 text-[11px] font-normal text-app-muted">
+        Shows once an order has shipped.
+      </p>
+    </AnalyticsCard>
   );
 }

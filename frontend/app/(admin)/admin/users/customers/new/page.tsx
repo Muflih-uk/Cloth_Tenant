@@ -1,18 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+
+import Button from "@/components/ui/app/Button";
+import Card from "@/components/ui/app/Card";
+import PageHeader from "@/components/ui/app/PageHeader";
+import FormField from "@/components/ui/custom/FormField";
 import StockFlowSelect from "@/components/ui/custom/stockFlowSelect";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/context/AuthContext";
 import { agentApi } from "@/lib/api/agents";
 import { customerApi } from "@/lib/api/customer";
 import { transportApi } from "@/lib/api/transport";
-import { toastSuccess, toastError } from "@/lib/toast";
+import { toastError, toastSuccess } from "@/lib/toast";
 import { CustomerCreateRequest } from "@/types/customer";
-import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import StockFlowButton from "@/components/ui/custom/stockFlowButton";
-import { useAuth } from "@/context/AuthContext";
-import { useRouter } from "next/navigation";
 
 export default function NewCustomerPage() {
   const [formData, setFormData] = useState({
@@ -128,7 +132,7 @@ export default function NewCustomerPage() {
       await customerApi.create(payload);
       toastSuccess("Customer created successfully");
       router.push("/admin/users/");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating customer:", error);
       toastError("Failed to create customer", error);
     } finally {
@@ -137,152 +141,146 @@ export default function NewCustomerPage() {
   };
 
   return (
-    <div className="w-full px-4 py-8 flex flex-col min-h-screen bg-white">
-      <div className="mb-8">
-        <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-          New Customer
-        </h1>
-        <p className="text-sm text-gray-400 font-medium">
-          Register a new client in the system
-        </p>
-      </div>
+    <div className="mx-auto min-h-screen w-full max-w-2xl px-2 pb-32 pt-2">
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => router.back()}
+        aria-label="Go back"
+        className="-ml-2 mb-2"
+      >
+        <ArrowLeft className="size-5" aria-hidden="true" />
+      </Button>
 
-      <div className="bg-gray-50/50 border border-gray-100 rounded-3xl p-6 mb-8">
-        <FieldGroup className="space-y-6">
-          <Field>
-            <div className="flex justify-between items-center mb-1.5">
-              <FieldLabel className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                Assigned Agent
-              </FieldLabel>
-              {errors.agent && (
-                <span className="text-[10px] text-red-500 font-bold">
-                  {errors.agent}
-                </span>
-              )}
-            </div>
+      <PageHeader
+        title="New customer"
+        subtitle="Register a new client in the system."
+        className="mb-4"
+      />
+
+      <Card className="mb-5">
+        <div className="space-y-5">
+          <FormField
+            label="Assigned agent"
+            htmlFor="customer-agent"
+            error={errors.agent}
+            required
+          >
             <StockFlowSelect
               value={formData.agent}
-              onChange={(val) => handleChange("agent", val)}
+              onChange={(value) => handleChange("agent", value)}
               options={agents}
-              disabled={loadingAgents}
-              className={errors.agent ? "border-red-200 ring-red-50" : ""}
+              disabled={loadingAgents || isSubmitting}
+              placeholder={loadingAgents ? "Loading agents..." : "Select agent"}
+              className={errors.agent ? "border-brand-red" : ""}
             />
-          </Field>
+          </FormField>
 
-          <Field>
-            <div className="flex justify-between items-center mb-1.5">
-              <FieldLabel className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                Customer / Shop Name
-              </FieldLabel>
-              {errors.customerName && (
-                <span className="text-[10px] text-red-500 font-bold">
-                  {errors.customerName}
-                </span>
-              )}
-            </div>
+          <FormField
+            label="Customer / shop name"
+            htmlFor="customer-name"
+            error={errors.customerName}
+            required
+          >
             <Input
+              id="customer-name"
               placeholder="e.g. Fashion Hub"
               value={formData.customerName}
-              onChange={(e) => handleChange("customerName", e.target.value)}
-              className={`bg-white border-gray-100 rounded-xl h-12 focus:ring-primary/10 ${errors.customerName ? "border-red-200 focus:border-red-300" : "focus:border-primary"}`}
+              onChange={(event) =>
+                handleChange("customerName", event.target.value)
+              }
+              aria-invalid={Boolean(errors.customerName)}
             />
-          </Field>
+          </FormField>
 
-          <Field>
-            <div className="flex justify-between items-center mb-1.5">
-              <FieldLabel className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                Shipping Address
-              </FieldLabel>
-              {errors.address && (
-                <span className="text-[10px] text-red-500 font-bold">
-                  {errors.address}
-                </span>
-              )}
-            </div>
+          <FormField
+            label="Shipping address"
+            htmlFor="customer-address"
+            error={errors.address}
+            required
+          >
             <Textarea
+              id="customer-address"
               rows={3}
               placeholder="Full mailing address..."
               value={formData.address}
-              onChange={(e) => handleChange("address", e.target.value)}
-              className={`bg-white border-gray-100 rounded-xl focus:ring-primary/10 transition-all ${errors.address ? "border-red-200 focus:border-red-300" : "focus:border-primary"}`}
+              onChange={(event) =>
+                handleChange("address", event.target.value)
+              }
+              aria-invalid={Boolean(errors.address)}
             />
-          </Field>
+          </FormField>
 
-          <Field>
-            <div className="flex justify-between items-center mb-1.5">
-              <FieldLabel className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                Contact detail
-              </FieldLabel>
-              {errors.contactNumber && (
-                <span className="text-[10px] text-red-500 font-bold">
-                  {errors.contactNumber}
-                </span>
-              )}
-            </div>
+          <FormField
+            label="Contact detail"
+            htmlFor="customer-contact"
+            error={errors.contactNumber}
+            required
+          >
             <Input
+              id="customer-contact"
+              inputMode="tel"
               placeholder="+91 98765 43210"
               value={formData.contactNumber}
-              onChange={(e) => handleChange("contactNumber", e.target.value)}
-              className={`bg-white border-gray-100 rounded-xl h-12 focus:ring-primary/10 ${errors.contactNumber ? "border-red-200 focus:border-red-300" : "focus:border-primary"}`}
+              onChange={(event) =>
+                handleChange("contactNumber", event.target.value)
+              }
+              aria-invalid={Boolean(errors.contactNumber)}
             />
-          </Field>
+          </FormField>
 
-          <Field>
-            <div className="flex justify-between items-center mb-1.5">
-              <FieldLabel className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                GST Number
-              </FieldLabel>
-              {errors.gst && (
-                <span className="text-[10px] text-red-500 font-bold">
-                  {errors.gst}
-                </span>
-              )}
-            </div>
+          <FormField
+            label="GST number"
+            htmlFor="customer-gst"
+            error={errors.gst}
+            required
+          >
             <Input
+              id="customer-gst"
               placeholder="e.g. 29ABCDE1234F1Z5"
               value={formData.gst}
-              onChange={(e) =>
-                handleChange("gst", e.target.value.toUpperCase())
+              onChange={(event) =>
+                handleChange("gst", event.target.value.toUpperCase())
               }
-              className={`bg-white border-gray-100 rounded-xl h-12 focus:ring-primary/10 ${
-                errors.gst
-                  ? "border-red-200 focus:border-red-300"
-                  : "focus:border-primary"
-              }`}
+              aria-invalid={Boolean(errors.gst)}
             />
-          </Field>
+          </FormField>
 
-          <Field>
-            <div className="flex justify-between items-center mb-1.5">
-              <FieldLabel className="text-xs font-bold uppercase tracking-widest text-gray-400">
-                Preferred Transport
-              </FieldLabel>
-            </div>
+          <FormField label="Preferred transport" htmlFor="customer-transport">
             <StockFlowSelect
               value={formData.preferredTransport}
-              onChange={(val) => handleChange("preferredTransport", val)}
+              onChange={(value) =>
+                handleChange("preferredTransport", value)
+              }
               options={[{ value: "", label: "None" }, ...transports]}
-              disabled={loadingTransports}
+              disabled={loadingTransports || isSubmitting}
+              placeholder={
+                loadingTransports ? "Loading transports..." : "Select transport"
+              }
             />
-          </Field>
-        </FieldGroup>
-      </div>
+          </FormField>
+        </div>
+      </Card>
 
-      <div className="flex gap-4 items-center mt-auto pb-10">
-        <StockFlowButton
-          variant="outline"
-          text="Cancel"
+      <div className="flex items-center gap-3">
+        <Button
+          variant="secondary"
+          size="lg"
           onClick={() => router.back()}
-          className="flex-1 h-14 rounded-2xl border-gray-200 font-bold text-gray-500 active:scale-95 transition-all text-sm"
-        />
-
-        <StockFlowButton
-          variant="filled"
-          text={isSubmitting ? "Creating..." : "Add Customer"}
-          onClick={handleSubmit}
           disabled={isSubmitting}
-          className="flex-[2] h-14 rounded-2xl bg-primary shadow-lg shadow-primary/20 font-bold text-white active:scale-95 transition-all text-sm"
-        />
+          className="flex-1"
+        >
+          Cancel
+        </Button>
+        <Button
+          size="lg"
+          onClick={handleSubmit}
+          loading={isSubmitting}
+          loadingText="Creating..."
+          className="flex-[2]"
+        >
+          Add Customer
+        </Button>
       </div>
     </div>
   );

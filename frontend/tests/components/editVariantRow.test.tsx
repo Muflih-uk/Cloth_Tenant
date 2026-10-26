@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import EditVariantRow from "@/app/(admin)/admin/items/edit/[id]/editVariantRow";
 import type { EditableVariant } from "@/types/item";
 
@@ -19,10 +20,10 @@ const existing = (over: Partial<EditableVariant> = {}): EditableVariant => ({
   imagePreview: null,
   isRollTracked: true,
   rollCount: 1,
+  activeRollCount: 1,
   ...over,
 });
 
-/** No callbacks do anything here: this is about what the row displays. */
 const noop = () => {};
 
 function renderRow(
@@ -46,7 +47,7 @@ function renderRow(
 }
 
 describe("EditVariantRow stock figures", () => {
-  it("edits the opening base and displays order and on-roll balances separately", () => {
+  it("shows order, physical and active-roll figures on the card", () => {
     renderRow(
       existing({
         baseOpening: "200.000",
@@ -55,13 +56,17 @@ describe("EditVariantRow stock figures", () => {
         stockMeters: "100.000",
         isRollTracked: true,
         rollCount: 1,
+        activeRollCount: 1,
       }),
     );
 
-    expect(screen.getByDisplayValue("200.000")).toHaveProperty("readOnly", false);
-    expect(document.body.textContent).toContain("Opening stock (order-stock base)");
-    expect(document.body.textContent).toContain("Available to order: 140 m");
-    expect(document.body.textContent).toContain("On rolls: 100 m");
+    expect(screen.getByText("Available to order")).toBeTruthy();
+    expect(screen.getByText("140 m")).toBeTruthy();
+    expect(screen.getByText("Physical stock")).toBeTruthy();
+    expect(screen.getAllByText("100 m").length).toBeGreaterThan(0);
+    expect(screen.getByText("Active rolls")).toBeTruthy();
+    expect(screen.getAllByText("1").length).toBeGreaterThan(0);
+    expect(screen.getByText("Natural")).toBeTruthy();
   });
 
   it("shows roll-less physical stock alongside available-to-order stock", () => {
@@ -72,24 +77,21 @@ describe("EditVariantRow stock figures", () => {
         availableMeters: "1000",
         stockMeters: "800",
         isRollTracked: false,
+        activeRollCount: 0,
       }),
     );
 
-    expect(document.body.textContent).toContain("Available to order: 1,000 m");
-    expect(document.body.textContent).toContain("Physical stock: 800 m");
+    expect(screen.getAllByText("1,000 m").length).toBeGreaterThan(0);
+    expect(screen.getByText("Physical stock")).toBeTruthy();
+    expect(screen.getByText("800 m")).toBeTruthy();
   });
 
-  it("shows preserved loose stock separately when rolls are added", () => {
-    renderRow(
-      existing({
-        untrackedStockMeters: "1000.000",
-        isRollTracked: true,
-      }),
-    );
+  it("keeps the card to the three stock figures and actions", () => {
+    renderRow(existing({ untrackedStockMeters: "1000.000" }));
 
-    expect(document.body.textContent).toContain(
-      "Untracked physical (not packable): 1,000 m",
-    );
+    expect(screen.queryByText("Stock details")).toBeNull();
+    expect(screen.queryByText(/untracked physical/i)).toBeNull();
+    expect(screen.getByRole("button", { name: /adjust stock/i })).toBeTruthy();
   });
 
   it("keeps the physical roll panel inside the variant card", () => {
@@ -100,6 +102,61 @@ describe("EditVariantRow stock figures", () => {
     );
 
     const panel = screen.getByTestId("physical-roll-panel");
-    expect(panel.closest(".rounded-xl.border")).not.toBeNull();
+    expect(panel.closest(".rounded-2xl.border")).not.toBeNull();
+  });
+
+  it("changes the opening base through the stock adjustment dialog", async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(
+      <EditVariantRow
+        variant={existing()}
+        index={0}
+        isOnly
+        isNew={false}
+        onChange={onChange}
+        onDelete={noop}
+        onPickImage={noop}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /adjust stock/i }));
+
+    const input = screen.getByLabelText(
+      "Opening order-stock base in metres",
+    ) as HTMLInputElement;
+    expect(input.value).toBe("100.000");
+
+    await user.clear(input);
+    await user.type(input, "125");
+    await user.click(screen.getByRole("button", { name: /save adjustment/i }));
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({ baseOpening: "125" }),
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("opens Receive Rolls from the card", async () => {
+    const user = userEvent.setup();
+    const onRequestReceive = vi.fn();
+    render(
+      <EditVariantRow
+        variant={existing()}
+        index={0}
+        isOnly
+        isNew={false}
+        onChange={noop}
+        onDelete={noop}
+        onPickImage={noop}
+        onRequestReceive={onRequestReceive}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: /receive rolls/i }),
+    );
+
+    expect(onRequestReceive).toHaveBeenCalledTimes(1);
   });
 });

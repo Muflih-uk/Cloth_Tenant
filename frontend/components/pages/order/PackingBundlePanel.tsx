@@ -36,6 +36,7 @@ import type {
   OrderItem as OrderItemType,
   OrderStatus,
   PackingBundle,
+  ResolveRollScanResponse,
 } from "@/types/order";
 
 type Props = {
@@ -142,11 +143,12 @@ function BundleLineList({
 /**
  * Bundles: the boxes of cloth that actually leave the warehouse.
  *
- * A colour with physical rolls cannot be packed by typing a figure -- the roll is
- * the unit, so the packer picks it up and scans the label on it. That scan belongs
- * to a *bundle* rather than to a single order line, because a box can carry rolls of
- * several colours against one order, and because a mistake has to be undoable one
- * roll at a time: take back the wrong roll, leave the rest of the box alone.
+ * Packing starts with the roll: the packer picks it up, scans the label, then says
+ * how many metres to cut. There is no typed-metres shortcut that skips the roll.
+ * That scan belongs to a *bundle* rather than to a single order line, because a box
+ * can carry rolls of several colours against one order, and because a mistake has
+ * to be undoable one roll at a time: take back the wrong roll, leave the rest of
+ * the box alone.
  *
  * So the scan lives up here at order level rather than on each line. Nothing else
  * about packing changes: the server builds the same one-entry round it always did
@@ -180,6 +182,12 @@ export default function PackingBundlePanel({
   const [bundleLoadError, setBundleLoadError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
+  // The roll the server has checked, waiting for the packer to confirm the cut.
+  // Holding the token here (rather than sending the roll id again) is what makes
+  // the cut follow the scanned label even if the roll list changes meanwhile.
+  const [pendingScan, setPendingScan] =
+    useState<ResolveRollScanResponse | null>(null);
+  const [scanMetres, setScanMetres] = useState("");
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [slipMessage, setSlipMessage] = useState<string | null>(null);
   // Which boxes the admin has opened, by bundle id. Held per bundle rather than
@@ -311,12 +319,13 @@ export default function PackingBundlePanel({
   };
 
   /**
-   * Cut a scanned roll into the open bundle.
+   * Check the scanned label, then ask how many metres to cut.
    *
-   * The label's payload is the roll's primary key, so anything that is not a plain
-   * number is some other kind of QR and is refused here rather than sent on to fail
-   * as a lookup for a roll that does not exist. The scanner deliberately stays open
-   * after a success: filling a box is a run of scans, not one scan.
+   * Resolving moves no cloth. A label from another warehouse, a spent roll, a
+   * colour this order never asked for or a sealed bundle all fail here, so the
+   * packer sees the reason before typing a figure. On success the camera closes
+   * and the cut prompt opens on the shorter of "what is left" and "what the line
+   * still needs".
    */
   const handleScan = async (raw: string) => {
     const roll = parseRollScan(raw);
@@ -335,7 +344,49 @@ export default function PackingBundlePanel({
 
     setBusy(true);
     try {
-      const result = await packingApi.scanIntoBundle(orderId, openBundle.id, roll);
+      const result = await packingApi.resolveScan(
+        orderId,
+        openBundle.id,
+        String(roll),
+      );
+      setPendingScan(result);
+      setScanMetres(result.suggested_meters);
+      setScanOpen(false);
+    } catch (err) {
+      // The scanner stays open on a refusal: the packer most likely just grabbed
+      // the wrong roll, and the fix is to scan again rather than reopen anything.
+      toastErrorFromError(err);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Cut the confirmed metres from the roll the server resolved. */
+  const handleConfirmScan = async () => {
+    if (!openBundle || !pendingScan) return;
+    const metres = Number(scanMetres);
+    if (!Number.isFinite(metres) || metres <= 0) {
+      toastError("Enter the cut", "The metres to cut must be greater than zero.");
+      return;
+    }
+    if (metres > Number(pendingScan.remaining_meters)) {
+      toastError(
+        "Not enough cloth on the roll",
+        `${pendingScan.roll_number} has ${formatMeters(
+          Number(pendingScan.remaining_meters),
+        )} m left.`,
+      );
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const result = await packingApi.scanIntoBundle(
+        orderId,
+        openBundle.id,
+        pendingScan.token,
+        scanMetres,
+      );
       replaceBundle(result.bundle);
       onChanged();
       if (result.order_status) onOrderStatusChange?.(result.order_status);
@@ -345,17 +396,25 @@ export default function PackingBundlePanel({
           result.variant_display_order
             ? ` (${result.variant_display_order})`
             : ""
-        } · ${result.bundle.roll_count} roll${
-          result.bundle.roll_count === 1 ? "" : "s"
-        } in ${result.bundle.code}`,
+        } · ${formatMeters(Number(result.remaining_meters))} m left on the roll`,
       );
+      setPendingScan(null);
+      setScanMetres("");
+      // A box is filled by a run of rolls, so go straight back to the camera.
+      setScanOpen(true);
     } catch (err) {
-      // The scanner stays open on a refusal: the packer most likely just grabbed
-      // the wrong roll, and the fix is to scan again rather than reopen anything.
+      // Keep the prompt open: the packer can lower the figure, and the server is
+      // the one that decides whether the roll still has enough.
       toastErrorFromError(err);
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleCancelPendingScan = () => {
+    setPendingScan(null);
+    setScanMetres("");
+    setScanOpen(true);
   };
 
   const handleRemove = async (entryId: number) => {
@@ -386,6 +445,7 @@ export default function PackingBundlePanel({
       replaceBundle(result.bundle);
       setConfirmCancel(false);
       setScanOpen(false);
+      setPendingScan(null);
       onChanged();
       if (result.order_status) onOrderStatusChange?.(result.order_status);
       toastSuccess(result.message);
@@ -403,6 +463,7 @@ export default function PackingBundlePanel({
       const result = await packingApi.sealBundle(orderId, openBundle.id);
       replaceBundle(result.bundle);
       setScanOpen(false);
+      setPendingScan(null);
       // Sealing closes the box, so the slip for it is produced straight away
       // rather than left as a job someone has to remember.
       await printSlip(result.bundle, true);
@@ -520,7 +581,7 @@ export default function PackingBundlePanel({
                 ? `${sealedBundles.length} sealed bundle${
                     sealedBundles.length === 1 ? "" : "s"
                   } on this order`
-                : "Scan whole rolls into a box, then seal it to print its packing slip."}
+                : "Scan fabric rolls to pack this order."}
           </p>
         </div>
 
@@ -827,6 +888,79 @@ export default function PackingBundlePanel({
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {pendingScan && openBundle && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Enter cut for ${pendingScan.roll_number}`}
+        >
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleConfirmScan();
+            }}
+            className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+          >
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl bg-amber-100 p-2 text-amber-700">
+                <QrCode size={18} />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-lg font-bold text-gray-900">
+                  Metres to cut
+                </h3>
+                <p className="mt-0.5 text-sm font-semibold text-gray-700">
+                  {pendingScan.roll_number} · {pendingScan.fabric}
+                  {pendingScan.colour ? ` · ${pendingScan.colour}` : ""}
+                </p>
+                <p className="mt-0.5 text-[11px] text-gray-500">
+                  {formatMeters(Number(pendingScan.remaining_meters))} m left on
+                  this roll · going into {openBundle.code}
+                </p>
+              </div>
+            </div>
+
+            <label className="mt-5 block text-xs font-bold text-gray-700">
+              Metres to cut from this roll
+              <input
+                autoFocus
+                inputMode="decimal"
+                type="number"
+                min="0.001"
+                step="0.001"
+                max={pendingScan.remaining_meters}
+                value={scanMetres}
+                onChange={(event) => setScanMetres(event.target.value)}
+                className="mt-1 w-full rounded-xl border border-gray-300 px-3 py-2 text-base font-bold text-gray-900 focus:border-amber-500 focus:outline-none"
+              />
+            </label>
+            <p className="mt-1 text-[11px] text-gray-500">
+              The figure is checked against the roll again when you confirm.
+            </p>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleCancelPendingScan}
+                disabled={busy}
+                className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 transition-colors hover:bg-gray-50 disabled:opacity-50"
+              >
+                Scan another roll
+              </button>
+              <button
+                type="submit"
+                disabled={busy}
+                className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
+              >
+                <Box size={14} />
+                {busy ? "Packing..." : "Cut and pack"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

@@ -24,6 +24,8 @@ type Props = {
   /** Hide unfulfilled lines -- used on the dispatch screen. */
   onlyFullyPacked?: boolean;
   outstandingItemIds?: number[];
+  /** Show ordered/packed progress in the Fabric Lines card. */
+  showPackingProgress?: boolean;
   /**
    * Rendered inside each line's own card. The admin order page uses it to hang
    * the per-line packing control off the line it packs, so the control lives in
@@ -48,6 +50,7 @@ const OrderItem: React.FC<Props> = ({
   onDeleteItem,
   onlyFullyPacked = false,
   outstandingItemIds = [],
+  showPackingProgress = false,
   renderLineFooter,
 }) => {
   const [deleting, setDeleting] = useState(false);
@@ -160,6 +163,7 @@ const OrderItem: React.FC<Props> = ({
               showEdit={isEditable}
               isPacked={stillOwed === 0}
               isOutOfStock={outstandingItemIds.includes(item.id)}
+              showPackingProgress={showPackingProgress}
               onDelete={(deleteItemId) => onDelete(deleteItemId)}
               onEdit={isEditable ? handleEditItem : undefined}
               footer={renderLineFooter?.(item)}

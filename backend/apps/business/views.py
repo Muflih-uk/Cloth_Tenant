@@ -3,7 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from apps.accounts.permissions import IsSuperuser
+from apps.accounts.permissions import IsAdminWithPin
 
 from .models import Brand
 from .serializers import BrandSerializer
@@ -12,9 +12,11 @@ from .serializers import BrandSerializer
 class BrandViewSet(ModelViewSet):
     """The mill's company profile.
 
-    Read for any signed-in user (invoices need it); write for superusers only.
-    There is no delete -- ``Brand.delete()`` refuses, and ``destroy`` returns 405
-    -- because invoicing would break without a company name.
+    Read for any signed-in user (invoices need it); write for admins only, and an
+    admin who is not a superuser has to send their PIN -- the same anti-mistake
+    gate every other admin write uses. There is no delete because invoicing would
+    break without a company name: ``Brand.delete()`` refuses and ``destroy``
+    returns 405.
     """
 
     serializer_class = BrandSerializer
@@ -24,7 +26,7 @@ class BrandViewSet(ModelViewSet):
 
     def get_permissions(self):
         if self.request.method in ["POST", "PUT", "PATCH"]:
-            return [IsSuperuser()]
+            return [IsAdminWithPin()]
         return [IsAuthenticated()]
 
     def list(self, request, *args, **kwargs):

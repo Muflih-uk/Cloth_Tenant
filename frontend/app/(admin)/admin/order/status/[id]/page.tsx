@@ -146,7 +146,7 @@ export default function Page() {
       />
       <OrderDetailHeader orderId={id} backHref="/admin" />
 
-      <div className="px-4 pt-4 max-w-4xl mx-auto">
+      <div className="px-0 pt-3 max-w-4xl mx-auto sm:px-4 sm:pt-4">
         {isDeletable && (
           <div className="flex justify-end w-full p-2">
             <StockFlowButton

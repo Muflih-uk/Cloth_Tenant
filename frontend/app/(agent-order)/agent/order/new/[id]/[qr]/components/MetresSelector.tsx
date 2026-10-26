@@ -59,7 +59,7 @@ export default function MetresSelector({
                 </div>
             )}
 
-            <div className="mb-4 bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
+            <div className="mb-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm sm:p-6 sm:rounded-[32px]">
                 <div className="flex items-start justify-between gap-4">
                     <h3 className="font-bold text-gray-900">Metres needed</h3>
                     <div className="text-right">
@@ -109,7 +109,7 @@ export default function MetresSelector({
                 </div>
 
                 <div className="mt-4 flex gap-2">
-                    {[5, 10, 25, 50].map((preset) => (
+                    {[50, 100, 150, 200].map((preset) => (
                         <button
                             key={preset}
                             onClick={() => onChange(String(preset))}

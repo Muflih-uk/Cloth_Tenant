@@ -116,7 +116,7 @@ export default function Page() {
         onViewInvoice={handleViewInvoice}
       />
 
-      <div className="px-4 pt-4 max-w-4xl mx-auto">
+      <div className="px-0 pt-3 max-w-4xl mx-auto sm:px-4 sm:pt-4">
         {data?.customer_details && data?.agent_details && (
           <OrderSummary
             customer={data?.customer_details}
@@ -213,7 +213,7 @@ export default function Page() {
 
       {showDeleteDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
+          <div className="bg-white rounded-2xl p-4 sm:p-6 max-w-sm w-full shadow-xl">
             <h3 className="text-lg font-bold text-gray-900 mb-2">
               Delete Order?
             </h3>

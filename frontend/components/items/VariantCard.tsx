@@ -46,7 +46,7 @@ export default function VariantCard({
 
     return (
         <div
-            className={`rounded-lg border p-3 ${
+            className={`rounded-lg border p-2.5 sm:p-3 ${
                 isOutOfStock && !isReadonly
                     ? "bg-red-100 border border-red-200"
                     : "bg-white border-gray-100"

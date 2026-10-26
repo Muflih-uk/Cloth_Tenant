@@ -30,7 +30,7 @@ export default function OrderScannerPage() {
   return (
     <div className="min-h-screen bg-gray-50/50 flex flex-col">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-6 py-6 sticky top-0 z-10">
+      <div className="bg-white border-b border-gray-100 px-0 py-3 sticky top-0 z-10 sm:px-6 sm:py-6">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
@@ -51,7 +51,7 @@ export default function OrderScannerPage() {
         </div>
       </div>
 
-      <div className="flex-1 max-w-md mx-auto w-full px-6 py-10 flex flex-col items-center justify-center">
+      <div className="flex-1 max-w-md mx-auto w-full px-0 py-6 flex flex-col items-center justify-center sm:px-6 sm:py-10">
         <ScannerPage id={id} basePath={basePath} />
       </div>
     </div>

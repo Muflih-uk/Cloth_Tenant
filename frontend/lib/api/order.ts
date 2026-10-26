@@ -13,10 +13,9 @@ import type {
   PackingPlan,
   PackingQueue,
   PackingRoundSummary,
-  PackLineResponse,
-  PackLineRollOverride,
   PlaceOrderResponse,
   PlanOverrideEntry,
+  ResolveRollScanResponse,
   ScanIntoBundleResponse,
   UpdateOrderItemRequest,
   UpdateOrderRequest,
@@ -326,30 +325,23 @@ export const packingApi = {
   },
 
   /**
-   * Pack one order line from the order page, without opening the board.
+   * Check a scanned roll label and get the token used to pack it.
    *
-   * This really does move cloth, so the server builds a one-entry packing round
-   * and confirms it through the same engine the board uses: same stock rules,
-   * same Allocation row, same ALLOCATION_MADE log entry, and a round that can
-   * still be cancelled if the admin changes their mind.
-   *
-   * For a colour tracked by physical rolls the server refuses this without a
-   * `rolls` breakdown rather than guessing which cloth to cut -- scan the roll into a
-   * bundle instead (see `scanIntoBundle`), since the roll's label already says
-   * which roll it is.
+   * The raw label is sent, not a hand-built roll id, so our parser and the
+   * server's lookup agree on what a label is. Nothing moves yet: a bad label, a
+   * spent roll, a colour this order never asked for and a sealed bundle are all
+   * refused here, before the metres prompt appears.
    */
-  packLine(
+  resolveScan(
     orderId: number,
-    itemId: number,
-    metres: string,
-    rolls?: PackLineRollOverride[],
-  ): Promise<PackLineResponse> {
+    bundleId: number,
+    roll: string,
+  ): Promise<ResolveRollScanResponse> {
     return api
-      .post<PackLineResponse>(`/api/orders/${orderId}/items/${itemId}/pack/`, {
-        metres,
-        // Omitted entirely for a colour with no rolls, whose stock is one figure.
-        ...(rolls && rolls.length > 0 ? { rolls } : {}),
-      })
+      .post<ResolveRollScanResponse>(
+        `/api/orders/${orderId}/bundles/${bundleId}/scan/resolve/`,
+        { roll },
+      )
       .then((r) => r.data);
   },
 
@@ -378,23 +370,23 @@ export const packingApi = {
   },
 
   /**
-   * Cut a whole scanned roll into an open bundle.
+   * Cut the confirmed metres from the roll named by a resolve token.
    *
-   * `roll` is the primary key encoded in the label, so the admin never picks a roll
-   * from a list: they pick up the roll and scan it. No line is chosen either -- the
-   * colour on the roll decides which order line it satisfies, and the whole roll
-   * moves, because rolls are not split at the warehouse. A sealed bundle, a spent
-   * roll, or a colour this order never asked for is refused.
+   * The browser cannot swap the roll between resolving and cutting: the server
+   * holds the roll, order, bundle and admin in the token and re-checks the cut
+   * under the roll lock. The line is chosen by the roll's colour, so no line id is
+   * sent either.
    */
   scanIntoBundle(
     orderId: number,
     bundleId: number,
-    roll: number,
+    token: string,
+    metres: string,
   ): Promise<ScanIntoBundleResponse> {
     return api
       .post<ScanIntoBundleResponse>(
         `/api/orders/${orderId}/bundles/${bundleId}/scan/`,
-        { roll },
+        { token, metres },
       )
       .then((r) => r.data);
   },

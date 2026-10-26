@@ -92,9 +92,9 @@ export default function CustomerRequirementsPage() {
         </div>
       </div>
 
-      <div className="p-4 space-y-4">
+      <div className="px-0 py-3 space-y-3 sm:p-4 sm:space-y-4">
         {/* Summary Card */}
-        <div className="bg-white rounded-md border border-gray-300 p-4">
+        <div className="bg-white rounded-md border border-gray-300 p-3 sm:p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Users size={14} className="text-primary" />

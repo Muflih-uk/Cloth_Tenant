@@ -92,7 +92,7 @@ export default function AgentCustomersPage() {
         </div>
       </div>
 
-      <div className="mx-auto pt-6">
+      <div className="mx-auto pt-3 sm:pt-6">
         <div className="relative mb-4">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-400">
             <Search size={18} />
@@ -124,7 +124,7 @@ export default function AgentCustomersPage() {
             </div>
           </div>
         ) : (
-          <div className="space-y-3 pb-10">
+          <div className="space-y-2 pb-10 sm:space-y-3">
             <div className="flex justify-end">
               <StockFlowButton
                 text="Add Customer"
@@ -138,7 +138,7 @@ export default function AgentCustomersPage() {
               <div
                 key={item.id}
                 onClick={() => router.push(`/agent/customers/${item.id}`)}
-                className="flex items-center gap-4 bg-white border border-gray-100 p-4 hover:border-primary/30 hover:shadow-md transition-all rounded-2xl group active:scale-[0.98]"
+                className="flex items-center gap-3 bg-white border border-gray-100 p-3 sm:gap-4 sm:p-4 hover:border-primary/30 hover:shadow-md transition-all rounded-2xl group active:scale-[0.98]"
               >
                 <StockflowAvatar user={item} />
 

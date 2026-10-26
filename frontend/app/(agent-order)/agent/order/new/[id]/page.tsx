@@ -410,7 +410,7 @@ export default function OrderDetailsPage() {
   return (
     <div className="min-h-screen pb-36">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-4 py-4 sticky top-0 z-20">
+      <div className="bg-white border-b border-gray-100 px-0 py-3 sticky top-0 z-20 sm:px-4 sm:py-4">
         <div className="max-w-lg mx-auto flex items-center gap-3">
           <button
             onClick={() => setShowLeaveConfirm(true)}
@@ -439,7 +439,7 @@ export default function OrderDetailsPage() {
       </div>
 
       {isAdmin && (
-        <div className="bg-primary/5 border-b border-primary/10 px-4 py-2">
+        <div className="bg-primary/5 border-b border-primary/10 px-0 py-2 sm:px-4">
           <div className="max-w-lg mx-auto flex items-center justify-between gap-3 text-[11px]">
             <span className="font-bold text-gray-700 truncate">
               Order for {data?.name ?? "—"}
@@ -451,11 +451,11 @@ export default function OrderDetailsPage() {
         </div>
       )}
 
-      <div className="max-w-lg mx-auto px-4 pt-6 space-y-6">
+      <div className="max-w-lg mx-auto px-0 pt-3 space-y-3 sm:px-4 sm:pt-6 sm:space-y-6">
         {/* Customer Card */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-          <div className="items-center gap-4 p-4">
-            <div className="flex pb-4 items-center gap-4">
+          <div className="items-center gap-3 p-3 sm:gap-4 sm:p-4">
+            <div className="flex pb-3 items-center gap-3 sm:pb-4 sm:gap-4">
               <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
                 <User size={20} className="text-primary" />
               </div>
@@ -469,7 +469,7 @@ export default function OrderDetailsPage() {
               </div>
             </div>
             {data?.address && (
-              <div className="flex items-start gap-2 px-4 py-2.5 bg-gray-50 border-t border-gray-100">
+              <div className="flex items-start gap-2 px-3 py-2.5 bg-gray-50 border-t border-gray-100 sm:px-4">
                 <MapPin
                   size={12}
                   className="text-gray-400 mt-0.5 flex-shrink-0"
@@ -481,7 +481,7 @@ export default function OrderDetailsPage() {
             )}
           </div>
 
-          <div className="bg-white border-t border-gray-100 p-4 space-y-4">
+          <div className="bg-white border-t border-gray-100 p-3 space-y-3 sm:p-4 sm:space-y-4">
             <h3 className="text-sm font-bold text-gray-900">
               Delivery Options
             </h3>

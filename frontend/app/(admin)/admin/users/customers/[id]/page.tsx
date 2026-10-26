@@ -196,7 +196,7 @@ export default function CustomerDetailPage() {
     );
 
   return (
-    <div className="w-full px-4 py-8 flex flex-col min-h-screen bg-white">
+    <div className="w-full px-0 py-4 flex flex-col min-h-screen bg-white sm:px-4 sm:py-8">
       <DeleteWithTransferDialog
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
@@ -281,7 +281,7 @@ export default function CustomerDetailPage() {
       {/* User Details Section */}
       {isEditing ? (
         <>
-          <div className="bg-gray-50/50 border border-gray-100 rounded-[2rem] p-6 space-y-6 mb-6">
+          <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-3 space-y-4 mb-4 sm:rounded-[2rem] sm:p-6 sm:space-y-6 sm:mb-6">
             <FieldGroup className="space-y-6">
               <Field>
                 <FieldLabel className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2 block">
@@ -363,7 +363,7 @@ export default function CustomerDetailPage() {
             </FieldGroup>
           </div>
 
-          <div className="mb-20 px-4">
+          <div className="mb-20 px-0 sm:px-4">
             <StockFlowButton
               variant="filled"
               text={saving ? "Saving Changes..." : "Save Changes"}

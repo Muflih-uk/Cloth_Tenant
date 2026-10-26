@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import MetresSelector from "@/app/(agent-order)/agent/order/new/[id]/[qr]/components/MetresSelector";
 
 /**
@@ -83,6 +83,19 @@ describe("available stock after scanning", () => {
 
     onChange("50");
     expect(onChange).toHaveBeenCalledWith("50");
+  });
+
+  it("sets the metre quantity from the 50/100/150/200 m presets", () => {
+    const { onChange } = renderSelector({ metres: "0" });
+
+    ["50 m", "100 m", "150 m", "200 m"].forEach((label) => {
+      fireEvent.click(screen.getByRole("button", { name: label }));
+    });
+
+    expect(onChange).toHaveBeenNthCalledWith(1, "50");
+    expect(onChange).toHaveBeenNthCalledWith(2, "100");
+    expect(onChange).toHaveBeenNthCalledWith(3, "150");
+    expect(onChange).toHaveBeenNthCalledWith(4, "200");
   });
 
   it("falls back to the shelf figure when the server sends no availability", () => {

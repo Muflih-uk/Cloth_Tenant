@@ -8,7 +8,7 @@ import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 const jakartha = Plus_Jakarta_Sans({
   variable: "--font-jakartha",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -56,7 +56,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${jakartha.className} antialiased py-4 px-5`}>
+      <body
+        className={`${jakartha.className} antialiased overflow-x-clip px-2 py-2 sm:px-5 sm:py-4`}
+      >
         <AuthProvider>
           <ServiceWorkerRegister />
           {children}

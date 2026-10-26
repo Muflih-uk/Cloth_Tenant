@@ -40,8 +40,8 @@ export default function NewTransportPage() {
   };
 
   return (
-    <div className="w-full px-4 py-8 flex flex-col min-h-screen bg-white">
-      <div className="mb-8">
+    <div className="w-full px-0 py-4 flex flex-col min-h-screen bg-white sm:px-4 sm:py-8">
+      <div className="mb-4 sm:mb-8">
         <button
           onClick={() => router.back()}
           className="mb-4 p-2 -ml-2 rounded-xl hover:bg-gray-50 text-gray-400 transition-colors"
@@ -56,7 +56,7 @@ export default function NewTransportPage() {
         </p>
       </div>
 
-      <div className="bg-gray-50/50 border border-gray-100 rounded-3xl p-6 mb-8">
+      <div className="bg-gray-50/50 border border-gray-100 rounded-2xl p-3 mb-4 sm:rounded-3xl sm:p-6 sm:mb-8">
         <FieldGroup className="space-y-6">
           <Field>
             <div className="flex justify-between items-center mb-1.5">
@@ -98,7 +98,7 @@ export default function NewTransportPage() {
         </FieldGroup>
       </div>
 
-      <div className="flex gap-4 items-center mt-auto pb-10">
+      <div className="flex gap-3 items-center mt-auto pb-6 sm:gap-4 sm:pb-10">
         <StockFlowButton
           variant="outline"
           text="Cancel"

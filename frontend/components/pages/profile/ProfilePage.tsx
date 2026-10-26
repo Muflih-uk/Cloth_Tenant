@@ -1,5 +1,7 @@
 "use client";
 import { PageLoading } from "@/components/ui/Loading";
+import StockflowAvatar from "@/components/ui/custom/stockflowAvatar";
+import ProfileEditDialog from "@/components/pages/profile/ProfileEditDialog";
 import { useAuth } from "@/context/AuthContext";
 import { agentApi } from "@/lib/api/agents";
 import { authApi } from "@/lib/api/auth";
@@ -7,7 +9,7 @@ import { fabricApi } from "@/lib/api/item";
 import { orderApi } from "@/lib/api/order";
 import { toastSuccess } from "@/lib/toast";
 import { AgentResponse } from "@/types/agent";
-import { UserProfile } from "@/types/auth";
+import { AuthUser, UserProfile } from "@/types/auth";
 import { UIItem } from "@/types/item";
 import { Order } from "@/types/order";
 import {
@@ -17,11 +19,12 @@ import {
   Mail,
   ShieldCheck,
   Phone,
-  Upload,
   Archive,
   ShoppingBag,
   Users,
   ScrollText,
+  Pencil,
+  Settings,
 } from "lucide-react";
 import ItemCard from "@/components/items/ItemCard";
 import OrderCard from "@/components/order/OrderCard";
@@ -31,10 +34,11 @@ import { useEffect, useState } from "react";
 type Tab = "profile" | "archives";
 
 export default function ProfilePage() {
-  const { user, logout, isSuperuser } = useAuth();
+  const { user, logout, isSuperuser, updateUser } = useAuth();
   const router = useRouter();
 
   const [tab, setTab] = useState<Tab>("profile");
+  const [editOpen, setEditOpen] = useState(false);
   const [agentData, setAgentData] = useState<AgentResponse>();
   const [profile, setProfile] = useState<UserProfile>();
   const [archivedItems, setArchivedItems] = useState<UIItem[]>([]);
@@ -91,23 +95,58 @@ export default function ProfilePage() {
     router.push("/");
   };
 
+  /** The account just came back from the server, so the header redraws at once. */
+  const handleProfileSaved = (updated: UserProfile) => {
+    setProfile(updated);
+    updateUser({
+      username: updated.username,
+      email: updated.email,
+      display_name: updated.display_name,
+    });
+  };
+
   if (loading) return <PageLoading />;
 
   const displayName = profile?.display_name || profile?.username || "User";
+  const avatarUser: AuthUser | null = user
+    ? {
+        ...user,
+        display_name: profile?.display_name ?? user.display_name,
+        username: profile?.username ?? user.username,
+      }
+    : null;
 
   return (
     <div className="min-h-screen bg-gray-50/50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-4 pt-2 pb-4">
+      <div className="bg-white border-b border-gray-100 px-0 pt-2 pb-3 sm:px-4 sm:pb-4">
         <div className="max-w-lg mx-auto">
-          <div className="flex w-full justify-between items-center gap-2 min-w-0 py-4">
-            <h1 className="text-xl font-black text-gray-900 truncate">
-              {displayName}
-            </h1>
-            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary bg-primary/8 px-2 py-0.5 rounded-full shrink-0">
-              <ShieldCheck size={10} />
-              {profile?.role || "User"}
-            </span>
+          <div className="flex w-full items-center gap-3 min-w-0 py-4">
+            <div className="relative shrink-0">
+              <StockflowAvatar user={avatarUser} size="lg" />
+              {/* The pencil sits on the avatar itself: this is the one place an
+                  admin edits their own details and sets the company logo. */}
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setEditOpen(true)}
+                  aria-label="Edit profile"
+                  title="Edit profile"
+                  className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-primary text-white shadow-md transition-transform active:scale-95"
+                >
+                  <Pencil size={12} aria-hidden="true" />
+                </button>
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl font-black text-gray-900 truncate">
+                {displayName}
+              </h1>
+              <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-primary bg-primary/8 px-2 py-0.5 rounded-full shrink-0">
+                <ShieldCheck size={10} />
+                {profile?.role || "User"}
+              </span>
+            </div>
           </div>
 
           {/* Tab Bar */}
@@ -129,7 +168,16 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-4">
+      <div className="max-w-lg mx-auto px-0 py-3 sm:px-4 sm:py-4">
+        {editOpen && profile && (
+          <ProfileEditDialog
+            open={editOpen}
+            onClose={() => setEditOpen(false)}
+            profile={profile}
+            isSuperuser={isSuperuser}
+            onSaved={handleProfileSaved}
+          />
+        )}
         {/* ── Profile Tab ── */}
         {tab === "profile" && (
           <div className="space-y-3">
@@ -166,39 +214,36 @@ export default function ProfilePage() {
             </div>
 
             {/* Actions */}
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm divide-y divide-gray-50">
-              {isAdmin ? (
-                <ActionRow
-                  icon={<Upload size={16} />}
-                  iconBg="bg-indigo-50 text-indigo-500"
-                  label="Bulk Import"
-                  onClick={() => router.push("/admin/bulk-import")}
-                />
-              ) : (
+            {!isAdmin && (
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm divide-y divide-gray-50">
                 <ActionRow
                   icon={<Users size={16} />}
                   iconBg="bg-teal-50 text-teal-500"
                   label="My Customers"
                   badge={Number(agentData?.total_customers) || 0}
-                  onClick={() =>
-                    router.push(
-                      isAdmin ? "/admin/customers" : "/agent/customers",
-                    )
-                  }
+                  onClick={() => router.push("/agent/customers")}
                 />
-              )}
-            </div>
+              </div>
+            )}
 
-            <div className="bg-white rounded-3xl border border-gray-100 shadow-sm divide-y divide-gray-50">
-              {isAdmin && (
+            {isAdmin && (
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm divide-y divide-gray-50">
                 <ActionRow
                   icon={<ScrollText size={16} />}
                   iconBg="bg-indigo-50 text-indigo-500"
                   label="Summary"
                   onClick={() => router.push("/admin/summary")}
                 />
-              )}
-            </div>
+                {/* Bulk import now lives inside Settings, so the profile only
+                    carries the way in. */}
+                <ActionRow
+                  icon={<Settings size={16} />}
+                  iconBg="bg-gray-100 text-gray-500"
+                  label="Settings"
+                  onClick={() => router.push("/admin/profile/settings")}
+                />
+              </div>
+            )}
 
             {/* Sign Out */}
             <button
@@ -288,7 +333,7 @@ function InfoRow({
   value: string;
 }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3">
+    <div className="flex items-center gap-3 px-3 py-3 sm:px-4">
       <div
         className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}
       >
@@ -320,7 +365,7 @@ function ActionRow({
   return (
     <button
       onClick={onClick}
-      className="flex items-center gap-3 w-full px-4 py-3 group hover:bg-gray-50/60 transition-colors"
+      className="flex items-center gap-3 w-full px-3 py-3 sm:px-4 group hover:bg-gray-50/60 transition-colors"
     >
       <div
         className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}

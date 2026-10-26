@@ -50,6 +50,9 @@ export interface FabricRoll {
   note: string;
   original_meters: string;
   remaining_meters: string;
+  /** Packed-out metres; manual corrections are excluded. */
+  packed_meters?: string;
+  /** Backwards-compatible alias for packed-out metres. */
   consumed_meters: string;
   is_active: boolean;
   is_exhausted: boolean;
@@ -68,6 +71,7 @@ export interface RollSummary {
   total_received_meters: string;
   roll_stock_meters: string;
   untracked_stock_meters?: string;
+  packed_meters?: string;
   consumed_meters: string;
   largest_roll_meters: string;
   smallest_roll_meters: string;
@@ -95,7 +99,7 @@ export interface BulkReceiveRollsResponse extends RollSummary {
   rolls: FabricRoll[];
 }
 
-/** One line of a roll's history: metres cut off it, and where they went. */
+/** One roll touched by a packing response. */
 export interface RollHistoryEntry {
   id: number;
   roll_number: string;
@@ -108,11 +112,6 @@ export interface RollHistoryEntry {
   order_status: string | null;
   customer: string | null;
   order_item: number;
-}
-
-export interface RollHistoryResponse {
-  roll: FabricRoll;
-  entries: RollHistoryEntry[];
 }
 
 /** Which rolls a packing of N metres would be cut from, oldest first. */
@@ -133,6 +132,8 @@ export interface RollCutPlan {
 export interface Fabric {
   id: number;
   name: string;
+  design_number?: string;
+  category?: string;
   description?: string;
   price_per_meter: string;
   variants: FabricVariant[];
@@ -161,6 +162,8 @@ export interface FabricVariantRequest {
 
 export interface FabricRequest {
   name: string;
+  design_number?: string;
+  category?: string;
   description?: string;
   price_per_meter: string;
   variants: FabricVariantRequest[];
@@ -200,6 +203,8 @@ export type VariantAllResponse = VariantAllItem[];
 export interface FabricStockEntry {
   id: number;
   name: string;
+  design_number?: string;
+  category?: string;
   price_per_meter: string;
   image: string | null;
   variants: FabricVariant[];
@@ -265,6 +270,8 @@ export interface ColorVariant {
 /** The fabric-wide fields the wizard collects in step 1. */
 export interface FabricDetails {
   name: string;
+  design_number: string;
+  category: string;
   description: string;
   price_per_meter: string;
 }
@@ -279,6 +286,7 @@ export interface EditableVariant {
   untrackedStockMeters?: string;
   isRollTracked?: boolean;
   rollCount?: number;
+  activeRollCount?: number;
   displayOrder: string;
   imageUrl: string | null;
   newImage: File | null;
@@ -307,6 +315,8 @@ export interface UIVariant {
 export interface UIItem {
   id: number;
   name: string;
+  design_number?: string;
+  category?: string;
   price_per_meter: string;
   variants: UIVariant[];
   days_until_purge?: number | null;

@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Trash2, X, ShieldAlert } from "lucide-react";
 
+import Button from "@/components/ui/app/Button";
+
 interface PinDeleteDialogProps {
   open: boolean;
   onClose: () => void;
@@ -15,7 +17,7 @@ export default function PinDeleteDialog({
   open,
   onClose,
   onConfirm,
-  title = "Confirm Delete",
+  title = "Confirm delete",
   description = "This action cannot be undone.",
 }: PinDeleteDialogProps) {
   const [pin, setPin] = useState(["", "", "", "", "", ""]);
@@ -23,17 +25,35 @@ export default function PinDeleteDialog({
   const [loading, setLoading] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  // Reset state when dialog opens/closes
   useEffect(() => {
-    if (open) {
-      setPin(["", "", "", "", "", ""]);
-      setError("");
-      setLoading(false);
-      setTimeout(() => inputRefs.current[0]?.focus(), 100);
-    }
+    if (!open) return;
+
+    const timer = setTimeout(() => inputRefs.current[0]?.focus(), 100);
+    return () => clearTimeout(timer);
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || loading) return;
+      setPin(["", "", "", "", "", ""]);
+      setError("");
+      onClose();
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [loading, onClose, open]);
+
   if (!open) return null;
+
+  const handleClose = () => {
+    if (loading) return;
+    setPin(["", "", "", "", "", ""]);
+    setError("");
+    onClose();
+  };
 
   const handleKeyDown = (
     index: number,
@@ -41,13 +61,11 @@ export default function PinDeleteDialog({
   ) => {
     if (e.key === "Backspace") {
       if (pin[index]) {
-        // Clear current cell
         const next = [...pin];
         next[index] = "";
         setPin(next);
         setError("");
       } else if (index > 0) {
-        // Move back and clear previous
         const next = [...pin];
         next[index - 1] = "";
         setPin(next);
@@ -103,14 +121,18 @@ export default function PinDeleteDialog({
     setError("");
     try {
       await onConfirm(fullPin);
+      setPin(["", "", "", "", "", ""]);
+      setError("");
       onClose();
-    } catch (e: any) {
+    } catch (error: unknown) {
+      const apiError = error as {
+        response?: { data?: { error?: string; detail?: string } };
+      };
       const msg =
-        e?.response?.data?.error ||
-        e?.response?.data?.detail ||
+        apiError?.response?.data?.error ||
+        apiError?.response?.data?.detail ||
         "Incorrect PIN. Try again.";
       setError(msg);
-      // Shake + clear PIN on wrong PIN
       setPin(["", "", "", "", "", ""]);
       setTimeout(() => inputRefs.current[0]?.focus(), 50);
     } finally {
@@ -121,45 +143,58 @@ export default function PinDeleteDialog({
   const filledCount = pin.filter(Boolean).length;
 
   return (
-    // Backdrop
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-brand-navy/35 px-4 backdrop-blur-sm"
       onClick={(e) => {
-        if (e.target === e.currentTarget && !loading) onClose();
+        if (e.target === e.currentTarget) handleClose();
       }}
     >
-      {/* Sheet on mobile, centered card on sm+ */}
-      <div className="w-full sm:max-w-sm bg-white rounded-3xl shadow-2xl pb-safe overflow-hidden animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 duration-200">
-        {/* Header */}
-        <div className="flex items-start justify-between px-6 pt-6 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-red-50 flex items-center justify-center flex-shrink-0">
-              <ShieldAlert className="w-5 h-5 text-red-500" />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pin-delete-title"
+        aria-describedby="pin-delete-description"
+        className="w-full overflow-hidden rounded-card border border-app-line bg-app-card pb-safe shadow-float animate-in slide-in-from-bottom-4 duration-200 sm:max-w-sm sm:slide-in-from-bottom-0"
+      >
+        <div className="flex items-start justify-between gap-3 px-5 pb-4 pt-5">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-control bg-brand-red/10">
+              <ShieldAlert className="size-5 text-brand-red" aria-hidden="true" />
             </div>
-            <div>
-              <h2 className="text-base font-black text-gray-900">{title}</h2>
-              <p className="text-xs text-gray-400 mt-0.5">{description}</p>
+            <div className="min-w-0">
+              <h2
+                id="pin-delete-title"
+                className="truncate text-base font-bold text-app-ink"
+              >
+                {title}
+              </h2>
+              <p
+                id="pin-delete-description"
+                className="mt-0.5 text-xs text-app-muted"
+              >
+                {description}
+              </p>
             </div>
           </div>
           <button
-            onClick={onClose}
+            type="button"
+            onClick={handleClose}
             disabled={loading}
-            className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-colors flex-shrink-0 ml-2"
+            aria-label="Close dialog"
+            className="app-focus flex size-11 shrink-0 items-center justify-center rounded-full text-app-muted transition-colors hover:bg-app-soft hover:text-app-ink disabled:opacity-50"
           >
-            <X className="w-4 h-4" />
+            <X className="size-5" aria-hidden="true" />
           </button>
         </div>
 
-        <div className="h-px bg-gray-100 mx-6" />
+        <div className="mx-5 h-px bg-app-line" />
 
-        {/* PIN section */}
-        <div className="px-6 pt-5 pb-6">
-          <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-4 text-center">
+        <div className="px-5 pb-5 pt-5">
+          <p className="mb-4 text-center text-xs font-semibold text-app-muted">
             Enter your 6-digit PIN
           </p>
 
-          {/* PIN inputs */}
-          <div className="flex gap-2 justify-center mb-2" onPaste={handlePaste}>
+          <div className="mb-2 flex justify-center gap-1.5" onPaste={handlePaste}>
             {pin.map((digit, i) => (
               <input
                 key={i}
@@ -173,63 +208,60 @@ export default function PinDeleteDialog({
                 onChange={(e) => handleInput(i, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(i, e)}
                 disabled={loading}
-                className={`w-11 h-14 rounded-2xl border-2 text-center text-xl font-black bg-gray-50 outline-none transition-all
-                  ${
-                    error
-                      ? "border-red-300 bg-red-50 text-red-600"
-                      : digit
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-gray-200 text-gray-800"
-                  }
-                  focus:border-primary focus:bg-primary/5
-                  disabled:opacity-50`}
+                aria-label={`PIN digit ${i + 1}`}
+                className={`app-focus h-14 w-11 rounded-control border-2 bg-app-soft text-center text-xl font-bold outline-none transition-colors ${
+                  error
+                    ? "border-brand-red/40 bg-brand-red/5 text-brand-red"
+                    : digit
+                      ? "border-brand-navy bg-brand-navy/5 text-brand-navy"
+                      : "border-app-line text-app-ink focus:border-brand-navy"
+                } disabled:opacity-50`}
               />
             ))}
           </div>
 
-          <div className="flex justify-center gap-1.5 mb-4">
+          <div className="mb-4 flex justify-center gap-1.5">
             {Array.from({ length: 6 }).map((_, i) => (
               <div
                 key={i}
                 className={`rounded-full transition-all duration-150 ${
                   i < filledCount
-                    ? "w-2 h-2 bg-primary"
-                    : "w-1.5 h-1.5 bg-gray-200"
+                    ? "size-2 bg-brand-navy"
+                    : "size-1.5 bg-app-line"
                 }`}
               />
             ))}
           </div>
 
-          {/* Error */}
           {error && (
-            <p className="text-center text-xs font-semibold text-red-500 mb-4 bg-red-50 py-2 px-3 rounded-xl">
+            <p
+              role="alert"
+              className="mb-4 rounded-control bg-brand-red/10 px-3 py-2 text-center text-xs font-semibold text-brand-red"
+            >
               {error}
             </p>
           )}
 
-          {/* Buttons */}
           <div className="flex gap-3">
-            <button
-              onClick={onClose}
+            <Button
+              variant="secondary"
+              onClick={handleClose}
               disabled={loading}
-              className="flex-1 h-12 rounded-2xl border-2 border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition-all active:scale-95 disabled:opacity-40"
+              className="h-12 flex-1"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="destructive"
               onClick={handleConfirm}
-              disabled={loading || filledCount < 6}
-              className="flex-1 h-12 rounded-2xl bg-red-500 text-sm font-bold text-white flex items-center justify-center gap-2 hover:bg-red-600 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-red-500/20"
+              loading={loading}
+              loadingText="Deleting..."
+              disabled={filledCount < 6}
+              className="h-12 flex-1"
             >
-              {loading ? (
-                <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              ) : (
-                <>
-                  <Trash2 className="w-4 h-4" />
-                  Delete
-                </>
-              )}
-            </button>
+              <Trash2 className="size-4" aria-hidden="true" />
+              Delete
+            </Button>
           </div>
         </div>
       </div>

@@ -133,7 +133,7 @@ export default function PriceCheckScannerPage() {
   if (showCustomerSelect) {
     return (
       <div className="min-h-screen bg-gray-50/50 pb-20">
-        <div className="bg-white border-b border-gray-100 px-6 py-6 sticky top-0 z-10">
+        <div className="bg-white border-b border-gray-100 px-0 py-3 sticky top-0 z-10 sm:px-6 sm:py-6">
           <div className="max-w-md mx-auto flex items-center gap-4">
             <button
               onClick={handleCloseCustomerSelect}
@@ -163,7 +163,7 @@ export default function PriceCheckScannerPage() {
                 <button
                   key={customer.id}
                   onClick={() => handleSelectCustomer(customer.id)}
-                  className="w-full flex items-center gap-4 bg-white border border-gray-100 p-4 hover:border-color-primary/30 hover:shadow-md transition-all rounded-2xl active:scale-[0.98] text-left"
+                  className="w-full flex items-center gap-3 bg-white border border-gray-100 p-3 sm:gap-4 sm:p-4 hover:border-color-primary/30 hover:shadow-md transition-all rounded-2xl active:scale-[0.98] text-left"
                 >
                   <div className="w-12 h-12 rounded-xl bg-color-primary/5 flex items-center justify-center border border-color-primary/10 flex-shrink-0">
                     <span className="text-lg font-black text-color-primary">
@@ -190,7 +190,7 @@ export default function PriceCheckScannerPage() {
   if (scanResult) {
     return (
       <div className="min-h-screen bg-gray-50/50 pb-20">
-        <div className="bg-white border-b border-gray-100 px-6 py-6 sticky top-0 z-10">
+        <div className="bg-white border-b border-gray-100 px-0 py-3 sticky top-0 z-10 sm:px-6 sm:py-6">
           <div className="max-w-md mx-auto flex items-center justify-between">
             <button
               onClick={() => router.push("/agent/items")}
@@ -215,7 +215,7 @@ export default function PriceCheckScannerPage() {
           </div>
         </div>
 
-        <div className="max-w-md mx-auto px-6 pt-6">
+        <div className="max-w-md mx-auto px-0 pt-3 sm:px-6 sm:pt-6">
           <div className="bg-white rounded-[40px] overflow-hidden shadow-xl shadow-color-primary/5 border border-gray-100 mb-4 aspect-square relative">
             {selectedVariant?.image ? (
               <ImagePreview src={selectedVariant.image} alt={scanResult.name} />
@@ -268,7 +268,7 @@ export default function PriceCheckScannerPage() {
             )}
           </div>
 
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-3xl p-6 mb-6">
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-100 rounded-2xl p-4 mb-4 sm:rounded-3xl sm:p-6 sm:mb-6">
             <p className="text-[10px] font-black uppercase tracking-widest text-green-600 mb-1">
               Price
             </p>
@@ -354,7 +354,7 @@ export default function PriceCheckScannerPage() {
         </div>
       </div>
 
-      <div className="max-w-md mx-auto px-6 pt-4 flex flex-col items-center">
+      <div className="max-w-md mx-auto px-0 pt-3 flex flex-col items-center sm:px-6 sm:pt-4">
         <div className="relative w-full aspect-square max-w-[280px]">
           <div className="absolute -top-2 -left-2 w-8 h-8 border-t-4 border-l-4 border-color-primary rounded-tl-2xl z-20" />
           <div className="absolute -top-2 -right-2 w-8 h-8 border-t-4 border-r-4 border-color-primary rounded-tr-2xl z-20" />

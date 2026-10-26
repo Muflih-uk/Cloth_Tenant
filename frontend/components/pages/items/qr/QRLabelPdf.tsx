@@ -14,6 +14,7 @@ interface Variant {
 }
 interface Item {
   name: string;
+  design_number?: string;
   price_per_meter: string | number;
   variants: Variant[];
 }
@@ -40,6 +41,14 @@ const styles = StyleSheet.create({
     fontWeight: 800,
     textAlign: "center",
     maxLines: 2,
+    textOverflow: "ellipsis",
+  },
+  design: {
+    fontSize: 7,
+    fontWeight: 600,
+    color: "#444",
+    textAlign: "center",
+    maxLines: 1,
     textOverflow: "ellipsis",
   },
   variant: {
@@ -70,6 +79,9 @@ export const QRLabelPdf = ({ item, qrImages }: QRLabelPdfProps) => (
           style={styles.page}
         >
           <Text style={styles.name}>{item.name}</Text>
+          {item.design_number ? (
+            <Text style={styles.design}>Design: {item.design_number}</Text>
+          ) : null}
           <Text style={styles.variant}>
             {variant.display_order
               ? `Color #${variant.display_order}`

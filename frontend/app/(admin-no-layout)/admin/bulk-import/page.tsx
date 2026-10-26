@@ -462,7 +462,7 @@ export default function BulkImportPage(): React.ReactElement {
   const allSelected = rows.length > 0 && selected.size === rows.length;
 
   return (
-    <div className="min-h-screen py-10 px-6">
+    <div className="min-h-screen py-4 px-0 sm:py-10 sm:px-6">
       {/* Result modal */}
       {showModal && importResult && (
         <ResultModal
@@ -499,8 +499,11 @@ export default function BulkImportPage(): React.ReactElement {
       )}
 
       <div className="max-w-5xl mx-auto">
+        {/* Bulk import is opened from Profile › Settings, so that is where the
+            back arrow returns. */}
         <button
-          onClick={() => router.push("/admin/profile")}
+          onClick={() => router.push("/admin/profile/settings")}
+          aria-label="Back to settings"
           className="flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-gray-700 mb-8 transition-colors"
         >
           <ArrowLeft size={18} />

@@ -3,7 +3,6 @@
 import { useState, useMemo, useCallback } from "react"; // ✅ added useCallback
 import { Plus, ShoppingBag, Search, QrCode, X } from "lucide-react";
 import { OutstandingDemandRow, toMeters, UIItem } from "@/types/item";
-import StockFlowButton from "@/components/ui/custom/stockFlowButton";
 import ItemCard from "./ItemCard";
 import OrderedItemList from "./OrderedItemList";
 import QRScanModal from "./QRScanModal";
@@ -61,7 +60,9 @@ function filterItems(
     if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         filtered = filtered.filter((item) =>
-            item.name.toLowerCase().includes(query),
+            [item.name, item.design_number, item.category]
+                .filter((value): value is string => Boolean(value))
+                .some((value) => value.toLowerCase().includes(query)),
         );
     }
 
@@ -169,10 +170,15 @@ export default function ItemList({
 
     const headerTitle =
         title || (context === "admin" ? "Inventory" : "My Items");
-    const headerSubtitle =
-        context === "admin" ? "Total Items" : "Available to Order";
+    const totalItemCount = context === "admin" ? items.length : inStockCount;
+    const headerMeta =
+        context === "admin"
+            ? `${totalItemCount} item${totalItemCount === 1 ? "" : "s"}`
+            : `${totalItemCount} available to order`;
 
     const hasActiveFilters = searchQuery || qrFilter;
+    const tabGridClass =
+        context === "admin" ? "grid-cols-3" : "grid-cols-2";
 
     if (loading) {
         return <PageLoading />;
@@ -186,139 +192,150 @@ export default function ItemList({
                 onScan={handleQRScan}
             />
 
-            <div className="pt-6 pb-4 px-4">
-                <div className="flex items-start justify-between gap-4">
-                    <div className="flex flex-col w-full">
-                        <h1 className="text-xl font-extrabold text-gray-900">
+            <div className="pb-2 sm:px-4 sm:pb-3 sm:pt-2">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                        <h1 className="truncate text-xl font-extrabold text-gray-900">
                             {headerTitle}
                         </h1>
-                        <div className="flex w-full justify-between">
-                            <div className="flex gap-2 items-center mt-1">
-                                <span className="text-gray-400 text-sm font-medium">
-                                    {headerSubtitle}
-                                </span>
-                                <div className="bg-primary/10 text-primary rounded-full py-0.5 px-3 border border-primary/20">
-                                    <span className="font-bold text-xs">
-                                        {context === "admin"
-                                            ? items.length
-                                            : inStockCount}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {context === "agent" && onPriceCheck && (
-                                <button
-                                    onClick={onPriceCheck}
-                                    className="flex items-center gap-1.5 px-2.5 py-1 bg-black hover:bg-black/80 rounded-md transition-colors"
-                                >
-                                    <QrCode size={20} className="text-white" />
-                                    <span className="text-[12px] font-bold text-white">
-                                        Check Price
-                                    </span>
-                                </button>
-                            )}
-                        </div>
+                        <p className="mt-0.5 text-[11px] font-medium text-gray-500">
+                            {headerMeta}
+                        </p>
                     </div>
-                    {context === "admin" && onAddItem && (
-                        <StockFlowButton
-                            text="Add"
-                            icon={<Plus className="size-4" />}
-                            onClick={onAddItem}
-                            className="shadow-lg shadow-primary/20"
-                        />
-                    )}
+
+                    <div className="flex shrink-0 items-center gap-1.5">
+                        {context === "agent" && onPriceCheck && (
+                            <button
+                                type="button"
+                                onClick={onPriceCheck}
+                                aria-label="Check price"
+                                className="flex h-10 items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-2.5 text-xs font-bold text-gray-600 transition-colors hover:border-primary/30 hover:text-primary active:scale-95"
+                            >
+                                <QrCode size={16} />
+                                Price
+                            </button>
+                        )}
+                        {context === "admin" && onAddItem && (
+                            <button
+                                type="button"
+                                onClick={onAddItem}
+                                className="flex h-10 items-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-bold text-white shadow-sm shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95"
+                            >
+                                <Plus size={16} />
+                                Add
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            <div className="px-4 pb-4 space-y-3">
-                <div className="relative flex items-center gap-2">
-                    <div className="relative flex-1">
-                        <Search
-                            size={16}
-                            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                        />
-                        <input
-                            type="text"
-                            placeholder={
-                                activeTab === "ordered"
-                                    ? "Search outstanding demand..."
-                                    : "Search fabrics..."
-                            }
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2.5 bg-white border border-gray-200 rounded-xl font-medium text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
-                        />
-                    </div>
+            <div className="space-y-2 pb-2 sm:px-4 sm:pb-3">
+                <div className="flex h-10 items-center rounded-xl border border-gray-200 bg-white shadow-sm transition-all focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
+                    <Search
+                        size={16}
+                        className="ml-3 flex-shrink-0 text-gray-400"
+                    />
+                    <input
+                        type="text"
+                        placeholder={
+                            activeTab === "ordered"
+                                ? "Search outstanding demand..."
+                                : "Search name, code or fabric"
+                        }
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="h-full min-w-0 flex-1 bg-transparent px-2 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none"
+                    />
+                    {searchQuery && (
+                        <button
+                            type="button"
+                            onClick={() => setSearchQuery("")}
+                            aria-label="Clear search"
+                            className="mr-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                        >
+                            <X size={14} />
+                        </button>
+                    )}
                     <button
+                        type="button"
                         onClick={handleShowScanner}
-                        className="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                        aria-label="Scan QR code"
+                        title="Scan QR code"
+                        className="mr-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 text-gray-500 transition-colors hover:border-primary/30 hover:text-primary"
                     >
-                        <QrCode size={18} className="text-gray-500" />
+                        <QrCode size={16} />
                     </button>
                 </div>
 
-                {hasActiveFilters && (
-                    <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-3 py-2">
-                        <span className="text-xs text-primary font-medium">
-                            {qrFilter && `QR: ${qrFilter.slice(0, 12)}...`}
-                            {qrFilter && searchQuery && " • "}
-                            {searchQuery && `Name: ${searchQuery}`}
+                {qrFilter && (
+                    <div className="flex items-center justify-between gap-2 rounded-lg border border-primary/15 bg-primary/5 px-2.5 py-1.5 text-[11px] text-primary">
+                        <span className="min-w-0 truncate font-medium">
+                            QR filter: {qrFilter}
                         </span>
                         <button
+                            type="button"
                             onClick={clearFilters}
-                            className="p-1 hover:bg-primary/10 rounded-lg transition-colors"
+                            aria-label="Clear QR filter"
+                            className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md transition-colors hover:bg-primary/10"
                         >
-                            <X size={14} className="text-primary" />
+                            <X size={13} />
                         </button>
                     </div>
                 )}
 
-                <div className="flex gap-2 p-1 bg-gray-100 rounded-xl">
+                <div
+                    className={`grid ${tabGridClass} gap-1 rounded-xl bg-gray-100 p-1`}
+                >
                     <button
+                        type="button"
                         onClick={() => setActiveTab("in_stock")}
-                        className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
+                        aria-pressed={activeTab === "in_stock"}
+                        className={`min-w-0 truncate rounded-lg px-1.5 py-2 text-[11px] font-bold transition-all ${
                             activeTab === "in_stock"
-                                ? "bg-white text-gray-900 shadow-sm"
-                                : "text-gray-500 hover:text-gray-700"
+                                ? "bg-primary text-white shadow-sm"
+                                : "text-gray-500 hover:bg-white/70 hover:text-gray-800"
                         }`}
                     >
                         In Stock ({inStockCount})
                     </button>
                     <button
+                        type="button"
                         onClick={() => setActiveTab("out_of_stock")}
-                        className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
+                        aria-pressed={activeTab === "out_of_stock"}
+                        className={`min-w-0 truncate rounded-lg px-1.5 py-2 text-[11px] font-bold transition-all ${
                             activeTab === "out_of_stock"
-                                ? "bg-white text-gray-900 shadow-sm"
-                                : "text-gray-500 hover:text-gray-700"
+                                ? "bg-primary text-white shadow-sm"
+                                : "text-gray-500 hover:bg-white/70 hover:text-gray-800"
                         }`}
                     >
                         Out ({outOfStockCount})
                     </button>
                     {context === "admin" && (
                         <button
+                            type="button"
                             onClick={() => setActiveTab("ordered")}
-                            className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold transition-all ${
+                            aria-pressed={activeTab === "ordered"}
+                            className={`min-w-0 truncate rounded-lg px-1.5 py-2 text-[11px] font-bold transition-all ${
                                 activeTab === "ordered"
-                                    ? "bg-white text-gray-900 shadow-sm"
-                                    : "text-gray-500 hover:text-gray-700"
+                                    ? "bg-primary text-white shadow-sm"
+                                    : "text-gray-500 hover:bg-white/70 hover:text-gray-800"
                             }`}
                         >
-                            Outstanding (
-                                {filteredOutstanding.length}
-                            )
+                            Outstanding ({filteredOutstanding.length})
                         </button>
                     )}
                 </div>
             </div>
-            <div className="px-4 pb-8 space-y-2">
+
+            <div className="space-y-2 px-0 pb-6 sm:px-4 sm:pb-8">
                 {activeTab === "ordered" ? (
                     filteredOutstanding.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-16 text-gray-300">
-                            <ShoppingBag size={48} className="mb-4" />
-                            <h2 className="text-lg font-bold text-gray-400">
+                        <div className="flex flex-col items-center justify-center py-12 text-gray-300">
+                            <ShoppingBag size={40} className="mb-3" />
+                            <h2 className="text-base font-bold text-gray-400">
                                 No items found
                             </h2>
-                            <p className="text-sm text-gray-400 mt-1">
+                            <p className="mt-1 text-xs text-gray-400">
                                 {searchQuery.trim()
                                     ? "Try a different search"
                                     : "No fabric is awaiting packing"}
@@ -326,7 +343,7 @@ export default function ItemList({
                             {searchQuery.trim() && (
                                 <button
                                     onClick={() => setSearchQuery("")}
-                                    className="mt-3 text-primary text-sm font-medium hover:underline"
+                                    className="mt-3 text-xs font-semibold text-primary hover:underline"
                                 >
                                     Clear search
                                 </button>
@@ -339,12 +356,12 @@ export default function ItemList({
                         />
                     )
                 ) : filteredItems.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-gray-300">
-                        <ShoppingBag size={48} className="mb-4" />
-                        <h2 className="text-lg font-bold text-gray-400">
+                    <div className="flex flex-col items-center justify-center py-12 text-gray-300">
+                        <ShoppingBag size={40} className="mb-3" />
+                        <h2 className="text-base font-bold text-gray-400">
                             No items found
                         </h2>
-                        <p className="text-sm text-gray-400 mt-1">
+                        <p className="mt-1 text-xs text-gray-400">
                             {hasActiveFilters
                                 ? "Try a different search"
                                 : "No items in this category"}
@@ -352,7 +369,7 @@ export default function ItemList({
                         {hasActiveFilters && (
                             <button
                                 onClick={clearFilters}
-                                className="mt-3 text-primary text-sm font-medium hover:underline"
+                                className="mt-3 text-xs font-semibold text-primary hover:underline"
                             >
                                 Clear filters
                             </button>
@@ -385,7 +402,7 @@ export default function ItemList({
                         {visibleCount < filteredItems.length && (
                             <button
                                 onClick={handleShowMore}
-                                className="w-full py-3 text-sm font-semibold text-primary border border-primary/20 rounded-xl bg-primary/5 hover:bg-primary/10 transition-colors"
+                                className="w-full rounded-xl border border-primary/20 bg-primary/5 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10"
                             >
                                 Show More ({filteredItems.length - visibleCount}{" "}
                                 remaining)

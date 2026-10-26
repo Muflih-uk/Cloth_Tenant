@@ -1,3 +1,4 @@
+import uuid
 from decimal import Decimal
 
 from django.contrib.auth import get_user_model
@@ -415,6 +416,55 @@ class PackingBundle(models.Model):
     @property
     def is_dispatched(self):
         return self.dispatched_at is not None
+
+
+class PackingScan(models.Model):
+    """A short-lived proof that a roll label was resolved for an open bundle.
+
+    The browser is never trusted to name the roll it wants to cut. A scan first
+    resolves the label on the server and receives this one-time token; the pack
+    request then names that token and the metres to cut. The token is tied to one
+    order, bundle, roll and admin, expires quickly, and is marked consumed in the
+    same transaction that moves stock. That gives duplicate scans a single winner
+    and leaves the ordinary ``PackingRound``/``Allocation`` audit trail intact.
+    """
+
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    order = models.ForeignKey(
+        Order, related_name="packing_scans", on_delete=models.CASCADE
+    )
+    bundle = models.ForeignKey(
+        PackingBundle, related_name="packing_scans", on_delete=models.CASCADE
+    )
+    roll = models.ForeignKey(
+        FabricRoll, related_name="packing_scans", on_delete=models.PROTECT
+    )
+    order_item = models.ForeignKey(
+        OrderItem,
+        related_name="packing_scans",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+    )
+    created_by = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    consumed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["bundle", "roll", "created_by"],
+                condition=models.Q(consumed_at__isnull=True),
+                name="packingscan_one_pending_per_bundle_roll_user",
+            )
+        ]
+
+    def __str__(self):
+        state = "consumed" if self.consumed_at else "pending"
+        return f"{self.roll_id} in bundle {self.bundle_id} ({state})"
 
 
 class RollAllocation(models.Model):

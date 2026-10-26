@@ -80,7 +80,7 @@ export default function OrderSummary({
   notes,
 }: OrderSummaryProps) {
   return (
-    <div className="flex flex-col bg-white border border-gray-100 rounded-2xl px-3 py-5 sm:p-5 mb-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] gap-y-4">
+    <div className="flex flex-col bg-white border border-gray-100 rounded-2xl px-3 py-4 sm:p-5 mb-4 sm:mb-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] gap-y-3 sm:gap-y-4">
       <h2 className="text-xl font-extrabold text-gray-900 mb-4">
         Order Summary
       </h2>

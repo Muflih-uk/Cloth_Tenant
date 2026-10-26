@@ -3,23 +3,23 @@
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import StockflowAvatar from "./stockflowAvatar";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 const AdminProfileButton: React.FC = () => {
   const router = useRouter();
   const { business, isSuperuser, user } = useAuth();
 
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   if (!mounted) {
     return (
-      <div className="flex w-full justify-between px-2 py-1">
-        <div className="text-primary text-md font-black tracking-wider">—</div>
+      <div className="flex w-full justify-between px-4 py-3">
+        <div className="h-5 w-24 animate-pulse rounded-full bg-app-soft" />
+        <div className="size-11 animate-pulse rounded-full bg-app-soft" />
       </div>
     );
   }
@@ -29,16 +29,18 @@ const AdminProfileButton: React.FC = () => {
     : "";
 
   return (
-    <div className="flex relative w-full justify-between">
-      <div className="flex items-center px-2 py-1 text-primary text-md font-black tracking-wider">
+    <div className="relative flex w-full items-center justify-between px-4 py-3">
+      <div className="truncate text-sm font-bold tracking-wide text-brand-navy">
         {businessLabel || (isSuperuser ? "Superuser" : "")}
       </div>
-      <div
-        className="flex  cursor-pointer"
+      <button
+        type="button"
         onClick={() => router.push("/admin/profile")}
+        aria-label="Open profile"
+        className="app-focus -m-1 flex size-12 items-center justify-center rounded-full p-1 transition-colors hover:bg-app-soft"
       >
         <StockflowAvatar user={user} />
-      </div>
+      </button>
     </div>
   );
 };

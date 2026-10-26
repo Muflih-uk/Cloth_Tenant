@@ -12,6 +12,7 @@ import type {
   OrderItem,
   PackingBundle,
   PackingBundleRoll,
+  ResolveRollScanResponse,
 } from "@/types/order";
 
 vi.mock("sonner", () => ({
@@ -22,6 +23,7 @@ vi.mock("@/lib/api/order", () => ({
   packingApi: {
     listBundles: vi.fn(),
     createBundle: vi.fn(),
+    resolveScan: vi.fn(),
     scanIntoBundle: vi.fn(),
     removeRollFromBundle: vi.fn(),
     sealBundle: vi.fn(),
@@ -98,6 +100,7 @@ vi.mock("@/components/items/QRScanModal", () => ({
 const listBundles = vi.mocked(packingApi.listBundles);
 const getBrands = vi.mocked(brandApi.getAll);
 const createBundle = vi.mocked(packingApi.createBundle);
+const resolveScan = vi.mocked(packingApi.resolveScan);
 const scanIntoBundle = vi.mocked(packingApi.scanIntoBundle);
 const removeRollFromBundle = vi.mocked(packingApi.removeRollFromBundle);
 const sealBundle = vi.mocked(packingApi.sealBundle);
@@ -155,6 +158,25 @@ function bundle(overrides: Partial<PackingBundle> = {}): PackingBundle {
   };
 }
 
+function resolved(
+  overrides: Partial<ResolveRollScanResponse> = {},
+): ResolveRollScanResponse {
+  return {
+    token: "11111111-1111-4111-8111-111111111111",
+    expires_at: "2026-02-01T09:10:00Z",
+    roll_id: 3,
+    roll_number: "NAT-0001",
+    fabric: "Cotton Cambric 140 GSM",
+    colour: "Natural",
+    remaining_meters: "600.000",
+    suggested_meters: "600.000",
+    item_id: 7,
+    fabric_name: "Cotton Cambric 140 GSM",
+    variant_display_order: "Natural",
+    ...overrides,
+  };
+}
+
 function panel(props: Partial<React.ComponentProps<typeof PackingBundlePanel>> = {}) {
   const { onChanged = vi.fn(), onOrderStatusChange = vi.fn(), ...rest } = props;
   return render(
@@ -187,12 +209,26 @@ async function scan(user: ReturnType<typeof userEvent.setup>, value: string) {
   await user.click(screen.getByRole("button", { name: /^scan$/i }));
 }
 
+/** Change the suggested cut and confirm it, as the metres prompt does. */
+async function confirmCut(
+  user: ReturnType<typeof userEvent.setup>,
+  metres?: string,
+) {
+  const input = await screen.findByLabelText(/metres to cut from this roll/i);
+  if (metres !== undefined) {
+    await user.clear(input);
+    await user.type(input, metres);
+  }
+  await user.click(screen.getByRole("button", { name: /cut and pack/i }));
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   pdfMock.mockImplementation(async () => ({
     toBlob: async () => new Blob(["pdf"]),
   }));
   listBundles.mockResolvedValue([]);
+  resolveScan.mockResolvedValue(resolved());
   getBrands.mockResolvedValue([
     {
       id: 1,
@@ -223,7 +259,7 @@ describe("PackingBundlePanel", () => {
     await waitFor(() => expect(listBundles).toHaveBeenCalledWith(5));
     expect(createButton()).toBeTruthy();
     expect(
-      screen.getByText(/scan whole rolls into a box/i),
+      screen.getByText("Scan fabric rolls to pack this order."),
     ).toBeTruthy();
   });
 
@@ -253,15 +289,20 @@ describe("PackingBundlePanel", () => {
     ).toBeTruthy();
   });
 
-  it("cuts the scanned roll in without the packer choosing a line", async () => {
+  it("resolves the scanned roll and asks how many metres to cut", async () => {
     const user = userEvent.setup();
     const onChanged = vi.fn();
     const onOrderStatusChange = vi.fn();
+    resolveScan.mockResolvedValue(
+      resolved({ suggested_meters: "250.000" }),
+    );
     scanIntoBundle.mockResolvedValue({
-      message: "Added roll NAT-0001 (600 m) to Order #5 -- Bundle 1",
+      message: "Packed 250 m from roll NAT-0001 into Order #5 -- Bundle 1",
       item_id: 7,
       fabric_name: "Cotton Cambric 140 GSM",
       variant_display_order: "Natural",
+      metres: "250",
+      remaining_meters: "350.000",
       order_status: "PACKED",
       bundle: bundle({ rolls: [roll()], total_metres: "600.000", total_value: "5400.00" }),
     });
@@ -270,21 +311,43 @@ describe("PackingBundlePanel", () => {
     await user.click(createButton());
     await scan(user, "3");
 
-    // Only the roll and the bundle are named: the colour on the roll picks the line.
-    await waitFor(() => expect(scanIntoBundle).toHaveBeenCalledWith(5, 1, 3));
+    // The label is checked before anything moves, and the roll's own token is
+    // kept for the confirm.
+    await waitFor(() => expect(resolveScan).toHaveBeenCalledWith(5, 1, "3"));
+    expect(scanIntoBundle).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", {
+      name: /enter cut for nat-0001/i,
+    });
+    expect(
+      (within(dialog).getByLabelText(/metres to cut from this roll/i) as HTMLInputElement)
+        .value,
+    ).toBe("250.000");
+
+    await confirmCut(user, "250");
+
+    await waitFor(() =>
+      expect(scanIntoBundle).toHaveBeenCalledWith(
+        5,
+        1,
+        "11111111-1111-4111-8111-111111111111",
+        "250",
+      ),
+    );
     expect(onChanged).toHaveBeenCalled();
     expect(onOrderStatusChange).toHaveBeenCalledWith("PACKED");
     expect(await screen.findByText("NAT-0001")).toBeTruthy();
     expect(screen.getByText(/1 roll · 600 m/)).toBeTruthy();
   });
 
-  it("keeps the scanner open so a box can be filled in one run", async () => {
+  it("goes back to the scanner for the next roll after a cut", async () => {
     const user = userEvent.setup();
     scanIntoBundle.mockResolvedValue({
-      message: "Added roll NAT-0001 (600 m) to Order #5 -- Bundle 1",
+      message: "Packed 600 m from roll NAT-0001 into Order #5 -- Bundle 1",
       item_id: 7,
       fabric_name: "Cotton Cambric 140 GSM",
       variant_display_order: "Natural",
+      metres: "600",
+      remaining_meters: "0.000",
       order_status: "PENDING",
       bundle: bundle({ rolls: [roll()], total_metres: "600.000" }),
     });
@@ -292,9 +355,10 @@ describe("PackingBundlePanel", () => {
 
     await user.click(createButton());
     await scan(user, "3");
+    await confirmCut(user);
 
-    // Still open: the next roll is picked up and scanned straight away.
-    expect(screen.getByLabelText("Stub scanner input")).toBeTruthy();
+    // Filling a box is a run of rolls, so the camera is ready for the next one.
+    expect(await screen.findByLabelText("Stub scanner input")).toBeTruthy();
   });
 
   it("refuses a QR that is not a roll label, without calling the API", async () => {
@@ -311,12 +375,13 @@ describe("PackingBundlePanel", () => {
           "Roll labels carry a plain number. Scan the label on the roll itself.",
       }),
     );
+    expect(resolveScan).not.toHaveBeenCalled();
     expect(scanIntoBundle).not.toHaveBeenCalled();
   });
 
   it("keeps the scanner open when the server refuses the roll", async () => {
     const user = userEvent.setup();
-    scanIntoBundle.mockRejectedValue({
+    resolveScan.mockRejectedValue({
       response: {
         status: 400,
         data: {
@@ -337,6 +402,7 @@ describe("PackingBundlePanel", () => {
       ),
     );
     expect(screen.getByLabelText("Stub scanner input")).toBeTruthy();
+    expect(scanIntoBundle).not.toHaveBeenCalled();
   });
 
   it("takes one roll back out and leaves the rest of the box alone", async () => {
@@ -543,10 +609,12 @@ describe("PackingBundlePanel packing a second bundle", () => {
       bundle: bundle({ ...bundleTwo, rolls: [], roll_count: 0, total_metres: "0.000" }),
     });
     scanIntoBundle.mockResolvedValue({
-      message: "Added roll NAT-0002 (400 m) to Order #5 -- Bundle 2",
+      message: "Packed 400 m from roll NAT-0002 into Order #5 -- Bundle 2",
       item_id: 7,
       fabric_name: "Cotton Cambric 140 GSM",
       variant_display_order: "Natural",
+      metres: "400",
+      remaining_meters: "0.000",
       order_status: "PACKED",
       bundle: bundleTwo,
     });
@@ -558,7 +626,15 @@ describe("PackingBundlePanel packing a second bundle", () => {
     await waitFor(() => expect(createBundle).toHaveBeenCalledWith(5));
 
     await scan(user, "4");
-    await waitFor(() => expect(scanIntoBundle).toHaveBeenCalledWith(5, 2, 4));
+    await confirmCut(user);
+    await waitFor(() =>
+      expect(scanIntoBundle).toHaveBeenCalledWith(
+        5,
+        2,
+        "11111111-1111-4111-8111-111111111111",
+        "600.000",
+      ),
+    );
     await waitFor(() => expect(screen.getByText("NAT-0002")).toBeTruthy());
 
     await user.click(screen.getByRole("button", { name: /complete bundle/i }));

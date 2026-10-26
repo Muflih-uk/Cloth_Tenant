@@ -6,16 +6,17 @@ import Step1CommonDetails from "./commonDetails";
 import Step2AddColor from "./addColor";
 import ColorListScreen from "./colorList";
 import { submitFabric } from "@/lib/submitItem";
+import { nextColorNumber } from "@/lib/color-number";
 import type { ColorVariant, FabricDetails, WizardStep } from "@/types/item";
 import { toastError, toastWarning } from "@/lib/toast";
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 
-function blankVariant(): ColorVariant {
+function blankVariant(displayOrder: string): ColorVariant {
   return {
     id: uid(),
     stockMeters: "0",
-    displayOrder: "",
+    displayOrder,
     image: null,
     imagePreview: null,
   };
@@ -26,6 +27,8 @@ export default function NewItemPage() {
 
   const [common, setCommon] = useState<FabricDetails>({
     name: "",
+    design_number: "",
+    category: "",
     description: "",
     price_per_meter: "",
   });
@@ -41,13 +44,13 @@ export default function NewItemPage() {
     if (variants.length > 0) {
       setStep({ screen: "list" });
     } else {
-      setDraft(blankVariant());
+      setDraft(blankVariant(nextColorNumber(variants)));
       setStep({ screen: "add-color" });
     }
   };
 
   const startAddColor = () => {
-    setDraft(blankVariant());
+    setDraft(blankVariant(nextColorNumber(variants)));
     setStep({ screen: "add-color" });
   };
 
@@ -68,13 +71,21 @@ export default function NewItemPage() {
   const saveColor = (saved: ColorVariant) => {
     const editingId = step.screen === "add-color" ? step.editingId : undefined;
 
-    setVariants((prev) =>
-      editingId
+    setVariants((prev) => {
+      const savedColor =
+        !editingId && !saved.displayOrder.trim()
+          ? {
+              ...saved,
+              displayOrder: nextColorNumber(prev),
+            }
+          : saved;
+
+      return editingId
         ? prev.map((v) =>
-            v.id === editingId ? { ...saved, id: editingId } : v,
+            v.id === editingId ? { ...savedColor, id: editingId } : v,
           )
-        : [...prev, saved],
-    );
+        : [...prev, savedColor];
+    });
     setDraft(null);
     setStep({ screen: "list" });
   };

@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
-  History,
   Loader2,
   Package,
   Plus,
@@ -17,7 +16,6 @@ import { toastError, toastSuccess } from "@/lib/toast";
 import { formatMeters } from "@/types/item";
 import type {
   FabricRoll,
-  RollHistoryEntry,
   VariantRollDraft,
   VariantRollsResponse,
 } from "@/types/item";
@@ -43,6 +41,9 @@ interface Props {
     untrackedStockMeters: string,
     isRollTracked: boolean,
   ) => void;
+  onData?: (data: VariantRollsResponse) => void;
+  receiveOpen?: boolean;
+  onReceiveOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -50,15 +51,18 @@ interface Props {
  *
  * This is the only place a roll-tracked colour's metre total changes: receiving
  * a delivery, correcting a miscount, printing the label that goes on the roll, and
- * seeing what has been cut off each roll. A colour that has no rolls keeps the
- * plain editable figure on the fabric form, so this panel is exactly the
- * physical-roll view and nothing else.
+ * seeing what is left on each roll. A colour that has no rolls keeps the plain
+ * editable figure on the fabric form, so this panel is exactly the physical-roll
+ * view and nothing else.
  */
 export default function PhysicalRollsPanel({
   variantId,
   embedded = false,
   label,
   onStockChanged,
+  onData,
+  receiveOpen,
+  onReceiveOpenChange,
 }: Props) {
   const [data, setData] = useState<VariantRollsResponse | null>(null);
   /**
@@ -68,8 +72,7 @@ export default function PhysicalRollsPanel({
    */
   const [shownVariant, setShownVariant] = useState<number | null>(null);
   const [expanded, setExpanded] = useState(false);
-  const [receiveOpen, setReceiveOpen] = useState(false);
-  const [historyFor, setHistoryFor] = useState<FabricRoll | null>(null);
+  const [localReceiveOpen, setLocalReceiveOpen] = useState(false);
   const [labelFor, setLabelFor] = useState<FabricRoll | null>(null);
   const [adjusting, setAdjusting] = useState<number | null>(null);
   const [adjustValue, setAdjustValue] = useState("");
@@ -89,6 +92,17 @@ export default function PhysicalRollsPanel({
     notifyStock.current = onStockChanged;
   }, [onStockChanged]);
 
+  const notifyData = useRef(onData);
+  useEffect(() => {
+    notifyData.current = onData;
+  }, [onData]);
+
+  const isReceiveOpen = receiveOpen ?? localReceiveOpen;
+  const setReceiveOpen = (open: boolean) => {
+    if (onReceiveOpenChange) onReceiveOpenChange(open);
+    else setLocalReceiveOpen(open);
+  };
+
   const fetchRolls = useCallback(
     () => rollApi.getForVariant(variantId),
     [variantId],
@@ -106,6 +120,7 @@ export default function PhysicalRollsPanel({
           rolls.untracked_stock_meters ?? "0",
           rolls.is_roll_tracked,
         );
+        notifyData.current?.(rolls);
       })
       .catch((e) => {
         if (!cancelled) toastError("Failed to load rolls", e);
@@ -129,6 +144,7 @@ export default function PhysicalRollsPanel({
         rolls.untracked_stock_meters ?? "0",
         rolls.is_roll_tracked,
       );
+      notifyData.current?.(rolls);
     } catch (e) {
       toastError("Failed to load rolls", e);
     } finally {
@@ -226,8 +242,8 @@ export default function PhysicalRollsPanel({
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className={`w-full flex items-center gap-3 text-left hover:bg-gray-50 transition-colors ${
-          embedded ? "px-3 py-2.5" : "px-4 py-3"
+        className={`flex w-full items-center gap-2.5 text-left transition-colors hover:bg-gray-50 sm:gap-3 ${
+          embedded ? "px-3 py-2.5" : "px-3 py-2.5 sm:px-4 sm:py-3"
         }`}
         aria-expanded={expanded}
       >
@@ -236,17 +252,12 @@ export default function PhysicalRollsPanel({
           <p className="text-xs font-bold uppercase tracking-widest text-gray-400">
             Physical Rolls
           </p>
-          <p className="text-sm font-semibold text-gray-700">
+          <p className="truncate text-[13px] font-semibold text-gray-700 sm:text-sm">
             {hasRolls
               ? `Total: ${formatMeters(data.roll_stock_meters)} m · ${data.roll_count} roll${data.roll_count === 1 ? "" : "s"}`
               : "No rolls received yet"}
           </p>
         </div>
-        {hasRolls && (
-          <span className="text-[10px] uppercase tracking-wide text-gray-400 flex-shrink-0">
-            {data.exhausted_roll_count} used up
-          </span>
-        )}
         {expanded ? (
           <ChevronUp className="w-4 h-4 text-gray-400 flex-shrink-0" />
         ) : (
@@ -256,8 +267,8 @@ export default function PhysicalRollsPanel({
 
       {expanded && (
         <div
-          className={`pb-4 space-y-3 border-t border-gray-100 ${
-            embedded ? "px-3" : "px-4"
+          className={`space-y-3 border-t border-gray-100 pb-3 sm:pb-4 ${
+            embedded ? "px-3" : "px-3 sm:px-4"
           }`}
         >
           {hasRolls &&
@@ -283,12 +294,7 @@ export default function PhysicalRollsPanel({
               </div>
             )}
           {hasRolls && (
-            <div className="grid grid-cols-3 gap-2 pt-3 text-center">
-              <Stat
-                label="Received"
-                metres={data.total_received_meters}
-                hint="all time"
-              />
+            <div className="grid grid-cols-2 gap-2 pt-3 text-center">
               <Stat
                 label="On hand"
                 metres={data.roll_stock_meters}
@@ -296,7 +302,7 @@ export default function PhysicalRollsPanel({
               />
               <Stat
                 label="Packed out"
-                metres={data.consumed_meters}
+                metres={data.packed_meters ?? data.consumed_meters}
                 hint="cut for orders"
               />
             </div>
@@ -307,23 +313,14 @@ export default function PhysicalRollsPanel({
               {rolls.map((roll) => (
                 <div
                   key={roll.id}
-                  className="rounded-xl border border-gray-100 px-3 py-2"
+                  className="rounded-xl border border-gray-100 px-2.5 py-2 sm:px-3"
                 >
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <RollSummary roll={roll} />
                     <button
                       type="button"
-                      onClick={() => setHistoryFor(roll)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/5 transition-colors"
-                      aria-label={`History for ${roll.roll_number}`}
-                      title="History"
-                    >
-                      <History className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => setLabelFor(roll)}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/5 transition-colors"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-primary/5 hover:text-primary sm:h-8 sm:w-8"
                       aria-label={`Print label for ${roll.roll_number}`}
                       title="View/print label"
                     >
@@ -335,7 +332,7 @@ export default function PhysicalRollsPanel({
                         setAdjusting(adjusting === roll.id ? null : roll.id);
                         setAdjustValue("");
                       }}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/5 transition-colors"
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-primary/5 hover:text-primary sm:h-8 sm:w-8"
                       aria-label={`Adjust ${roll.roll_number}`}
                       title="Adjust metres"
                     >
@@ -344,7 +341,7 @@ export default function PhysicalRollsPanel({
                   </div>
 
                   {adjusting === roll.id && (
-                    <div className="flex items-center gap-2 mt-2 pt-2 border-t border-dashed border-gray-100">
+                    <div className="mt-2 flex items-center gap-1.5 border-t border-dashed border-gray-100 pt-2 sm:gap-2">
                       <input
                         type="number"
                         step="0.001"
@@ -352,20 +349,20 @@ export default function PhysicalRollsPanel({
                         placeholder="e.g. -12.5 to correct, 10 to add"
                         value={adjustValue}
                         onChange={(e) => setAdjustValue(e.target.value)}
-                        className="flex-1 h-9 rounded-lg border border-gray-200 px-3 text-xs outline-none focus:border-primary"
+                        className="h-9 min-w-0 flex-1 rounded-lg border border-gray-200 px-2.5 text-xs outline-none focus:border-primary sm:px-3"
                         aria-label={`Adjustment for ${roll.roll_number}`}
                       />
                       <button
                         type="button"
                         onClick={() => handleAdjust(roll)}
-                        className="h-9 px-3 rounded-lg bg-primary text-white text-xs font-bold disabled:opacity-40"
+                        className="h-9 shrink-0 rounded-lg bg-primary px-2.5 text-xs font-bold text-white disabled:opacity-40 sm:px-3"
                       >
                         Apply
                       </button>
                       <button
                         type="button"
                         onClick={() => setAdjusting(null)}
-                        className="h-9 px-3 rounded-lg border border-gray-200 text-xs font-semibold text-gray-500"
+                        className="h-9 shrink-0 rounded-lg border border-gray-200 px-2.5 text-xs font-semibold text-gray-500 sm:px-3"
                       >
                         Cancel
                       </button>
@@ -374,18 +371,13 @@ export default function PhysicalRollsPanel({
                 </div>
               ))}
             </div>
-          ) : (
-            <p className="text-xs text-gray-400 pt-3 leading-relaxed">
-              Receiving a roll adds only to on-hand rolls. Order stock is managed
-              separately; packing cuts from the oldest roll first.
-            </p>
-          )}
+          ) : null}
 
           <div className="flex gap-2 pt-1">
             <button
               type="button"
               onClick={() => setReceiveOpen(true)}
-              className="flex-1 h-10 rounded-xl bg-primary text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-primary/20"
+              className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary text-xs font-bold text-white shadow-lg shadow-primary/20"
             >
               <Plus className="w-3.5 h-3.5" />
               Receive Rolls
@@ -393,7 +385,7 @@ export default function PhysicalRollsPanel({
             <button
               type="button"
               onClick={load}
-              className="h-10 px-3 rounded-xl border border-gray-200 text-gray-500 flex items-center gap-1.5"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 text-gray-500"
               aria-label="Refresh rolls"
             >
               <RefreshCw className="w-3.5 h-3.5" />
@@ -403,18 +395,11 @@ export default function PhysicalRollsPanel({
       )}
 
       <ReceiveRollsDialog
-        open={receiveOpen}
+        open={isReceiveOpen}
         onClose={() => setReceiveOpen(false)}
         onConfirm={handleReceive}
         label={label}
       />
-
-      {historyFor && (
-        <RollHistoryDialog
-          roll={historyFor}
-          onClose={() => setHistoryFor(null)}
-        />
-      )}
 
       {labelFor && (
         <RollLabelDialog
@@ -430,109 +415,14 @@ export default function PhysicalRollsPanel({
 
 function Stat({ label, metres, hint }: { label: string; metres: string; hint: string }) {
   return (
-    <div className="rounded-xl bg-gray-50 px-2 py-2">
-      <p className="text-[9px] uppercase tracking-widest text-gray-400">{label}</p>
-      <p className="text-sm font-black text-gray-700">{formatMeters(metres)}</p>
-      <p className="text-[10px] text-gray-400">{hint}</p>
-    </div>
-  );
-}
-
-function RollHistoryDialog({
-  roll,
-  onClose,
-}: {
-  roll: FabricRoll;
-  onClose: () => void;
-}) {
-  const [entries, setEntries] = useState<RollHistoryEntry[] | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Mounted fresh for each roll, so the previous roll's entries never show here.
-  useEffect(() => {
-    let cancelled = false;
-    rollApi
-      .history(roll.id)
-      .then((res) => {
-        if (!cancelled) setEntries(res.entries);
-      })
-      .catch((e) => {
-        if (!cancelled) toastError("Failed to load roll history", e);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [roll]);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm px-4 pb-8 sm:items-center sm:pb-0"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="w-full sm:max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden">
-        <div className="px-6 pt-6 pb-4">
-          <h2 className="text-base font-black">{roll.roll_number} history</h2>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {formatMeters(roll.remaining_meters)} m left of{" "}
-            {formatMeters(roll.original_meters)} m
-          </p>
-        </div>
-        <div className="h-px bg-gray-100" />
-
-        <div className="px-6 py-4 max-h-[50vh] overflow-y-auto space-y-1.5">
-          {loading && (
-            <div className="flex items-center gap-2 text-xs text-gray-400">
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              Loading…
-            </div>
-          )}
-          {!loading && entries && entries.length === 0 && (
-            <p className="text-xs text-gray-400">
-              Nothing has been cut from this roll yet.
-            </p>
-          )}
-          {entries?.map((entry) => (
-            <div
-              key={entry.id}
-              className="flex items-center gap-2 rounded-xl border border-gray-100 px-3 py-2"
-            >
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-gray-700 truncate">
-                  {entry.customer ?? "Unknown customer"}
-                  {entry.order ? ` · order #${entry.order}` : ""}
-                </p>
-                <p className="text-[11px] text-gray-400">
-                  {entry.round ? `round #${entry.round}` : "manual adjustment"}
-                  {entry.is_reversed && " · returned to the roll"}
-                </p>
-              </div>
-              <span
-                className={`text-xs font-bold ${
-                  entry.is_reversed ? "text-gray-400" : "text-primary"
-                }`}
-              >
-                {entry.is_reversed ? "+" : "−"}
-                {formatMeters(entry.metres)} m
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div className="px-6 pb-6">
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full h-12 rounded-2xl border-2 border-gray-200 text-sm font-bold text-gray-500 hover:bg-gray-50 transition-all active:scale-95"
-          >
-            Close
-          </button>
-        </div>
-      </div>
+    <div className="min-w-0 rounded-xl bg-gray-50 px-1.5 py-2 sm:px-2">
+      <p className="truncate text-[8px] uppercase tracking-wide text-gray-400 sm:text-[9px] sm:tracking-widest">
+        {label}
+      </p>
+      <p className="truncate text-[13px] font-black text-gray-700 sm:text-sm">
+        {formatMeters(metres)}
+      </p>
+      <p className="truncate text-[9px] text-gray-400 sm:text-[10px]">{hint}</p>
     </div>
   );
 }

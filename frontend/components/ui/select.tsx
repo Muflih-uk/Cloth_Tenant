@@ -105,13 +105,14 @@ interface SelectTriggerProps {
   size?: "sm" | "default";
   children?: React.ReactNode;
   placeholder?: string;
+  disabled?: boolean;
 }
 
 function SelectTrigger({
   className,
   size = "default",
-  children,
   placeholder,
+  disabled,
 }: SelectTriggerProps) {
   const { open, setOpen, value } = useSelect();
   const labels = React.useContext(LabelContext);
@@ -122,20 +123,19 @@ function SelectTrigger({
     <button
       type="button"
       onClick={() => setOpen(!open)}
+      disabled={disabled}
       className={cn(
-        "border-input flex w-full items-center justify-between gap-2 rounded-md border bg-white px-3 py-2 text-base shadow-xs outline-none transition-[color,box-shadow]",
-        "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        "app-focus flex w-full items-center justify-between gap-2 rounded-control border border-app-line bg-app-card px-3.5 py-2 text-sm font-medium text-app-ink shadow-none outline-none transition-colors hover:border-app-line",
         "disabled:cursor-not-allowed disabled:opacity-50",
-        "text-sm",
-        size === "default" ? "h-9" : "h-8",
-        !value && "text-muted-foreground",
+        size === "default" ? "h-12 min-h-12" : "h-11 min-h-11",
+        !value && "text-app-subtle",
         className,
       )}
     >
       <span className="truncate">{displayLabel}</span>
       <ChevronDownIcon
         className={cn(
-          "size-4 opacity-50 flex-shrink-0 transition-transform",
+          "size-4 flex-shrink-0 text-app-muted transition-transform",
           open && "rotate-180",
         )}
       />
@@ -152,10 +152,7 @@ interface SelectContentProps {
 
 function SelectContent({ className, children }: SelectContentProps) {
   const { open } = useSelect();
-  const [labelMap, setLabelMap] = React.useState<Record<string, string>>({});
-
-  // Collect label text from SelectItem children
-  React.useEffect(() => {
+  const labelMap = React.useMemo(() => {
     const map: Record<string, string> = {};
     React.Children.forEach(children, (child) => {
       if (React.isValidElement(child)) {
@@ -165,7 +162,7 @@ function SelectContent({ className, children }: SelectContentProps) {
         }
       }
     });
-    setLabelMap(map);
+    return map;
   }, [children]);
 
   if (!open) return null;
@@ -174,7 +171,7 @@ function SelectContent({ className, children }: SelectContentProps) {
     <LabelContext.Provider value={labelMap}>
       <div
         className={cn(
-          "absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md",
+          "absolute z-50 mt-1.5 w-full overflow-hidden rounded-control border border-app-line bg-app-card text-app-ink shadow-float",
           "animate-in fade-in-0 zoom-in-95",
           "max-h-60 overflow-y-auto",
           className,
@@ -218,20 +215,28 @@ function SelectItem({ value, className, children, disabled }: SelectItemProps) {
   return (
     <div
       role="option"
+      tabIndex={disabled ? -1 : 0}
       aria-selected={isSelected}
       aria-disabled={disabled}
       onClick={() => !disabled && onValueChange(value)}
+      onKeyDown={(event) => {
+        if (disabled) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onValueChange(value);
+        }
+      }}
       className={cn(
-        "relative flex w-full cursor-pointer items-center gap-2 rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none select-none",
-        "hover:bg-accent hover:text-accent-foreground",
-        "focus:bg-accent focus:text-accent-foreground",
-        isSelected && "bg-accent/50",
+        "app-focus relative flex min-h-11 w-full cursor-pointer select-none items-center gap-2 rounded-control py-2 pl-3 pr-9 text-sm font-medium outline-none",
+        "hover:bg-app-soft",
+        "focus:bg-app-soft",
+        isSelected && "bg-app-soft text-app-ink",
         disabled && "pointer-events-none opacity-50",
         className,
       )}
     >
       {isSelected && (
-        <span className="absolute right-2 flex size-3.5 items-center justify-center">
+        <span className="absolute right-3 flex size-4 items-center justify-center text-brand-navy">
           <CheckIcon className="size-4" />
         </span>
       )}

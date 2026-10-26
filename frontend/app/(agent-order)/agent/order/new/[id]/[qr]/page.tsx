@@ -319,7 +319,7 @@ export default function ProductDetailPage() {
                 onBack={() => router.push(`${basePath}/${id}`)}
             />
 
-            <div className="max-w-md mx-auto px-6 pt-6">
+            <div className="max-w-md mx-auto px-0 pt-3 sm:px-6 sm:pt-6">
                 <ProductImage
                     image={selectedVariant?.image}
                     alt={data?.name || "Fabric"}

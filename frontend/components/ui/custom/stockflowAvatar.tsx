@@ -2,12 +2,16 @@ import { Admin } from "@/types/admin";
 import { AgentUser } from "@/types/agent";
 import { AuthUser } from "@/types/auth";
 import { SimpleAgent, SimpleCustomer } from "@/types/order";
-import { getColorFromId } from "@/util/getColorFromId";
 import { User } from "lucide-react";
 import { useSyncExternalStore } from "react";
 
-interface stockflowAvatarProps {
+import { cn } from "@/lib/utils";
+
+interface StockflowAvatarProps {
   user?: AuthUser | SimpleAgent | SimpleCustomer | AgentUser | Admin | null;
+  tone?: "green" | "purple" | "navy" | "soft";
+  size?: "sm" | "md" | "lg";
+  className?: string;
 }
 
 function useIsClient() {
@@ -17,15 +21,27 @@ function useIsClient() {
     () => false,
   );
 }
-const StockflowAvatar: React.FC<stockflowAvatarProps> = ({ user }) => {
-  const isClient = useIsClient();
 
-  if (!user || !isClient)
-    return (
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-yellow-400 border border-gray-100 shadow-sm">
-        <User size={18} color="white" />
-      </div>
-    );
+const toneClasses = {
+  green: "bg-brand-green text-white",
+  purple: "bg-brand-purple text-white",
+  navy: "bg-brand-navy text-white",
+  soft: "bg-app-soft text-app-ink",
+};
+
+const sizeClasses = {
+  sm: "size-9 text-xs",
+  md: "size-11 text-sm",
+  lg: "size-14 text-base",
+};
+
+const StockflowAvatar: React.FC<StockflowAvatarProps> = ({
+  user,
+  tone = "green",
+  size = "md",
+  className,
+}) => {
+  const isClient = useIsClient();
 
   const username =
     (user && "display_name" in user && user.display_name) ||
@@ -33,23 +49,36 @@ const StockflowAvatar: React.FC<stockflowAvatarProps> = ({ user }) => {
     (user && "name" in user && user.name) ||
     "";
 
-  const userId = user.id || 0;
-
   const safeUsername = username?.trim() || "";
+
+  if (!user || !isClient) {
+    return (
+      <div
+        className={cn(
+          "flex shrink-0 items-center justify-center rounded-full border border-app-line bg-app-soft text-app-muted shadow-card",
+          sizeClasses[size],
+          className,
+        )}
+      >
+        <User className="size-[45%]" aria-hidden="true" />
+      </div>
+    );
+  }
 
   return (
     <div
-      className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border border-gray-100 shadow-sm"
-      style={{
-        backgroundColor: getColorFromId(userId),
-      }}
+      className={cn(
+        "flex shrink-0 items-center justify-center rounded-full border border-white/60 font-bold shadow-card",
+        toneClasses[tone],
+        sizeClasses[size],
+        className,
+      )}
+      aria-hidden="true"
     >
-      {safeUsername.trim().length > 0 ? (
-        <span className="text-white font-bold">
-          {safeUsername[0].toUpperCase()}
-        </span>
+      {safeUsername.length > 0 ? (
+        <span>{safeUsername[0].toUpperCase()}</span>
       ) : (
-        <User size={18} color="white" />
+        <User className="size-[45%]" />
       )}
     </div>
   );

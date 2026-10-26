@@ -1,16 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 import { AlertTriangle, Scissors } from "lucide-react";
 import Link from "next/link";
-import { fabricApi } from "@/lib/api/item";
-import { applyPackStock, prefillPackMetres } from "@/lib/utils/packLine";
 import { useAuth } from "@/context/AuthContext";
 import { outstandingMeters } from "@/lib/utils/orderItemSort";
-import { OrderItem as OrderItemType, OrderStatus, PackLineResponse } from "@/types/order";
+import { OrderItem as OrderItemType, OrderStatus } from "@/types/order";
 import { formatMeters, toMeters } from "@/types/item";
 import OrderItem from "@/components/pages/admin/order-item/OrderItem";
-import PackLineRow from "@/components/pages/admin/packing/PackLineRow";
 import PackingBundlePanel from "@/components/pages/order/PackingBundlePanel";
 
 interface OrderItemsSectionProps {
@@ -38,13 +35,10 @@ interface OrderItemsSectionProps {
  * The fabric lines on an order, with a running picture of what the warehouse
  * still owes.
  *
- * Packing normally happens in rounds, which is where a roll is shared out across
- * every order waiting on that colour. An admin can also fill single lines from
- * here, which is the common case when only one order is waiting: one "Update
- * packing" button at the top of the list opens every line for editing at once, and
- * each line packs itself from its own controls inside its own card. It is the same
- * stock movement -- the server writes a one-line packing round for it, so nothing
- * is tracked outside the normal audit trail.
+ * Packing starts at the bundle panel above the list: the admin scans a roll label,
+ * confirms how many metres to cut, and the server fills the line that roll's
+ * colour belongs to. There are no per-line metre controls, because cloth only
+ * leaves the shelf against a specific scanned roll.
  *
  * The banner that used to sit above the list and point at `/admin/packing` is
  * parked behind a `false` below rather than deleted, in case the round-screen
@@ -68,27 +62,7 @@ export default function OrderItemsSection({
   // list is ever reused somewhere an agent can reach.
   const canPack = isAdmin && orderId !== undefined;
 
-  // Packing a line updates it in place rather than refetching the order, so the
-  // packed lines are held as a patch over whatever the page last fetched. The
-  // patch is dropped as soon as fresh items arrive, since those are at least as
-  // current as anything this screen worked out.
-  const [patched, setPatched] = useState<Record<number, OrderItemType>>({});
-  const [patchedOver, setPatchedOver] = useState(items);
-  if (items !== patchedOver) {
-    setPatchedOver(items);
-    setPatched({});
-  }
-  const liveItems = (items ?? []).map((line) => patched[line.id] ?? line);
-
-  const [stock, setStock] = useState<Record<number, string>>({});
-  // Bumped whenever cloth moves off a roll from the bundle panel, so the stock
-  // figures beside each line are re-read rather than drifting behind the scans.
-  const [stockRefresh, setStockRefresh] = useState(0);
-
-  // Each line's packing figures are held here, keyed by line, so packing one line
-  // leaves the others' typed-in figures alone.
-  const [metresDraft, setMetresDraft] = useState<Record<number, string>>({});
-  const [justPacked, setJustPacked] = useState<Record<number, boolean>>({});
+  const liveItems = items ?? [];
 
   const outstanding = liveItems.reduce(
     (sum, i) => sum + toMeters(i.outstanding_quantity),
@@ -129,70 +103,12 @@ export default function OrderItemsSection({
       status === "PACKED" ||
       status === "PARTIALLY_DISPATCHED");
 
-  // The order page has never carried stock figures, so the roll behind each
-  // colour is fetched once here. One request covers every variant on the order.
-  useEffect(() => {
-    if (!canEditPacking) return;
-    let active = true;
-    fabricApi
-      .getOutstandingDemand()
-      .then((rows) => {
-        if (!active) return;
-        const next: Record<number, string> = {};
-        for (const row of rows) {
-          next[row.variant] = row.stock_meters;
-        }
-        setStock(next);
-      })
-      .catch(() => {
-        // Stock figures are an aid here; the endpoint refuses an impossible
-        // figure anyway, so a failed lookup just leaves them unknown.
-      });
-    return () => {
-      active = false;
-    };
-  }, [canEditPacking, stockRefresh]);
-
-  /** What to offer as the starting figure for a line's box. */
-  const prefillFor = (line: OrderItemType) => {
-    const packed = toMeters(line.allocated_quantity);
-    if (packed > 0) return String(packed);
-    // Nothing packed yet, so the line still owes its whole ordered amount and
-    // the figure is simply what the roll can cover.
-    const roll = line.variant === null ? 0 : (stock[line.variant] ?? 0);
-    return prefillPackMetres(line.outstanding_quantity, roll);
-  };
-
-  const handlePacked = useCallback(
-    (result: PackLineResponse) => {
-      setPatched((prev) => ({ ...prev, [result.item.id]: result.item }));
-      setStock((prev) =>
-        applyPackStock(prev, result.item.variant, result.stock_meters),
-      );
-      // The pack figures stay put, so the admin can carry on with the other lines.
-      setJustPacked((prev) => ({ ...prev, [result.item.id]: true }));
-      if (result.order_status && result.order_status !== status) {
-        onOrderStatusChange?.(result.order_status);
-      }
-      // The order totals the page keeps -- the header, the "N m packed" footer and
-      // the dispatch dialog's ready figure -- are all worked out from the items
-      // it last fetched, and a pack moves the roll without changing any of them.
-      // Left alone, the page would keep advertising the pre-pack metres beside a
-      // line that has just been packed past what it owes. Hand the change up so
-      // those figures are the metres actually stored.
-      onItemsChange?.();
-    },
-    [onItemsChange, onOrderStatusChange, status],
-  );
-
   /**
-   * Cloth left the shelf through a bundle. The lines and the stock figures on this
-   * page both moved, so re-read them rather than leaving the panel's own view of the
+   * Cloth left the shelf through a bundle. The lines and the figures on this page
+   * both moved, so re-read them rather than leaving the panel's own view of the
    * order as the only current one.
    */
   const handleBundleChanged = useCallback(() => {
-    setStockRefresh((n) => n + 1);
-    setPatched({});
     onItemsChange?.();
   }, [onItemsChange]);
 
@@ -254,28 +170,9 @@ export default function OrderItemsSection({
           isDeletable={isDeletable}
           isEditable={isEditable}
           orderId={orderId}
+          showPackingProgress
           onAllocationChange={onItemsChange}
           onDeleteItem={onItemsChange}
-          renderLineFooter={(line) => {
-            if (!orderId || !canEditPacking) return null;
-            // A line with no colour has no roll to take metres off, so there is
-            // nothing to pack for it.
-            if (line.variant === null) return null;
-
-            return (
-              <PackLineRow
-                orderId={orderId}
-                line={line}
-                stockMeters={stock[line.variant] ?? null}
-                metres={metresDraft[line.id] ?? prefillFor(line)}
-                onMetresChange={(value) =>
-                  setMetresDraft((prev) => ({ ...prev, [line.id]: value }))
-                }
-                justPacked={justPacked[line.id] === true}
-                onPacked={handlePacked}
-              />
-            );
-          }}
         />
         )}
       </div>

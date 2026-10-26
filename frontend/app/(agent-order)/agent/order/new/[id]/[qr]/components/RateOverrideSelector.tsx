@@ -36,7 +36,7 @@ export default function RateOverrideSelector({
     const tooHigh = !canRaiseRate && difference > 0;
 
     return (
-        <div className="mb-4 bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm">
+        <div className="mb-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm sm:p-6 sm:rounded-[32px]">
             <div className="flex items-center justify-between">
                 <h3 className="font-bold text-gray-900">Rate per metre</h3>
                 <span className="text-xs text-gray-400 font-medium">

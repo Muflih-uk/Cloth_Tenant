@@ -36,8 +36,12 @@ vi.mock("@/lib/toast", () => ({
  * leaves `mockResolvedValue` on the wrong overload.
  */
 const toDataURL = vi.hoisted(() => vi.fn<(text: string) => Promise<string>>());
+const getBrands = vi.hoisted(() => vi.fn());
 
 vi.mock("qrcode", () => ({ default: { toDataURL } }));
+vi.mock("@/lib/api/brand", () => ({
+  brandApi: { getAll: getBrands },
+}));
 
 const getForVariant = vi.mocked(rollApi.getForVariant);
 
@@ -62,6 +66,7 @@ function roll(over: Partial<FabricRoll> = {}): FabricRoll {
     note: "",
     original_meters: "100.000",
     remaining_meters: "100.000",
+    packed_meters: "0.000",
     consumed_meters: "0.000",
     is_active: true,
     is_exhausted: false,
@@ -74,7 +79,13 @@ function roll(over: Partial<FabricRoll> = {}): FabricRoll {
 function rollsResponse(over: Partial<VariantRollsResponse> = {}): VariantRollsResponse {
   const rolls = over.rolls ?? [
     roll(),
-    roll({ id: 2, roll_number: "NAT-0002", remaining_meters: "40.000" }),
+    roll({
+      id: 2,
+      roll_number: "NAT-0002",
+      remaining_meters: "40.000",
+      packed_meters: "60.000",
+      consumed_meters: "60.000",
+    }),
   ];
   return {
     variant: VARIANT_ID,
@@ -88,6 +99,7 @@ function rollsResponse(over: Partial<VariantRollsResponse> = {}): VariantRollsRe
     exhausted_roll_count: rolls.filter((r) => r.is_exhausted).length,
     total_received_meters: "200.000",
     roll_stock_meters: "140.000",
+    packed_meters: "60.000",
     consumed_meters: "60.000",
     largest_roll_meters: "100.000",
     smallest_roll_meters: "40.000",
@@ -122,6 +134,7 @@ beforeEach(() => {
   // here rather than letting one test's read answer another's.
   invalidateRolls();
   getForVariant.mockResolvedValue(rollsResponse());
+  getBrands.mockResolvedValue([{ logo_url: null }]);
   toDataURL.mockImplementation((text) =>
     Promise.resolve(`data:image/png;base64,${text}`),
   );
@@ -142,21 +155,31 @@ describe("VariantCard physical rolls", () => {
     renderCard();
 
     await expand();
-    // The same figures the Edit Inventory panel shows for this colour.
-    expect(await screen.findByText("NAT-0001")).toBeTruthy();
-    expect(screen.getByText("100 m left of 100")).toBeTruthy();
-    expect(screen.getByText("NAT-0002")).toBeTruthy();
-    expect(screen.getByText("40 m left of 100")).toBeTruthy();
+    // The same compact rows the Edit Inventory panel shows for this colour.
+    expect(
+      await screen.findByRole("button", { name: /print label for NAT-0001/i }),
+    ).toBeTruthy();
+    const firstRow = screen.getByText("NAT-0001").closest(".rounded-lg");
+    const secondRow = screen.getByText("NAT-0002").closest(".rounded-lg");
+    expect(firstRow).toBeTruthy();
+    expect(secondRow).toBeTruthy();
+    expect(within(firstRow as HTMLElement).getByText("100 m")).toBeTruthy();
+    expect(within(secondRow as HTMLElement).getByText("40 m")).toBeTruthy();
+    expect(screen.getAllByText("Available")).toHaveLength(2);
+    expect(screen.queryByText(/left of/)).toBeNull();
+    expect(screen.queryByText(/Received 01 Jan/)).toBeNull();
     expect(screen.getByText("140 m · 2 rolls")).toBeTruthy();
     expect(getForVariant).toHaveBeenCalledWith(VARIANT_ID);
 
     await userEvent.click(screen.getByRole("button", { expanded: true }));
 
-    expect(screen.queryByText("NAT-0001")).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /print label for NAT-0001/i }),
+    ).toBeNull();
     expect(screen.queryByText(/Physical Rolls/i)).toBeNull();
   });
 
-  it("shows the roll note and the used-up marker as the panel does", async () => {
+  it("shows a fully used roll as Used without exposing its note", async () => {
     getForVariant.mockResolvedValue(
       rollsResponse({
         rolls: [
@@ -165,6 +188,8 @@ describe("VariantCard physical rolls", () => {
             id: 2,
             roll_number: "NAT-0002",
             remaining_meters: "0.000",
+            packed_meters: "100.000",
+            consumed_meters: "100.000",
             is_active: false,
             is_exhausted: true,
           }),
@@ -175,9 +200,13 @@ describe("VariantCard physical rolls", () => {
 
     await expand();
 
-    expect(await screen.findByText("second batch")).toBeTruthy();
-    expect(screen.getByText(/0 m left of 100 · used up/)).toBeTruthy();
-    expect(screen.getByText("1 used up")).toBeTruthy();
+    const usedRow = (await screen.findByText("Used")).closest(".rounded-lg");
+    expect(usedRow).toBeTruthy();
+    expect(within(usedRow as HTMLElement).getByText("NAT-0002")).toBeTruthy();
+    expect(within(usedRow as HTMLElement).getByText("0 m")).toBeTruthy();
+    expect(screen.queryByText("second batch")).toBeNull();
+    expect(screen.queryByText(/left of/)).toBeNull();
+    expect(screen.queryByText(/Received/)).toBeNull();
   });
 
   it("offers no print button for a colour with no rolls, and says so", async () => {
@@ -201,7 +230,11 @@ describe("VariantCard physical rolls", () => {
   });
 
   it("prints one label per active roll, and leaves out the used-up ones", async () => {
-    const print = vi.spyOn(window, "print").mockImplementation(() => {});
+    const write = vi.fn();
+    const printWindow = {
+      document: { open: vi.fn(), write, close: vi.fn() },
+    } as unknown as Window;
+    const open = vi.spyOn(window, "open").mockReturnValue(printWindow);
     getForVariant.mockResolvedValue(
       rollsResponse({
         rolls: [
@@ -242,15 +275,22 @@ describe("VariantCard physical rolls", () => {
     expect(toDataURL).not.toHaveBeenCalledWith("2", expect.anything());
 
     // One print job for the whole sheet.
-    await userEvent.click(screen.getByRole("button", { name: /print 2 labels/i }));
-    expect(print).toHaveBeenCalledTimes(1);
-    print.mockRestore();
+    const printButton = screen.getByRole("button", { name: /print 2 labels/i });
+    await waitFor(() => expect(printButton).toHaveProperty("disabled", false));
+    await userEvent.click(printButton);
+    expect(open).toHaveBeenCalledWith("", "_blank", "popup,width=420,height=560");
+    const html = write.mock.calls[0][0] as string;
+    expect(html.match(/<article class="label">/g)).toHaveLength(2);
+    expect(html).toContain("NAT-0001");
+    expect(html).toContain("NAT-0003");
+    expect(html).not.toContain("NAT-0002");
+    expect(html).not.toContain("Rs.");
+    open.mockRestore();
   });
 
-  it("values each label from the roll's received length", async () => {
-    vi.spyOn(window, "print").mockImplementation(() => {});
-    // Valued on what arrived, not on what is left: the 40 m left of the second
-    // roll was cut for an order and is not this roll to be worth.
+  it("uses each roll's received length on its label", async () => {
+    // The label carries what arrived, not what is left: the 40 m left of the
+    // second roll was cut for an order and is not what the roll started with.
     getForVariant.mockResolvedValue(
       rollsResponse({
         rolls: [
@@ -269,11 +309,11 @@ describe("VariantCard physical rolls", () => {
     await expand();
     await userEvent.click(await screen.findByRole("button", { name: /print all/i }));
 
-    // Rs. 9.00/m: 100 m is Rs. 900, 40 m is Rs. 360.
-    expect(await screen.findAllByText("Rs. 900.00")).toHaveLength(1);
-    expect(screen.getAllByText("Rs. 360.00")).toHaveLength(1);
-    expect(screen.getAllByText("Rs. 9.00/m × 100 m")).toHaveLength(1);
-    expect(screen.getAllByText("Rs. 9.00/m × 40 m")).toHaveLength(1);
+    const heading = await screen.findByRole("heading", { name: /2 roll labels/i });
+    const sheet = heading.closest("div")!.parentElement!;
+    expect(within(sheet).getByText("100 m")).toBeTruthy();
+    expect(within(sheet).getByText("40 m")).toBeTruthy();
+    expect(within(sheet).queryByText(/Rs\./)).toBeNull();
   });
 
   it("waits for every code before it will print", async () => {
@@ -305,7 +345,11 @@ describe("VariantCard physical rolls", () => {
   });
 
   it("prints one roll's label on its own, from that roll's own button", async () => {
-    const print = vi.spyOn(window, "print").mockImplementation(() => {});
+    const write = vi.fn();
+    const printWindow = {
+      document: { open: vi.fn(), write, close: vi.fn() },
+    } as unknown as Window;
+    const open = vi.spyOn(window, "open").mockReturnValue(printWindow);
     renderCard();
 
     await expand();
@@ -327,9 +371,15 @@ describe("VariantCard physical rolls", () => {
     expect(within(dialog).queryByText("NAT-0001")).toBeNull();
     expect(within(dialog).queryByAltText(/QR code for roll NAT-0001/)).toBeNull();
 
-    await userEvent.click(screen.getByRole("button", { name: /^Print label$/i }));
-    expect(print).toHaveBeenCalledTimes(1);
-    print.mockRestore();
+    const printButton = screen.getByRole("button", { name: /^Print label$/i });
+    await waitFor(() => expect(printButton).toHaveProperty("disabled", false));
+    await userEvent.click(printButton);
+    expect(open).toHaveBeenCalledWith("", "_blank", "popup,width=420,height=560");
+    const html = write.mock.calls[0][0] as string;
+    expect(html.match(/<article class="label">/g)).toHaveLength(1);
+    expect(html).toContain("NAT-0002");
+    expect(html).not.toContain("Rs.");
+    open.mockRestore();
   });
 
   it("offers a label for a used-up roll, which print-all leaves out", async () => {

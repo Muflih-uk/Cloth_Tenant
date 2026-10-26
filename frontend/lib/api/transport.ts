@@ -18,18 +18,20 @@ export const transportApi = {
     return response.data;
   },
 
-  create: async (data: TransportCreateRequest) => {
+  create: async (data: TransportCreateRequest, pin?: string) => {
     const response = await api.post<TransportAllResponse>(
       "/api/transports/",
-      data,
+      // A non-superuser admin has to name their PIN, the same as every other
+      // admin write; superusers are exempt server-side.
+      pin ? { ...data, pin } : data,
     );
     return response.data;
   },
 
-  update: async (id: number, data: TransportUpdateRequest) => {
+  update: async (id: number, data: TransportUpdateRequest, pin?: string) => {
     const response = await api.patch<TransportAllResponse>(
       `/api/transports/${id}/`,
-      data,
+      pin ? { ...data, pin } : data,
     );
     return response.data;
   },

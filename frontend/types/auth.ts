@@ -23,6 +23,7 @@ export interface AuthUser {
   role: Role;
   username?: string;
   email?: string;
+  display_name?: string;
   business?: Business | null;
   is_superuser: boolean;
 }
@@ -35,4 +36,7 @@ export interface UserProfile {
   role: Role;
   business?: Business | null;
   is_superuser: boolean;
+  /** Whether this account already has a PIN: with none, one can simply be
+   *  created; an existing one only changes through the emailed code. */
+  has_pin?: boolean;
 }

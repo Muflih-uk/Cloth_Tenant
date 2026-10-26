@@ -109,7 +109,7 @@ export default function AdminCustomerSelect() {
   return (
     <div className="min-h-screen bg-gray-50/50 pb-32">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-6 py-6 sticky top-0 z-10">
+      <div className="bg-white border-b border-gray-100 px-0 py-3 sticky top-0 z-10 sm:px-6 sm:py-6">
         <div className="max-w-md mx-auto flex items-center gap-4">
           <button
             onClick={() => router.push("/admin")}
@@ -128,13 +128,13 @@ export default function AdminCustomerSelect() {
         </div>
       </div>
 
-      <div className="max-w-md mx-auto py-6 px-6">
+      <div className="max-w-md mx-auto py-3 px-0 sm:py-6 sm:px-6">
         {/* Preselected customer */}
         {presetCustomer && (
           <button
             onClick={() => handleSelect(presetCustomer.id, presetCustomer.agent)}
             disabled={creating}
-            className="w-full mb-4 flex items-center gap-4 bg-primary/5 border border-primary/20 p-4 rounded-3xl text-left hover:border-primary/40 hover:shadow-md transition-all active:scale-[0.98] disabled:opacity-60"
+            className="w-full mb-4 flex items-center gap-3 bg-primary/5 border border-primary/20 p-3 sm:gap-4 sm:p-4 rounded-3xl text-left hover:border-primary/40 hover:shadow-md transition-all active:scale-[0.98] disabled:opacity-60"
           >
             <StockflowAvatar user={presetCustomer} />
             <div className="flex-1 min-w-0">
@@ -182,7 +182,7 @@ export default function AdminCustomerSelect() {
                 onClick={() => handleSelect(customer.id, customer.agent)}
                 key={customer.id}
                 disabled={creating}
-                className="flex w-full items-center gap-4 bg-white border border-gray-100 p-4 hover:border-primary/30 hover:shadow-md transition-all rounded-3xl group text-left active:scale-[0.98] disabled:opacity-60"
+                className="flex w-full items-center gap-3 bg-white border border-gray-100 p-3 sm:gap-4 sm:p-4 hover:border-primary/30 hover:shadow-md transition-all rounded-3xl group text-left active:scale-[0.98] disabled:opacity-60"
               >
                 <StockflowAvatar user={customer} />
                 <div className="flex-1 min-w-0">

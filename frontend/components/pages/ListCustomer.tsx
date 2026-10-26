@@ -169,7 +169,7 @@ const ListCustomer: React.FC = () => {
   };
 
   return (
-    <div className="py-6 px-6">
+    <div className="py-3 px-0 sm:py-6 sm:px-6">
       {/* Search Bar */}
       <div className="relative mb-4">
         <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-400">
@@ -203,7 +203,7 @@ const ListCustomer: React.FC = () => {
             <button
               onClick={() => handleSubmit(customer.id)}
               key={customer.id}
-              className="flex w-full items-center gap-4 bg-white border border-gray-100 p-4 hover:border-primary/30 hover:shadow-md transition-all rounded-3xl group text-left active:scale-[0.98]"
+              className="flex w-full items-center gap-3 bg-white border border-gray-100 p-3 sm:gap-4 sm:p-4 hover:border-primary/30 hover:shadow-md transition-all rounded-3xl group text-left active:scale-[0.98]"
             >
               <StockflowAvatar user={customer} />
 

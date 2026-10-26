@@ -1,101 +1,115 @@
 "use client";
 
 import type { AnalyticsKPIs } from "@/types/dashboard";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
+import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
+import AnalyticsCard from "./AnalyticsCard";
 
 interface StatusDonutChartProps {
   kpis: AnalyticsKPIs;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  draft: "#9ca3af",
-  pending: "#eab308",
-  editing: "#0b2b61",
-  packed: "#e60023",
-  // Teal, sitting deliberately between packed and dispatched: some bundles are on a
-  // truck and some are not, which is neither of the two states either colour means.
-  partially_dispatched: "#14b8a6",
-  dispatched: "#22c55e",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  draft: "Draft",
-  pending: "Pending",
-  editing: "Editing",
-  packed: "Packed",
-  partially_dispatched: "Partly dispatched",
-  dispatched: "Dispatched",
-};
+const STATUSES = [
+  { key: "draft", label: "Draft", color: "var(--status-draft)" },
+  { key: "pending", label: "Pending", color: "var(--status-pending)" },
+  { key: "editing", label: "Editing", color: "var(--status-editing)" },
+  { key: "packed", label: "Packed", color: "var(--status-packed)" },
+  {
+    key: "partially_dispatched",
+    label: "Partly dispatched",
+    color: "var(--status-partial)",
+  },
+  { key: "dispatched", label: "Dispatched", color: "var(--status-dispatched)" },
+] as const;
 
 export default function StatusDonutChart({ kpis }: StatusDonutChartProps) {
-  const data = [
-    { name: "draft", value: kpis.draft },
-    { name: "pending", value: kpis.pending },
-    { name: "editing", value: kpis.editing },
-    { name: "packed", value: kpis.packed },
-    { name: "partially_dispatched", value: kpis.partially_dispatched ?? 0 },
-    { name: "dispatched", value: kpis.dispatched },
-  ].filter((d) => d.value > 0);
-
-  const total = data.reduce((sum, d) => sum + d.value, 0);
-
-  if (total === 0) {
-    return (
-      <div className="bg-white rounded-xl border p-4 shadow-sm mb-4">
-        <div className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-3">
-          Order Status
-        </div>
-        <div className="h-48 flex items-center justify-center text-gray-400 text-xs">
-          No data in range
-        </div>
-      </div>
-    );
-  }
+  const statuses = STATUSES.map((status) => ({
+    ...status,
+    value: kpis[status.key] ?? 0,
+  }));
+  const total = statuses.reduce((sum, status) => sum + status.value, 0);
+  const slices = statuses.filter((status) => status.value > 0);
 
   return (
-    <div className="bg-white rounded-xl border p-4 shadow-sm mb-4">
-      <div className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-3">
-        Order Status
-      </div>
-      <ResponsiveContainer width="100%" height={200}>
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            innerRadius={50}
-            outerRadius={80}
-            paddingAngle={3}
-            dataKey="value"
-          >
-            {data.map((entry) => (
-              <Cell
-                key={entry.name}
-                fill={STATUS_COLORS[entry.name] || "#3b82f6"}
+    <AnalyticsCard
+      title="Order status"
+      subtitle={total === 0 ? "No orders in this range" : undefined}
+    >
+      <div className="flex items-center gap-4 sm:gap-5">
+        <div className="relative size-[136px] shrink-0 sm:size-[152px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={[{ value: 1 }]}
+                dataKey="value"
+                innerRadius="64%"
+                outerRadius="92%"
+                fill="var(--app-soft)"
+                stroke="none"
+                isAnimationActive={false}
               />
-            ))}
-          </Pie>
-          <Tooltip
-            formatter={(value, name) => [
-              `${Number(value)} (${((Number(value) / total) * 100).toFixed(1)}%)`,
-              STATUS_LABELS[String(name)] || String(name),
-            ]}
-          />
-        </PieChart>
-      </ResponsiveContainer>
-      <div className="flex flex-wrap gap-2 mt-2 justify-center">
-        {data.map((entry) => (
-          <div key={entry.name} className="flex items-center gap-1">
-            <div
-              className="w-2.5 h-2.5 rounded-full"
-              style={{ backgroundColor: STATUS_COLORS[entry.name] }}
-            />
-            <span className="text-sm text-gray-500">
-              {STATUS_LABELS[entry.name]}: {entry.value}
+              {slices.length > 0 && (
+                <Pie
+                  data={slices}
+                  dataKey="value"
+                  innerRadius="64%"
+                  outerRadius="92%"
+                  startAngle={90}
+                  endAngle={-270}
+                  paddingAngle={3}
+                  cornerRadius={5}
+                  stroke="none"
+                  isAnimationActive={false}
+                >
+                  {slices.map((slice) => (
+                    <Cell key={slice.key} fill={slice.color} />
+                  ))}
+                </Pie>
+              )}
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-[25px] font-bold leading-none tracking-tight text-app-ink tabular-nums">
+              {total}
+            </span>
+            <span className="mt-1 text-[10px] font-medium text-app-muted">
+              {total === 1 ? "order" : "orders"}
             </span>
           </div>
-        ))}
+        </div>
+
+        <ul className="min-w-0 flex-1 space-y-2">
+          {statuses.map((status) => (
+            <li
+              key={status.key}
+              className="flex items-center justify-between gap-2"
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <span
+                  className="size-2 shrink-0 rounded-full"
+                  style={{
+                    backgroundColor: status.color,
+                    opacity: status.value > 0 ? 1 : 0.25,
+                  }}
+                />
+                <span
+                  className={`truncate text-[11px] font-medium ${
+                    status.value > 0 ? "text-app-ink" : "text-app-subtle"
+                  }`}
+                >
+                  {status.label}
+                </span>
+              </span>
+              <span
+                className={`shrink-0 text-[11px] font-semibold tabular-nums ${
+                  status.value > 0 ? "text-app-ink" : "text-app-subtle"
+                }`}
+              >
+                {status.value}
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
-    </div>
+    </AnalyticsCard>
   );
 }
