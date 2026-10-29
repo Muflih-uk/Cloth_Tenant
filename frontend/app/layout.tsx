@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import RealtimeProvider from "@/lib/realtime/RealtimeProvider";
 
 const jakartha = Plus_Jakarta_Sans({
   variable: "--font-jakartha",
@@ -60,8 +61,10 @@ export default function RootLayout({
         className={`${jakartha.className} antialiased overflow-x-clip px-2 py-2 sm:px-5 sm:py-4`}
       >
         <AuthProvider>
-          <ServiceWorkerRegister />
-          {children}
+          <RealtimeProvider>
+            <ServiceWorkerRegister />
+            {children}
+          </RealtimeProvider>
         </AuthProvider>
         <Toaster
           position="top-right"

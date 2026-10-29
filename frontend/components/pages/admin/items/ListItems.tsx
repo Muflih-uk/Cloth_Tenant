@@ -7,6 +7,7 @@ import { fabricApi } from "@/lib/api/item";
 import { invalidateRolls } from "@/lib/rollsCache";
 import { FabricStockEntry, OutstandingDemandRow, UIItem } from "@/types/item";
 import { ItemList, StockTab } from "@/components/items";
+import { useRealtimeRefresh } from "@/hooks/useRealtime";
 
 interface ListItemsProps {
   initialTab?: StockTab;
@@ -42,6 +43,10 @@ const ListItems: React.FC<ListItemsProps> = ({ initialTab }) => {
   const [data, setData] = useState<UIItem[]>([]);
   const [outstanding, setOutstanding] = useState<OutstandingDemandRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const refreshKey = useRealtimeRefresh(invalidateRolls, 300, [
+    "inventory.updated",
+    "catalog.updated",
+  ]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -82,7 +87,7 @@ const ListItems: React.FC<ListItemsProps> = ({ initialTab }) => {
       window.removeEventListener("focus", handleFocus);
       clearInterval(interval);
     };
-  }, [isAuthenticated, createdToken]);
+  }, [isAuthenticated, createdToken, refreshKey]);
 
   const handleEdit = (id: number) => {
     router.push(`/admin/items/edit/${id}`);

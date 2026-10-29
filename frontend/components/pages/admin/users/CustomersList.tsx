@@ -16,6 +16,7 @@ import Pagination from "@/components/ui/Pagination";
 import { SkeletonRow } from "@/components/ui/app/Skeleton";
 import { formatDisplayName } from "@/lib/displayName";
 import { formatApiError } from "@/lib/toast";
+import { useRealtimeRefresh } from "@/hooks/useRealtime";
 
 const CustomerList: React.FC = () => {
   const { isAuthenticated, business, role } = useAuth();
@@ -31,6 +32,11 @@ const CustomerList: React.FC = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [pageSize, setPageSize] = useState(50);
+  const refreshKey = useRealtimeRefresh(
+    () => undefined,
+    300,
+    ["customer.updated", "order.created", "order.updated", "order.deleted"],
+  );
 
   const router = useRouter();
 
@@ -73,7 +79,14 @@ const CustomerList: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, currentPage, pageSize, debouncedSearch, reloadKey]);
+  }, [
+    isAuthenticated,
+    currentPage,
+    pageSize,
+    debouncedSearch,
+    reloadKey,
+    refreshKey,
+  ]);
 
   const handlePageChange = (page: number) => {
     setLoading(true);

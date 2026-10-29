@@ -12,6 +12,7 @@ import {
   type FabricSummaryRow,
 } from "@/lib/utils/inventorySummary";
 import { ArrowBigLeft } from "lucide-react";
+import { useRealtimeRefresh } from "@/hooks/useRealtime";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-IN", {
@@ -77,6 +78,7 @@ const Summary: React.FC = () => {
     ReturnType<typeof fabricApi.getStockList>
   >>([]);
   const [loading, setLoading] = useState(true);
+  const refreshKey = useRealtimeRefresh(undefined, 300, ["inventory.updated", "catalog.updated"]);
 
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortAsc, setSortAsc] = useState(false);
@@ -84,7 +86,7 @@ const Summary: React.FC = () => {
 
   React.useEffect(() => {
     if (!isAuthenticated) {
-      router.replace("/login");
+      router.replace("/");
       return;
     }
 
@@ -104,7 +106,7 @@ const Summary: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, refreshKey]);
 
   const summary = useMemo(() => computeInventorySummary(data), [data]);
 

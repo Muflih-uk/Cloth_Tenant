@@ -26,3 +26,23 @@ to the database container directly.
 The configured local database is `rjogani`. This setup starts with an empty
 database; it does not copy data from Supabase. Existing Docker volumes are
 preserved when the Compose database container is recreated.
+
+# Real-time order updates
+
+Order changes are broadcast over WebSockets through Redis. Start Redis with the
+database for local development:
+
+```powershell
+docker compose up -d db redis
+```
+
+Host-run Django uses `CHANNEL_REDIS_URL=redis://localhost:6379/1` by default;
+Compose sets `CHANNEL_REDIS_URL=redis://redis:6379/1` for the web service. The
+frontend connects to `/ws/orders/` after exchanging its JWT for a 60-second
+ticket at `/api/ws/ticket/`.
+
+Set `WS_ALLOWED_ORIGINS` to a comma-separated list of browser origins allowed to
+open the socket (it defaults to `CORS_ALLOWED_ORIGINS`). When deploying behind
+Nginx, Caddy, or another proxy, enable WebSocket upgrade headers and allow long
+idle connections. The container runs Uvicorn (`config.asgi:application`) rather
+than WSGI/Gunicorn so it can serve both HTTP and WebSockets.

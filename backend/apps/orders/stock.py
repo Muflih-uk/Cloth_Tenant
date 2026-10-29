@@ -35,6 +35,8 @@ from apps.items.rolls import (
 )
 from apps.items.rolls import return_metres_for_lines as return_metres_to_rolls
 from apps.items.services import sync_out_of_stock
+from apps.realtime.constants import INVENTORY_GROUP
+from apps.realtime.events import publish_resource_event
 
 ZERO = Decimal("0")
 
@@ -88,6 +90,12 @@ def _apply_stock_delta(metres_by_variant, consume):
         FabricVariant.objects.filter(pk=variant_id).update(
             stock_meters=F("stock_meters") + delta,
             stock_updated_at=now,
+        )
+        publish_resource_event(
+            "inventory.updated",
+            variant_id,
+            groups=[INVENTORY_GROUP],
+            source="order_stock",
         )
         touched.append(variant_id)
 

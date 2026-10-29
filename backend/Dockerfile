@@ -26,4 +26,4 @@ RUN SECRET_KEY=build DEBUG=False ALLOWED_HOSTS=build \
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "python manage.py migrate --noinput && gunicorn --bind=0.0.0.0:8000 --workers=2 --timeout=120 --access-logfile - --error-logfile - config.wsgi:application"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --workers 2 --proxy-headers --forwarded-allow-ips=*"]

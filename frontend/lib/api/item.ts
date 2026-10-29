@@ -16,10 +16,13 @@ import type {
     VariantRollsResponse,
 } from "@/types/item";
 import { api } from "./axios";
+import { cachedRequest, invalidateCached } from "@/lib/realtime/cache";
 
 export const fabricApi = {
     getAll(): Promise<FabricAllResponse> {
-        return api.get<FabricAllResponse>("/api/items/").then((r) => r.data);
+        return cachedRequest("items:list", () =>
+            api.get<FabricAllResponse>("/api/items/").then((r) => r.data),
+        );
     },
 
     getArchived(): Promise<FabricAllResponse> {
@@ -27,7 +30,9 @@ export const fabricApi = {
     },
 
     getOne(id: number): Promise<FabricResponse> {
-        return api.get<FabricResponse>(`/api/items/${id}/`).then((r) => r.data);
+        return cachedRequest(`items:${id}`, () =>
+            api.get<FabricResponse>(`/api/items/${id}/`).then((r) => r.data),
+        );
     },
 
     getAllVariants(): Promise<VariantAllResponse> {
@@ -36,7 +41,9 @@ export const fabricApi = {
 
     /** Every fabric with per-colour metre stock, for the order wizard. */
     getStockList(): Promise<FabricStockEntry[]> {
-        return api.get<FabricStockEntry[]>("/api/items/stock-list/").then((r) => r.data);
+        return cachedRequest("items:stock-list", () =>
+            api.get<FabricStockEntry[]>("/api/items/stock-list/").then((r) => r.data),
+        );
     },
 
     /**
@@ -45,9 +52,11 @@ export const fabricApi = {
      */
     getOutstandingDemand(variantId?: number): Promise<OutstandingDemandRow[]> {
         const params = variantId ? { variant: String(variantId) } : undefined;
-        return api
-            .get<OutstandingDemandRow[]>("/api/items/outstanding-demand/", { params })
-            .then((r) => r.data);
+        return cachedRequest(`items:demand:${variantId ?? "all"}`, () =>
+            api
+                .get<OutstandingDemandRow[]>("/api/items/outstanding-demand/", { params })
+                .then((r) => r.data),
+        );
     },
 
     /** Resolve a scanned roll QR into its fabric and the colour that was hit. */
@@ -71,17 +80,26 @@ export const fabricApi = {
         // multipart boundary itself (axios's transform would otherwise have no
         // header to fill in, and a manually-set header would drop the boundary).
         const headers = data instanceof FormData ? {} : { "Content-Type": "application/json" };
-        return api.post<FabricResponse>("/api/items/", data, { headers }).then((r) => r.data);
+        return api.post<FabricResponse>("/api/items/", data, { headers }).then((r) => {
+            invalidateCached("items");
+            return r.data;
+        });
     },
 
     update(id: number, data: FabricRequest | FormData): Promise<FabricResponse> {
         const headers = data instanceof FormData ? {} : { "Content-Type": "application/json" };
-        return api.put<FabricResponse>(`/api/items/${id}/`, data, { headers }).then((r) => r.data);
+        return api.put<FabricResponse>(`/api/items/${id}/`, data, { headers }).then((r) => {
+            invalidateCached("items");
+            return r.data;
+        });
     },
 
     /** Soft delete. Order history keeps referencing the fabric. */
     remove(id: number, pin: string): Promise<void> {
-        return api.delete(`/api/items/${id}/`, { data: { pin } }).then((r) => r.data);
+        return api.delete(`/api/items/${id}/`, { data: { pin } }).then((r) => {
+            invalidateCached("items");
+            return r.data;
+        });
     },
 
     /** Set the opening order-stock base without changing physical stock. */
@@ -93,7 +111,10 @@ export const fabricApi = {
             .patch<FabricVariant>(`/api/items/variants/${variantId}/`, {
                 base_opening: baseOpening,
             })
-            .then((r) => r.data);
+            .then((r) => {
+                invalidateCached("items");
+                return r.data;
+            });
     },
 };
 
@@ -111,14 +132,19 @@ export const rollApi = {
         const params: Record<string, string> = {};
         if (variantId) params.variant = String(variantId);
         if (activeOnly) params.active = "1";
-        return api.get<FabricRoll[]>("/api/items/rolls/", { params }).then((r) => r.data);
+        return cachedRequest(
+            `rolls:list:${variantId ?? "all"}:${activeOnly ? "active" : "all"}`,
+            () => api.get<FabricRoll[]>("/api/items/rolls/", { params }).then((r) => r.data),
+        );
     },
 
     /** One colour's rolls plus its roll totals, for the inventory panel. */
     getForVariant(variantId: number): Promise<VariantRollsResponse> {
-        return api
-            .get<VariantRollsResponse>(`/api/items/variants/${variantId}/rolls/`)
-            .then((r) => r.data);
+        return cachedRequest(`rolls:${variantId}`, () =>
+            api
+                .get<VariantRollsResponse>(`/api/items/variants/${variantId}/rolls/`)
+                .then((r) => r.data),
+        );
     },
 
     /** Receive one roll onto a colour. */
@@ -128,7 +154,11 @@ export const rollApi = {
     ): Promise<ReceiveRollResponse> {
         return api
             .post<ReceiveRollResponse>(`/api/items/variants/${variantId}/rolls/`, data)
-            .then((r) => r.data);
+            .then((r) => {
+                invalidateCached("items");
+                invalidateCached(`rolls:${variantId}`);
+                return r.data;
+            });
     },
 
     /** Receive a factory delivery as several rolls, all or nothing. */
@@ -140,7 +170,11 @@ export const rollApi = {
             .post<BulkReceiveRollsResponse>(`/api/items/variants/${variantId}/rolls/bulk-add/`, {
                 rolls,
             })
-            .then((r) => r.data);
+            .then((r) => {
+                invalidateCached("items");
+                invalidateCached(`rolls:${variantId}`);
+                return r.data;
+            });
     },
 
     /** Correct a roll's metres. Negative takes cloth off, positive adds it. */
@@ -150,7 +184,11 @@ export const rollApi = {
                 meters,
                 reason,
             })
-            .then((r) => r.data);
+            .then((r) => {
+                invalidateCached("items");
+                invalidateCached("rolls");
+                return r.data;
+            });
     },
 
     /** Which rolls packing this many metres would come off, by best fit. */
@@ -162,7 +200,11 @@ export const rollApi = {
 
     /** Delete a roll that holds nothing and has never been cut from. */
     remove(rollId: number): Promise<void> {
-        return api.delete(`/api/items/rolls/${rollId}/`).then((r) => r.data);
+        return api.delete(`/api/items/rolls/${rollId}/`).then((r) => {
+            invalidateCached("items");
+            invalidateCached("rolls");
+            return r.data;
+        });
     },
 
     /** Put a colour's total back in step with its rolls after a manual edit. */
@@ -171,7 +213,11 @@ export const rollApi = {
             .post<{ stock_meters: string } & RollSummary>(
                 `/api/items/variants/${variantId}/rolls/sync-stock/`
             )
-            .then((r) => r.data);
+            .then((r) => {
+                invalidateCached("items");
+                invalidateCached(`rolls:${variantId}`);
+                return r.data;
+            });
     },
 };
 

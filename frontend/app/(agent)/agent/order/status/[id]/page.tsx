@@ -15,6 +15,7 @@ import { formatMeters, toMeters } from "@/types/item";
 import { useBackButton } from "@/util/useBackButton";
 import OrderSummary from "@/components/pages/order/OrderSummary";
 import { transportApi } from "@/lib/api/transport";
+import { useRealtimeRefresh } from "@/hooks/useRealtime";
 
 export default function Page() {
   const params = useParams();
@@ -53,6 +54,8 @@ export default function Page() {
       setLoading(false);
     }
   }, [id]);
+
+  useRealtimeRefresh(fetchData);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

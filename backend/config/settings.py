@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -44,6 +45,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "channels",
     "rest_framework",
     "rest_framework_simplejwt",
     "drf_spectacular",
@@ -59,6 +61,7 @@ INSTALLED_APPS = [
     "apps.admins",
     "apps.business",
     "apps.notification",
+    "apps.realtime",
     "transports",
 ]
 
@@ -104,6 +107,23 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "config.wsgi.application"
+ASGI_APPLICATION = "config.asgi.application"
+
+# Real-time order updates over WebSockets. The channel layer uses Redis so
+# events published by one ASGI worker reach sockets connected to another.
+CHANNEL_REDIS_URL = (
+    config("CHANNEL_REDIS_URL", default="")
+    or "redis://localhost:6379/1"
+)
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {"hosts": [CHANNEL_REDIS_URL]},
+    }
+}
+TESTING = "test" in sys.argv or "pytest" in sys.modules
+REALTIME_ENABLED = config("REALTIME_ENABLED", default=not TESTING, cast=bool)
+WS_TICKET_MAX_AGE = config("WS_TICKET_MAX_AGE", default=60, cast=int)
 
 # SMTP Server
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
@@ -245,6 +265,14 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_ALL_ORIGINS = config("CORS_ALLOW_ALL_ORIGINS", default=False, cast=bool)
 CORS_ALLOW_CREDENTIALS = True
+
+_ws_origins = config("WS_ALLOWED_ORIGINS", default="")
+if _ws_origins:
+    WS_ALLOWED_ORIGINS = [o.strip() for o in _ws_origins.split(",") if o.strip()]
+elif CORS_ALLOW_ALL_ORIGINS:
+    WS_ALLOWED_ORIGINS = ["*"]
+else:
+    WS_ALLOWED_ORIGINS = CORS_ALLOWED_ORIGINS
 
 CORS_ALLOW_HEADERS = [
     "content-type",

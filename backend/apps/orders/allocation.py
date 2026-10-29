@@ -38,6 +38,8 @@ from apps.customers.models import Customer
 from apps.items.models import FabricVariant
 from apps.items.rolls import consume_for_allocation, return_metres_for_allocations
 from apps.items.services import sync_out_of_stock
+from apps.realtime.constants import INVENTORY_GROUP
+from apps.realtime.events import publish_resource_event
 from apps.orders.models import (
     Allocation,
     Order,
@@ -287,6 +289,12 @@ def _adjust_stock(variant, delta):
     )
     variant.refresh_from_db(fields=["stock_meters"])
     sync_out_of_stock(variant.fabric)
+    publish_resource_event(
+        "inventory.updated",
+        variant.pk,
+        groups=[INVENTORY_GROUP],
+        source="allocation",
+    )
 
 
 def _lock_round(packing_round):

@@ -34,6 +34,9 @@ from django.db import IntegrityError, transaction
 from django.db.models import Max, Sum
 from django.utils import timezone
 
+from apps.realtime.constants import INVENTORY_GROUP
+from apps.realtime.events import publish_resource_event
+
 from .models import FabricRoll, FabricVariant, StockMovement
 from .services import sync_out_of_stock
 
@@ -266,6 +269,12 @@ def move_variant_stock(variant, delta):
     )
     variant.refresh_from_db(fields=["stock_meters", "stock_updated_at"])
     sync_out_of_stock(variant.fabric)
+    publish_resource_event(
+        "inventory.updated",
+        variant.pk,
+        groups=[INVENTORY_GROUP],
+        source="stock",
+    )
     return variant
 
 

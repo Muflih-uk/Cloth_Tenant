@@ -13,6 +13,14 @@ export const authApi = {
     return res.data;
   },
 
+  /** Short-lived ticket used to authenticate the WebSocket connection. */
+  async getWsTicket(): Promise<{ ticket: string; expires_in: number }> {
+    const res = await api.post<{ ticket: string; expires_in: number }>(
+      "/api/ws/ticket/",
+    );
+    return res.data;
+  },
+
   /** Edit your own account details (name, username, email). */
   async updateProfile(data: {
     username?: string;

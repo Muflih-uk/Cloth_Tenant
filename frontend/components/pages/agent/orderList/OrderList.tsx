@@ -15,6 +15,7 @@ import FilterToggle from "@/components/ui/FilterToggle";
 import SearchBar from "@/components/ui/SearchBar";
 import Pagination from "@/components/ui/Pagination";
 import useSessionStorage from "@/hooks/useSessionStorage";
+import { useRealtimeRefresh } from "@/hooks/useRealtime";
 import { PaginatedResponse } from "@/types/global";
 
 type PackingTab = "all" | "awaiting" | "ready";
@@ -52,6 +53,7 @@ export default function AgentOrderList({
   );
 
   const router = useRouter();
+  const refreshKey = useRealtimeRefresh();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -102,6 +104,7 @@ export default function AgentOrderList({
     pageOrderStatus,
     debouncedSearch,
     selectedCustomer,
+    refreshKey,
   ]);
 
   const sortedData = [...data]

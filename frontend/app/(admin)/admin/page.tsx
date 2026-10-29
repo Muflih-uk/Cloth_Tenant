@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 import Button from "@/components/ui/app/Button";
@@ -16,6 +16,7 @@ import {
   getViewedOrdersCount,
 } from "@/lib/viewedOrders";
 import useSessionStorage from "@/hooks/useSessionStorage";
+import { useRealtimeRefresh } from "@/hooks/useRealtime";
 import OrderList from "@/components/pages/admin/order_components/OrderList";
 import { agentApi } from "@/lib/api/agents";
 import { orderApi } from "@/lib/api/order";
@@ -62,11 +63,30 @@ function AdminHomePageContent() {
   const [allOrderIds, setAllOrderIds] = useState<number[]>([]);
   const [pendingOrderIds, setPendingOrderIds] = useState<number[]>([]);
   const [packedOrderIds, setPackedOrderIds] = useState<number[]>([]);
-  const [refreshKey] = useState(0);
   const [activeTabTotalCount, setActiveTabTotalCount] = useState(0);
   const [viewedOrderIds, setViewedOrderIds] = useState<Set<number>>(
     new Set(),
   );
+
+  const refreshOrderIds = useCallback(async () => {
+    const orderIds = await orderApi.getAllIds();
+    const nonDispatched = orderIds.filter(
+      (order) => order.status !== "DISPATCHED",
+    );
+    setAllOrderIds(nonDispatched.map((order) => order.id));
+    setPendingOrderIds(
+      orderIds
+        .filter((order) => order.status === "PENDING")
+        .map((order) => order.id),
+    );
+    setPackedOrderIds(
+      orderIds
+        .filter((order) => order.status === "PACKED")
+        .map((order) => order.id),
+    );
+  }, []);
+
+  const refreshKey = useRealtimeRefresh(refreshOrderIds);
 
   const [debouncedSearch, setDebouncedSearch] = useState(search);
 
@@ -93,26 +113,9 @@ function AdminHomePageContent() {
   }, []);
 
   useEffect(() => {
-    orderApi
-      .getAllIds()
-      .then((orderIds) => {
-        const nonDispatched = orderIds.filter(
-          (order) => order.status !== "DISPATCHED",
-        );
-        setAllOrderIds(nonDispatched.map((order) => order.id));
-        setPendingOrderIds(
-          orderIds
-            .filter((order) => order.status === "PENDING")
-            .map((order) => order.id),
-        );
-        setPackedOrderIds(
-          orderIds
-            .filter((order) => order.status === "PACKED")
-            .map((order) => order.id),
-        );
-      })
-      .catch(console.error);
-  }, []);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    refreshOrderIds().catch(console.error);
+  }, [refreshOrderIds]);
 
   const orderCounts: Record<string, number> = {
     all: getViewedOrdersCount(allOrderIds, viewedOrderIds),

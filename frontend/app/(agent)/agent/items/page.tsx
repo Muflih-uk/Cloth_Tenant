@@ -8,6 +8,7 @@ import { useEffect, useState, useCallback } from "react";
 import { ItemList } from "@/components/items";
 import { UIItem } from "@/types/item";
 import { useBackButton } from "@/util/useBackButton";
+import { useRealtimeRefresh } from "@/hooks/useRealtime";
 
 function normalizeAgentItem(item: AssignedItem): UIItem {
     return {
@@ -53,6 +54,8 @@ export default function MyItemsPage() {
             setInitialLoading(false);
         }
     }, [userId]);
+
+    useRealtimeRefresh(fetchData, 300, ["inventory.updated", "catalog.updated"]);
 
     useEffect(() => {
         if (!userId) return;

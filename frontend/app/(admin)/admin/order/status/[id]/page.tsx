@@ -18,6 +18,7 @@ import Button from "@/components/ui/app/Button";
 import PinDeleteDialog from "@/components/ui/pinDeleteDialog";
 import { useAuth } from "@/context/AuthContext";
 import { PageLoading } from "@/components/ui/Loading";
+import { useRealtimeRefresh } from "@/hooks/useRealtime";
 
 export default function Page() {
   const { role, permissions } = useAuth();
@@ -49,6 +50,8 @@ export default function Page() {
       console.error("Error fetching data:", error);
     }
   }, [id]);
+
+  useRealtimeRefresh(fetchData);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

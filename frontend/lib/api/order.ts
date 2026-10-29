@@ -22,6 +22,7 @@ import type {
 } from "@/types/order";
 import { api } from "./axios";
 import type { PaginatedResponse } from "@/types/global";
+import { cachedRequest, invalidateCached } from "@/lib/realtime/cache";
 
 export interface OrderLog {
   id: number;
@@ -105,11 +106,13 @@ export const orderApi = {
     if (filters?.customer) params.append("customer", filters.customer);
     filters?.status?.forEach((s) => params.append("status", s));
     const query = params.toString();
-    return api
-      .get<PaginatedResponse<OrderAllResponse[number]>>(
-        `/api/orders/${query ? `?${query}` : ""}`,
-      )
-      .then((r) => r.data);
+    return cachedRequest(`orders:list:${query}`, () =>
+      api
+        .get<PaginatedResponse<OrderAllResponse[number]>>(
+          `/api/orders/${query ? `?${query}` : ""}`,
+        )
+        .then((r) => r.data),
+    );
   },
 
   getAllIds(): Promise<{ id: number; status: string }[]> {
@@ -126,42 +129,65 @@ export const orderApi = {
     query.append("customer", customerId.toString());
     if (params?.page) query.append("page", params.page.toString());
     if (params?.page_size) query.append("page_size", params.page_size.toString());
-    return api
+    return cachedRequest(`orders:list:customer:${customerId}:${params?.page ?? ""}:${params?.page_size ?? ""}`, () => api
       .get<PaginatedResponse<OrderAllResponse[number]>>(`/api/orders/?${query.toString()}`)
-      .then((r) => r.data);
+      .then((r) => r.data));
   },
 
   getOne(id: number): Promise<OrderResponse> {
-    return api.get<OrderResponse>(`/api/orders/${id}/`).then((r) => r.data);
+    return cachedRequest(`orders:${id}`, () =>
+      api.get<OrderResponse>(`/api/orders/${id}/`).then((r) => r.data),
+    );
   },
 
   create(data: OrderRegisterRequest): Promise<OrderRegisterResponse> {
-    return api.post<OrderRegisterResponse>("/api/orders/", data).then((r) => r.data);
+    return api.post<OrderRegisterResponse>("/api/orders/", data).then((r) => {
+      invalidateCached("orders");
+      return r.data;
+    });
   },
 
   /** Add a fabric line by scanning its QR and asking for a number of metres. */
   addItem(orderId: number, itemData: AddOrderItemRequest): Promise<void> {
-    return api.post(`/api/orders/${orderId}/add-item/`, itemData).then((r) => r.data);
+    return api.post(`/api/orders/${orderId}/add-item/`, itemData).then((r) => {
+      invalidateCached("orders");
+      return r.data;
+    });
   },
 
   update(id: number, data: UpdateOrderRequest): Promise<OrderResponse> {
-    return api.patch<OrderResponse>(`/api/orders/${id}/`, data).then((r) => r.data);
+    return api.patch<OrderResponse>(`/api/orders/${id}/`, data).then((r) => {
+      invalidateCached("orders");
+      return r.data;
+    });
   },
 
   updateItem(itemId: number, data: UpdateOrderItemRequest) {
-    return api.patch(`/api/orders/order-items/${itemId}/`, data).then((r) => r.data);
+    return api.patch(`/api/orders/order-items/${itemId}/`, data).then((r) => {
+      invalidateCached("orders");
+      return r.data;
+    });
   },
 
   delete(id: number, pin: string): Promise<void> {
-    return api.delete(`/api/orders/${id}/`, { data: { pin } }).then((r) => r.data);
+    return api.delete(`/api/orders/${id}/`, { data: { pin } }).then((r) => {
+      invalidateCached("orders");
+      return r.data;
+    });
   },
 
   agentDelete(id: number): Promise<void> {
-    return api.delete(`/api/orders/${id}/`).then((r) => r.data);
+    return api.delete(`/api/orders/${id}/`).then((r) => {
+      invalidateCached("orders");
+      return r.data;
+    });
   },
 
   deleteItem(orderId: number, itemId: number): Promise<void> {
-    return api.delete(`/api/orders/${orderId}/delete-item/${itemId}/`).then((r) => r.data);
+    return api.delete(`/api/orders/${orderId}/delete-item/${itemId}/`).then((r) => {
+      invalidateCached("orders");
+      return r.data;
+    });
   },
 
   /**

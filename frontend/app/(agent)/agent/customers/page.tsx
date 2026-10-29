@@ -11,6 +11,7 @@ import { PageLoading } from "@/components/ui/Loading";
 import StockflowAvatar from "@/components/ui/custom/stockflowAvatar";
 import StockFlowButton from "@/components/ui/custom/stockFlowButton";
 import Pagination from "@/components/ui/Pagination";
+import { useRealtimeRefresh } from "@/hooks/useRealtime";
 
 export default function AgentCustomersPage() {
   const { isAuthenticated } = useAuth();
@@ -24,6 +25,7 @@ export default function AgentCustomersPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const router = useRouter();
   const lastSearchRef = useRef(search);
+  const refreshKey = useRealtimeRefresh(undefined, 300, ["customer.updated"]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -64,7 +66,7 @@ export default function AgentCustomersPage() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, currentPage, pageSize, debouncedSearch]);
+  }, [isAuthenticated, currentPage, pageSize, debouncedSearch, refreshKey]);
 
   const handlePageChange = (page: number) => {
     setLoading(true);

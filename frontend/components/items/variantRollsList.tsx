@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Loader2, Printer } from "lucide-react";
 import { getRolls, peekRolls } from "@/lib/rollsCache";
+import { invalidateRollsFor } from "@/lib/rollsCache";
+import { useRealtimeEvent } from "@/hooks/useRealtime";
 import { toastError } from "@/lib/toast";
 import { formatMeters } from "@/types/item";
 import type { FabricRoll, VariantRollsResponse } from "@/types/item";
@@ -54,6 +56,14 @@ export default function VariantRollsList({ variantId, label }: Props) {
   const [printing, setPrinting] = useState(false);
   /** The one roll whose label is open, when a single roll is being printed. */
   const [printingRoll, setPrintingRoll] = useState<FabricRoll | null>(null);
+
+  useRealtimeEvent("inventory.updated", (event) => {
+    if (event.entity_id !== variantId) return;
+    invalidateRollsFor(variantId);
+    void getRolls(variantId)
+      .then((rolls) => setState({ status: "loaded", variant: variantId, rolls }))
+      .catch(() => undefined);
+  });
 
   useEffect(() => {
     let cancelled = false;

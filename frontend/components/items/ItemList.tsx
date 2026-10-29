@@ -11,7 +11,7 @@ import PageHeader from "@/components/ui/app/PageHeader";
 import SearchInput from "@/components/ui/app/SearchInput";
 import SegmentedControl from "@/components/ui/app/SegmentedControl";
 import EmptyState from "@/components/ui/EmptyState";
-import { PageLoading } from "../ui/Loading";
+import { Skeleton, SkeletonRow } from "@/components/ui/app/Skeleton";
 import {
   isItemOutOfStock,
   isItemPartiallyOutOfStock,
@@ -78,6 +78,45 @@ function filterItems(
   }
 
   return filtered;
+}
+
+function ItemListSkeleton() {
+  return (
+    <div
+      className="mx-auto min-h-screen w-full max-w-5xl bg-app-bg px-4 pb-24 pt-4 lg:max-w-7xl lg:px-6"
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <div className="flex items-start justify-between gap-3 pb-4">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-32" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+        <Skeleton className="h-10 w-20 rounded-control" />
+      </div>
+      <Skeleton className="h-12 rounded-full" />
+      <Skeleton className="mt-3 h-12 rounded-full" />
+      <div className="mt-4 space-y-3">
+        {[1, 2, 3].map((item) => (
+          <div key={item} className="app-card space-y-4 p-4">
+            <div className="flex items-center gap-3">
+              <Skeleton className="size-12 shrink-0 rounded-control" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+              <Skeleton className="size-8 rounded-control" />
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <SkeletonRow className="min-h-20" />
+              <SkeletonRow className="min-h-20" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <span className="sr-only">Loading items</span>
+    </div>
+  );
 }
 
 export default function ItemList({
@@ -173,7 +212,7 @@ export default function ItemList({
 
   const hasActiveFilters = Boolean(searchQuery || qrFilter);
 
-  if (loading) return <PageLoading text="Loading items…" />;
+  if (loading) return <ItemListSkeleton />;
 
   return (
     <div className="mx-auto min-h-full max-w-5xl bg-app-bg px-4 pb-24 pt-4 lg:max-w-7xl lg:px-6">

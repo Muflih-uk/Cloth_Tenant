@@ -8,6 +8,7 @@ import StockFlowButton from "@/components/ui/custom/stockFlowButton";
 import PinDeleteDialog from "@/components/ui/pinDeleteDialog";
 import { toastSuccess, toastError } from "@/lib/toast";
 import { PageLoading } from "@/components/ui/Loading";
+import { useRealtimeRefresh } from "@/hooks/useRealtime";
 
 export default function TransportsList() {
     const [data, setData] = useState<TransportAllResponse>([]);
@@ -29,6 +30,8 @@ export default function TransportsList() {
             setLoading(false);
         }
     };
+
+    useRealtimeRefresh(fetchData, 300, ["transport.updated"]);
 
     useEffect(() => {
         fetchData();

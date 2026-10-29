@@ -6,11 +6,13 @@ import { BrandAllResponse } from "@/types/brand";
 import { Plus, Store, Info } from "lucide-react";
 import StockFlowButton from "@/components/ui/custom/stockFlowButton";
 import { PageLoading } from "@/components/ui/Loading";
+import { useRealtimeRefresh } from "@/hooks/useRealtime";
 
 export default function BrandsList() {
     const [data, setData] = useState<BrandAllResponse>([]);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
+    const refreshKey = useRealtimeRefresh(undefined, 300, ["catalog.updated"]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -25,7 +27,7 @@ export default function BrandsList() {
         };
 
         fetchData();
-    }, []);
+    }, [refreshKey]);
 
     if (loading) {
         return <PageLoading />;

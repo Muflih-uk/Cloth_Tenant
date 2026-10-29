@@ -9,6 +9,7 @@ import type {
 } from "@/types/customer";
 import { api } from "./axios";
 import type { PaginatedResponse } from "@/types/global";
+import { cachedRequest, invalidateCached } from "@/lib/realtime/cache";
 
 export interface CustomerFilters {
   page?: number;
@@ -26,29 +27,33 @@ export const customerApi = {
       params.append("page_size", filters.page_size.toString());
     if (filters?.search) params.append("search", filters.search);
     const query = params.toString();
-    return api
-      .get<
-        PaginatedResponse<CustomerAllResponse[number]>
-      >(`/api/customers/${query ? `?${query}` : ""}`)
-      .then((r) => r.data);
+    return cachedRequest(`customers:list:${query}`, () =>
+      api
+        .get<
+          PaginatedResponse<CustomerAllResponse[number]>
+        >(`/api/customers/${query ? `?${query}` : ""}`)
+        .then((r) => r.data),
+    );
   },
 
   getOne(id: number): Promise<CustomerResponse> {
-    return api
-      .get<CustomerResponse>(`/api/customers/${id}/`)
-      .then((r) => r.data);
+    return cachedRequest(`customers:${id}`, () =>
+      api.get<CustomerResponse>(`/api/customers/${id}/`).then((r) => r.data),
+    );
   },
 
   create(data: CustomerCreateRequest): Promise<CustomerResponse> {
-    return api
-      .post<CustomerResponse>("/api/customers/", data)
-      .then((r) => r.data);
+    return api.post<CustomerResponse>("/api/customers/", data).then((r) => {
+      invalidateCached("customers");
+      return r.data;
+    });
   },
 
   update(id: number, data: CustomerUpdateRequest): Promise<CustomerResponse> {
-    return api
-      .patch<CustomerResponse>(`/api/customers/${id}/`, data)
-      .then((r) => r.data);
+    return api.patch<CustomerResponse>(`/api/customers/${id}/`, data).then((r) => {
+      invalidateCached("customers");
+      return r.data;
+    });
   },
 
   getDeleteInfo(id: number): Promise<CustomerDeleteInfo> {
@@ -56,13 +61,17 @@ export const customerApi = {
   },
 
   delete(id: number, pin: string, action?: string): Promise<void> {
-    return api
-      .delete(`/api/customers/${id}/`, { data: { pin, action } })
-      .then((r) => r.data);
+    return api.delete(`/api/customers/${id}/`, { data: { pin, action } }).then((r) => {
+      invalidateCached("customers");
+      return r.data;
+    });
   },
 
   agentDelete(id: number): Promise<void> {
-    return api.delete(`/api/customers/${id}/`).then((r) => r.data);
+    return api.delete(`/api/customers/${id}/`).then((r) => {
+      invalidateCached("customers");
+      return r.data;
+    });
   },
 
   bulkImport(data: BulkImportRequest): Promise<BulkImportResponse> {
