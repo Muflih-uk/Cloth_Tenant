@@ -92,7 +92,6 @@ export default function NewCustomerPage() {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!formData.agent) newErrors.agent = "Please select an agent";
     if (!formData.customerName.trim())
       newErrors.customerName = "Customer name is required";
     if (!formData.address.trim()) newErrors.address = "Address is required";
@@ -123,7 +122,7 @@ export default function NewCustomerPage() {
         name: formData.customerName,
         address: formData.address,
         contact: formData.contactNumber,
-        agent: parseInt(formData.agent),
+        agent: formData.agent ? parseInt(formData.agent, 10) : null,
         gst: formData.gst.toUpperCase(),
         preferred_transport: formData.preferredTransport
           ? parseInt(formData.preferredTransport)
@@ -161,17 +160,18 @@ export default function NewCustomerPage() {
       <Card className="mb-5">
         <div className="space-y-5">
           <FormField
-            label="Assigned agent"
+            label="Assigned agent (optional)"
             htmlFor="customer-agent"
             error={errors.agent}
-            required
           >
             <StockFlowSelect
               value={formData.agent}
               onChange={(value) => handleChange("agent", value)}
-              options={agents}
+              options={[{ value: "", label: "No agent assigned" }, ...agents]}
               disabled={loadingAgents || isSubmitting}
-              placeholder={loadingAgents ? "Loading agents..." : "Select agent"}
+              placeholder={
+                loadingAgents ? "Loading agents..." : "No agent assigned"
+              }
               className={errors.agent ? "border-brand-red" : ""}
             />
           </FormField>

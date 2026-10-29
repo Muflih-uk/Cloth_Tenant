@@ -86,13 +86,13 @@ export default function ProfileSettingsPage() {
       subtitle="Profile"
       backHref="/admin/profile"
     >
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm divide-y divide-gray-50">
+      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm divide-y divide-gray-50 lg:grid lg:grid-cols-2 lg:gap-2 lg:divide-y-0 lg:rounded-none lg:border-0 lg:bg-transparent lg:shadow-none">
         {ROWS.map(({ label, description, href, icon: Icon, tone }) => (
           <button
             key={label}
             type="button"
             onClick={() => router.push(href)}
-            className="flex items-center gap-3 w-full px-3 py-3 sm:px-4 group hover:bg-gray-50/60 transition-colors text-left"
+            className="flex items-center gap-3 w-full px-3 py-3 sm:px-4 group hover:bg-gray-50/60 transition-colors text-left lg:rounded-2xl lg:border lg:border-gray-100 lg:bg-white"
           >
             <div
               className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${tone}`}

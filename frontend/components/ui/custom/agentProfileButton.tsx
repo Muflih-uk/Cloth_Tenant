@@ -9,7 +9,7 @@ const AgentProfileButton: React.FC = () => {
   const { user } = useAuth();
 
   return (
-    <div className="relative flex w-full justify-end px-4 py-3">
+    <div className="relative flex w-full justify-end px-4 py-3 lg:mx-auto lg:max-w-7xl lg:px-6">
       <button
         type="button"
         onClick={() => router.push("/agent/profile")}

@@ -115,6 +115,23 @@ class OrderTestBase(TestCase):
 
 
 class DraftAndPlacementTests(OrderTestBase):
+    def test_admin_can_create_draft_for_unassigned_customer(self):
+        customer = Customer.objects.create(
+            name="Admin Customer", contact="9999999999", agent=None
+        )
+        self.auth(self.admin)
+
+        response = self.client.post(
+            "/api/orders/",
+            {"customer": customer.id, "status": "DRAFT"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        order = Order.objects.get(pk=response.data["id"])
+        self.assertIsNone(order.agent_id)
+        self.assertEqual(order.created_by_id, self.admin.id)
+
     def test_add_line_by_qr(self):
         order = self.make_draft()
         self.auth()
@@ -929,7 +946,7 @@ class PackingBundleTests(OrderTestBase):
         self.assertIn(first["code"], resp.data["error"])
         self.assertEqual(PackingBundle.objects.filter(status="OPEN").count(), 1)
 
-    def test_numbering_carries_on_after_the_previous_bundle_is_closed(self):
+    def test_numbering_reuses_the_number_of_a_discarded_empty_bundle(self):
         first = self.open_bundle()
         self.auth(self.admin)
         self.client.post(
@@ -940,11 +957,11 @@ class PackingBundleTests(OrderTestBase):
 
         second = self.open_bundle()
 
-        # The counter is per order and never reuses a number, so the slip for the
-        # cancelled bundle and the slip for this one cannot be confused.
-        self.assertEqual(second["number"], 2)
-        self.assertEqual(second["code"], f"Order #{self.order.pk} -- Bundle 2")
-        self.assertEqual(PackingBundle.objects.count(), 2)
+        # An empty box has nothing worth remembering, so it is deleted and the
+        # next box takes the number that was freed.
+        self.assertEqual(second["number"], first["number"])
+        self.assertEqual(second["code"], first["code"])
+        self.assertEqual(PackingBundle.objects.count(), 1)
 
     def test_bundles_are_listed_with_their_rolls_so_a_slip_can_be_reprinted(self):
         bundle, resp = self.scan(self.rolls[0])
@@ -1360,6 +1377,7 @@ class PackingBundleTests(OrderTestBase):
         self.assertEqual(self.rolls[0].remaining_meters, Decimal("600.000"))
         self.assertEqual(self.rolls[1].remaining_meters, Decimal("400.000"))
         self.assertEqual(resp.data["bundle"]["status"], "CANCELLED")
+        self.assertEqual(resp.data["bundle"]["number"], None)
         self.assertEqual(resp.data["bundle"]["roll_count"], 0)
         self.assertEqual(resp.data["order_status"], "PENDING")
 
@@ -1377,9 +1395,28 @@ class PackingBundleTests(OrderTestBase):
 
         self.assertEqual(len(listing.data), 1)
         self.assertEqual(listing.data[0]["status"], "CANCELLED")
+        self.assertIsNone(listing.data[0]["number"])
         self.assertEqual(listing.data[0]["rolls"], [])
 
-    def test_an_empty_bundle_can_be_cancelled_outright(self):
+    def test_cancelling_a_non_empty_bundle_releases_its_number(self):
+        bundle = self.open_bundle()
+        self.scan(self.rolls[0], bundle)
+        self.auth(self.admin)
+
+        self.client.post(
+            f"/api/orders/{self.order.pk}/bundles/{bundle['id']}/cancel/",
+            {},
+            format="json",
+        )
+        reused = self.open_bundle()
+
+        self.assertEqual(reused["number"], bundle["number"])
+        self.assertEqual(reused["code"], bundle["code"])
+        cancelled = PackingBundle.objects.get(pk=bundle["id"])
+        self.assertEqual(cancelled.status, "CANCELLED")
+        self.assertIsNone(cancelled.number)
+
+    def test_an_empty_bundle_is_deleted_rather_than_kept_as_a_record(self):
         bundle = self.open_bundle()
         self.auth(self.admin)
 
@@ -1391,6 +1428,29 @@ class PackingBundleTests(OrderTestBase):
 
         self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
         self.assertEqual(resp.data["bundle"]["status"], "CANCELLED")
+        self.assertIsNone(resp.data["bundle"]["number"])
+        self.assertTrue(resp.data["deleted"])
+        self.assertFalse(PackingBundle.objects.filter(pk=bundle["id"]).exists())
+
+    def test_an_empty_bundle_is_deleted_after_its_last_roll_is_removed(self):
+        bundle = self.open_bundle()
+        _, scanned = self.scan(self.rolls[0], bundle)
+        entry_id = scanned.data["bundle"]["rolls"][0]["id"]
+        self.auth(self.admin)
+        removed = self.client.post(
+            self.remove_url(bundle, entry_id), {}, format="json"
+        )
+        self.assertEqual(removed.status_code, status.HTTP_200_OK, removed.data)
+
+        resp = self.client.post(
+            f"/api/orders/{self.order.pk}/bundles/{bundle['id']}/cancel/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(resp.status_code, status.HTTP_200_OK, resp.data)
+        self.assertTrue(resp.data["deleted"])
+        self.assertFalse(PackingBundle.objects.filter(pk=bundle["id"]).exists())
 
     # -- sealing -----------------------------------------------------------
 
@@ -1577,11 +1637,15 @@ class PackingBundleTests(OrderTestBase):
             format="json",
         )
 
-        rows = {row.number: row for row in PackingBundle.objects.all()}
-        # The cancelled box gave its roll back; the sealed one did not.
-        self.assertEqual(rows[1].status, "SEALED")
-        self.assertEqual(rows[2].status, "CANCELLED")
-        self.assertEqual(rows[1].roll_allocations.count(), 1)
+        sealed = PackingBundle.objects.get(pk=first["id"])
+        cancelled = PackingBundle.objects.get(pk=second["id"])
+        # The cancelled box gave its roll back and its number; the sealed one did
+        # neither.
+        self.assertEqual(sealed.status, "SEALED")
+        self.assertEqual(sealed.number, first["number"])
+        self.assertEqual(cancelled.status, "CANCELLED")
+        self.assertIsNone(cancelled.number)
+        self.assertEqual(sealed.roll_allocations.count(), 1)
 
     def test_sealing_does_not_by_itself_change_the_orders_packing_status(self):
         # An open bundle is just a container. What decides PACKED is still whether

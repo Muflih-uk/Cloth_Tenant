@@ -92,7 +92,7 @@ export default function CustomerDetailPage() {
           name: customerData.name,
           address: customerData.address,
           contact: customerData.contact,
-          agent: customerData.agent.toString(),
+          agent: customerData.agent?.toString() ?? "",
           gst: customerData.gst,
         });
         setAgents(
@@ -142,7 +142,7 @@ export default function CustomerDetailPage() {
         name: formData.name,
         address: formData.address,
         contact: formData.contact,
-        agent: parseInt(formData.agent),
+        agent: formData.agent ? parseInt(formData.agent, 10) : null,
         gst: formData.gst,
       };
       await customerApi.update(numericId, payload);
@@ -192,7 +192,7 @@ export default function CustomerDetailPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto min-h-screen w-full max-w-2xl space-y-3 px-2 pb-32 pt-4">
+      <div className="mx-auto min-h-screen w-full max-w-2xl lg:max-w-7xl lg:px-6 space-y-3 px-2 pb-32 pt-4">
         <SkeletonCard />
         <SkeletonCard />
       </div>
@@ -201,7 +201,7 @@ export default function CustomerDetailPage() {
 
   if (!customer) {
     return (
-      <div className="mx-auto min-h-screen w-full max-w-2xl px-2 pb-32 pt-4">
+      <div className="mx-auto min-h-screen w-full max-w-2xl lg:max-w-7xl lg:px-6 px-2 pb-32 pt-4">
         <EmptyState
           title="Customer not found"
           description="This customer may have been deleted or is no longer available."
@@ -216,7 +216,7 @@ export default function CustomerDetailPage() {
   }
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-2xl px-2 pb-32 pt-2">
+    <div className="mx-auto min-h-screen w-full max-w-2xl lg:max-w-7xl lg:px-6 px-2 pb-32 pt-2">
       <DeleteWithTransferDialog
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
@@ -313,12 +313,19 @@ export default function CustomerDetailPage() {
               />
             </FormField>
 
-            <FormField label="Assigned agent" htmlFor="customer-edit-agent">
+            <FormField
+              label="Assigned agent (optional)"
+              htmlFor="customer-edit-agent"
+            >
               <StockFlowSelect
                 value={formData.agent}
                 onChange={(value) => handleChange("agent", value)}
-                options={agents}
+                options={[
+                  { value: "", label: "No agent assigned" },
+                  ...agents,
+                ]}
                 disabled={saving}
+                placeholder="No agent assigned"
               />
             </FormField>
 
@@ -382,7 +389,8 @@ export default function CustomerDetailPage() {
         </Card>
       ) : (
         <>
-          <Card title="Contact details" className="mb-4">
+          <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-4">
+          <Card title="Contact details" className="mb-4 lg:mb-0">
             <DetailList>
               <DetailRow label="Contact">
                 {customer.contact ? (
@@ -443,14 +451,17 @@ export default function CustomerDetailPage() {
             )}
           </Card>
 
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            totalCount={totalOrders}
-            pageSize={pageSize}
-            onPageChange={handlePageChange}
-            onPageSizeChange={handlePageSizeChange}
-          />
+          <div className="lg:col-span-2">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalCount={totalOrders}
+              pageSize={pageSize}
+              onPageChange={handlePageChange}
+              onPageSizeChange={handlePageSizeChange}
+            />
+          </div>
+          </div>
         </>
       )}
     </div>

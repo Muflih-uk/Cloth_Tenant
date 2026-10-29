@@ -140,7 +140,7 @@ const AgentsList: React.FC = () => {
           description="Try a different name, username, or email."
         />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0">
           {filteredData.map((item) => {
             const name = item.user.display_name || item.user.username;
             const contact = item.contact?.replace(/\s+/g, "") ?? "";

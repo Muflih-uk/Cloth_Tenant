@@ -144,7 +144,8 @@ function BundleLineList({
  * Bundles: the boxes of cloth that actually leave the warehouse.
  *
  * Packing starts with the roll: the packer picks it up, scans the label, then says
- * how many metres to cut. There is no typed-metres shortcut that skips the roll.
+ * The server chooses the ordered quantity from each scanned roll, so the packer
+ * only confirms the roll details. There is no typed-metres shortcut that skips it.
  * That scan belongs to a *bundle* rather than to a single order line, because a box
  * can carry rolls of several colours against one order, and because a mistake has
  * to be undoable one roll at a time: take back the wrong roll, leave the rest of
@@ -182,12 +183,11 @@ export default function PackingBundlePanel({
   const [bundleLoadError, setBundleLoadError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
-  // The roll the server has checked, waiting for the packer to confirm the cut.
+  // The roll the server has checked, waiting for the packer to confirm adding it.
   // Holding the token here (rather than sending the roll id again) is what makes
-  // the cut follow the scanned label even if the roll list changes meanwhile.
+  // the confirmation follow the scanned label even if the roll list changes meanwhile.
   const [pendingScan, setPendingScan] =
     useState<ResolveRollScanResponse | null>(null);
-  const [scanMetres, setScanMetres] = useState("");
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [slipMessage, setSlipMessage] = useState<string | null>(null);
   // Which boxes the admin has opened, by bundle id. Held per bundle rather than
@@ -241,6 +241,16 @@ export default function PackingBundlePanel({
   // Metres can also be packed by typing a figure, and that path writes no bundle.
   // Those lines are collected here so they are still shown somewhere.
   const packedByHand = packedOutsideBundleLines(items ?? [], coverage);
+  // A bundle is only worth opening while a roll-tracked line still has metres to
+  // pack. The parent reloads `items` after every stock move, so this flips back on
+  // by itself when a line is reopened.
+  const hasOutstandingRollTrackedLine = (items ?? []).some((line) => {
+    if (!line.is_roll_tracked) return false;
+    const outstanding =
+      toMeters(line.ordered_quantity) - toMeters(line.allocated_quantity);
+    return outstanding > 0;
+  });
+  const openBundleIsEmpty = openBundle !== null && openBundle.rolls.length === 0;
 
   const replaceBundle = (next: PackingBundle) =>
     setBundles((prev) =>
@@ -319,13 +329,13 @@ export default function PackingBundlePanel({
   };
 
   /**
-   * Check the scanned label, then ask how many metres to cut.
+   * Check the scanned label, then ask the packer to confirm adding the roll.
    *
    * Resolving moves no cloth. A label from another warehouse, a spent roll, a
    * colour this order never asked for or a sealed bundle all fail here, so the
    * packer sees the reason before typing a figure. On success the camera closes
-   * and the cut prompt opens on the shorter of "what is left" and "what the line
-   * still needs".
+   * and the confirmation uses the shorter of "what is left" and "what the line
+   * still needs", as selected by the server.
    */
   const handleScan = async (raw: string) => {
     const roll = parseRollScan(raw);
@@ -350,7 +360,6 @@ export default function PackingBundlePanel({
         String(roll),
       );
       setPendingScan(result);
-      setScanMetres(result.suggested_meters);
       setScanOpen(false);
     } catch (err) {
       // The scanner stays open on a refusal: the packer most likely just grabbed
@@ -361,23 +370,9 @@ export default function PackingBundlePanel({
     }
   };
 
-  /** Cut the confirmed metres from the roll the server resolved. */
+  /** Add the confirmed roll to the bundle using the server-selected quantity. */
   const handleConfirmScan = async () => {
     if (!openBundle || !pendingScan) return;
-    const metres = Number(scanMetres);
-    if (!Number.isFinite(metres) || metres <= 0) {
-      toastError("Enter the cut", "The metres to cut must be greater than zero.");
-      return;
-    }
-    if (metres > Number(pendingScan.remaining_meters)) {
-      toastError(
-        "Not enough cloth on the roll",
-        `${pendingScan.roll_number} has ${formatMeters(
-          Number(pendingScan.remaining_meters),
-        )} m left.`,
-      );
-      return;
-    }
 
     setBusy(true);
     try {
@@ -385,7 +380,7 @@ export default function PackingBundlePanel({
         orderId,
         openBundle.id,
         pendingScan.token,
-        scanMetres,
+        pendingScan.suggested_meters,
       );
       replaceBundle(result.bundle);
       onChanged();
@@ -399,12 +394,10 @@ export default function PackingBundlePanel({
         } · ${formatMeters(Number(result.remaining_meters))} m left on the roll`,
       );
       setPendingScan(null);
-      setScanMetres("");
       // A box is filled by a run of rolls, so go straight back to the camera.
       setScanOpen(true);
     } catch (err) {
-      // Keep the prompt open: the packer can lower the figure, and the server is
-      // the one that decides whether the roll still has enough.
+      // Keep the confirmation open so the packer can retry the same scanned roll.
       toastErrorFromError(err);
     } finally {
       setBusy(false);
@@ -413,7 +406,6 @@ export default function PackingBundlePanel({
 
   const handleCancelPendingScan = () => {
     setPendingScan(null);
-    setScanMetres("");
     setScanOpen(true);
   };
 
@@ -442,7 +434,13 @@ export default function PackingBundlePanel({
     setBusy(true);
     try {
       const result = await packingApi.cancelBundle(orderId, openBundle.id);
-      replaceBundle(result.bundle);
+      if (result.deleted) {
+        setBundles((prev) =>
+          prev.filter((bundle) => bundle.id !== openBundle.id),
+        );
+      } else {
+        replaceBundle(result.bundle);
+      }
       setConfirmCancel(false);
       setScanOpen(false);
       setPendingScan(null);
@@ -565,7 +563,7 @@ export default function PackingBundlePanel({
   };
 
   return (
-    <section className="mb-4 rounded-card border border-status-pending/30 bg-status-pending/5 px-3 py-4 sm:p-4">
+    <section className="mb-4 rounded-card border border-status-pending/30 bg-status-pending/5 px-3 py-4 sm:p-4 lg:mb-0">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="flex items-center gap-1.5 text-sm font-extrabold text-[color:var(--status-pending-text)]">
@@ -585,7 +583,7 @@ export default function PackingBundlePanel({
           </p>
         </div>
 
-        {enabled && !openBundle && (
+        {enabled && !openBundle && hasOutstandingRollTrackedLine && (
           <button
             type="button"
             onClick={handleCreate}
@@ -691,7 +689,7 @@ export default function PackingBundlePanel({
               Complete bundle &amp; print slip
             </button>
 
-            {confirmCancel ? (
+            {confirmCancel && !openBundleIsEmpty ? (
               <span className="flex items-center gap-2">
                 <button
                   type="button"
@@ -714,8 +712,17 @@ export default function PackingBundlePanel({
             ) : (
               <button
                 type="button"
-                onClick={() => setConfirmCancel(true)}
+                onClick={() =>
+                  openBundleIsEmpty
+                    ? void handleCancel()
+                    : setConfirmCancel(true)
+                }
                 disabled={busy}
+                title={
+                  openBundleIsEmpty
+                    ? "Discard this empty bundle. Nothing has been packed into it yet."
+                    : undefined
+                }
                 className="app-focus flex h-11 min-h-11 items-center gap-1.5 rounded-control border border-app-line px-2.5 text-[11px] font-bold text-app-muted transition-colors hover:bg-app-soft disabled:opacity-50"
               >
                 <PackageX size={13} />
@@ -724,10 +731,11 @@ export default function PackingBundlePanel({
             )}
           </div>
 
-          {confirmCancel && (
+          {confirmCancel && !openBundleIsEmpty && (
             <p className="mt-2 text-[11px] font-medium text-brand-red">
               Cancelling puts every roll in this bundle back on the shelf and takes
-              the metres off the order. The bundle is kept as a record.
+              the metres off the order. The bundle is kept as a record, without a
+              bundle number.
             </p>
           )}
         </div>
@@ -896,7 +904,7 @@ export default function PackingBundlePanel({
           className="fixed inset-0 z-50 flex items-center justify-center bg-brand-navy/35 backdrop-blur-sm p-4"
           role="dialog"
           aria-modal="true"
-          aria-label={`Enter cut for ${pendingScan.roll_number}`}
+          aria-label={`Confirm roll ${pendingScan.roll_number}`}
         >
           <form
             onSubmit={(event) => {
@@ -911,36 +919,32 @@ export default function PackingBundlePanel({
               </div>
               <div className="min-w-0">
                 <h3 className="text-lg font-bold text-app-ink">
-                  Metres to cut
+                  Add roll to bundle?
                 </h3>
                 <p className="mt-0.5 text-sm font-semibold text-app-ink">
                   {pendingScan.roll_number} · {pendingScan.fabric}
                   {pendingScan.colour ? ` · ${pendingScan.colour}` : ""}
                 </p>
                 <p className="mt-0.5 text-[11px] text-app-muted">
-                  {formatMeters(Number(pendingScan.remaining_meters))} m left on
-                  this roll · going into {openBundle.code}
+                  Going into {openBundle.code}
                 </p>
               </div>
             </div>
 
-            <label className="mt-5 block text-xs font-bold text-app-ink">
-              Metres to cut from this roll
-              <input
-                autoFocus
-                inputMode="decimal"
-                type="number"
-                min="0.001"
-                step="0.001"
-                max={pendingScan.remaining_meters}
-                value={scanMetres}
-                onChange={(event) => setScanMetres(event.target.value)}
-                className="app-focus mt-1 h-12 w-full rounded-control border border-app-line bg-app-card px-3 text-base font-bold text-app-ink outline-none transition-colors focus:border-brand-navy"
-              />
-            </label>
-            <p className="mt-1 text-[11px] text-app-muted">
-              The figure is checked against the roll again when you confirm.
-            </p>
+            <dl className="mt-5 grid grid-cols-2 gap-3 rounded-control bg-app-soft p-3 text-sm">
+              <div>
+                <dt className="text-xs font-medium text-app-muted">Roll length</dt>
+                <dd className="mt-1 font-bold text-app-ink">
+                  {formatMeters(Number(pendingScan.remaining_meters))} m available
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium text-app-muted">Will add</dt>
+                <dd className="mt-1 font-bold text-app-ink">
+                  {formatMeters(Number(pendingScan.suggested_meters))} m
+                </dd>
+              </div>
+            </dl>
 
             <div className="mt-5 flex justify-end gap-2">
               <button
@@ -957,7 +961,7 @@ export default function PackingBundlePanel({
                 className="app-focus flex h-11 min-h-11 items-center gap-1.5 rounded-control bg-brand-navy px-4 text-sm font-bold text-white transition-colors hover:bg-brand-navy/90 disabled:opacity-50"
               >
                 <Box size={14} />
-                {busy ? "Packing..." : "Cut and pack"}
+                {busy ? "Adding..." : "Add roll"}
               </button>
             </div>
           </form>

@@ -186,7 +186,7 @@ export default function AgentOrderList({
   if (loadError) return null;
 
   return (
-    <div className="mx-auto min-h-screen max-w-4xl bg-app-bg px-4 pb-24">
+    <div className="mx-auto min-h-screen max-w-4xl bg-app-bg px-4 pb-24 lg:max-w-7xl lg:px-6">
       <OrderListHeader
         title="Remaining Orders"
         count={order_len}
@@ -267,24 +267,26 @@ export default function AgentOrderList({
         />
       ) : (
         <div className="space-y-3 pb-32">
-          {filteredData.map((order) => (
-            <OrderCard
-              key={order.id}
-              order={order}
-              onClick={() => {
-                if (order.status == "DRAFT") {
-                  // The wizard resolves which order to edit from localStorage,
-                  // not from the route -- the route only carries the customer.
-                  // Point it at this draft so reopening the card cannot land on
-                  // whatever order a previous session left behind.
-                  localStorage.setItem("orderKey", String(order.id));
-                  router.push(`/agent/order/new/${order.customer_details.id}`);
-                } else {
-                  router.push(`/agent/order/status/${order.id}`);
-                }
-              }}
-            />
-          ))}
+          <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
+            {filteredData.map((order) => (
+              <OrderCard
+                key={order.id}
+                order={order}
+                onClick={() => {
+                  if (order.status == "DRAFT") {
+                    // The wizard resolves which order to edit from localStorage,
+                    // not from the route -- the route only carries the customer.
+                    // Point it at this draft so reopening the card cannot land on
+                    // whatever order a previous session left behind.
+                    localStorage.setItem("orderKey", String(order.id));
+                    router.push(`/agent/order/new/${order.customer_details.id}`);
+                  } else {
+                    router.push(`/agent/order/status/${order.id}`);
+                  }
+                }}
+              />
+            ))}
+          </div>
         </div>
       )}
 

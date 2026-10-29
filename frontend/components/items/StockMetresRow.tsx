@@ -8,6 +8,8 @@ interface StockMetresRowProps {
   availableMeters?: string | null;
   isRollTracked?: boolean;
   untrackedStockMeters?: string | null;
+  /** Admin inventory shows the two figures as equal desktop stat blocks. */
+  desktopLayout?: boolean;
 }
 
 /**
@@ -22,6 +24,7 @@ export default function StockMetresRow({
   availableMeters,
   isRollTracked = false,
   untrackedStockMeters,
+  desktopLayout = false,
 }: StockMetresRowProps) {
   const available =
     availableMeters === undefined || availableMeters === null
@@ -32,31 +35,72 @@ export default function StockMetresRow({
   return (
     <div
       className={`min-w-[88px] flex-shrink-0 rounded-control border px-3 py-2 ${
+        desktopLayout
+          ? "lg:grid lg:w-full lg:min-w-0 lg:grid-cols-2 lg:gap-2 lg:border-0 lg:bg-transparent lg:p-0"
+          : ""
+      } ${
         available < 0
           ? "border-brand-red/20 bg-brand-red/5"
           : "border-app-line/60 bg-app-soft/70"
       }`}
     >
-      <span className="block text-[10px] font-bold uppercase tracking-wider text-app-muted">
-        Available to order
-      </span>
-      <span
-        className={`block text-sm font-extrabold ${
-          isNonPositive ? "text-brand-red" : "text-app-ink"
-        }`}
+      <div
+        className={
+          desktopLayout
+            ? `lg:rounded-control lg:px-3 lg:py-3 ${
+                available < 0 ? "lg:bg-brand-red/5" : "lg:bg-app-soft"
+              }`
+            : ""
+        }
       >
-        {formatMeters(available)} m
-      </span>
-      <span className="block text-[10px] text-app-muted">
-        {isRollTracked ? "On rolls" : "Physical stock"}:{" "}
-        {formatMeters(toMeters(stockMeters))} m
-      </span>
-      {toMeters(untrackedStockMeters ?? "0") > 0 && (
-        <span className="block text-[10px] text-[color:var(--status-pending-text)]">
-          Untracked physical (not packable):{" "}
-          {formatMeters(toMeters(untrackedStockMeters ?? "0"))} m
+        <span className="block text-[10px] font-bold uppercase tracking-wider text-app-muted">
+          Available to order
         </span>
-      )}
+        <span
+          className={`block text-sm font-extrabold ${
+            isNonPositive ? "text-brand-red" : "text-app-ink"
+          }`}
+        >
+          {formatMeters(available)} m
+        </span>
+      </div>
+      <div
+        className={
+          desktopLayout
+            ? "lg:rounded-control lg:bg-app-soft lg:px-3 lg:py-3"
+            : ""
+        }
+      >
+        <span
+          className={`text-[10px] text-app-muted ${
+            desktopLayout
+              ? "lg:block lg:font-bold lg:uppercase lg:tracking-wider"
+              : ""
+          }`}
+        >
+          {isRollTracked ? "On rolls" : "Physical stock"}
+        </span>
+        <span
+          className={`text-[10px] text-app-muted ${
+            desktopLayout
+              ? "lg:block lg:text-sm lg:font-extrabold lg:text-app-ink"
+              : ""
+          }`}
+        >
+          <span className={desktopLayout ? "lg:hidden" : ""}>: </span>
+          {formatMeters(toMeters(stockMeters))} m
+        </span>
+        {toMeters(untrackedStockMeters ?? "0") > 0 && (
+          <span
+            className={`block text-[10px] text-[color:var(--status-pending-text)] ${
+              desktopLayout ? "lg:mt-1" : ""
+            }`}
+          >
+            Untracked physical (not packable):{" "}
+            {formatMeters(toMeters(untrackedStockMeters ?? "0"))} m
+          </span>
+        )}
+      </div>
     </div>
   );
 }

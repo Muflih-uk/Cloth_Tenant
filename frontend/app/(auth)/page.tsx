@@ -48,7 +48,7 @@ const ERROR_MESSAGES: Record<
   },
 };
 
-function classifyError(err: any): NonNullable<ErrorType> {
+function classifyError(err: unknown): NonNullable<ErrorType> {
   const error = err as {
     response?: { status?: number; data?: { error?: string } };
     code?: string;
@@ -110,7 +110,7 @@ export default function Login() {
       const res = await authApi.login({ email, password });
       login(res);
       router.replace(res.role === "ADMIN" ? "/admin" : "/agent");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setErrorType(classifyError(err));
       triggerShake();
     } finally {

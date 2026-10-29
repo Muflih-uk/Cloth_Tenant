@@ -614,17 +614,20 @@ class OrderViewSet(ModelViewSet):
 
         if user.role == "ADMIN":
             agent_id = self.request.data.get("agent")
-            if not agent_id:
-                raise ValidationError(
-                    {"agent": "An agent is required when an admin creates an order."}
-                )
-            agent = Agent.objects.filter(id=agent_id).select_related("user").first()
-            if agent is None:
-                raise ValidationError({"agent": "The selected agent does not exist."})
-            if not agent.is_active or not agent.user.is_active:
-                raise ValidationError(
-                    {"agent": "The selected agent is inactive and cannot be assigned orders."}
-                )
+            agent = None
+            if agent_id:
+                agent = Agent.objects.filter(id=agent_id).select_related("user").first()
+                if agent is None:
+                    raise ValidationError({"agent": "The selected agent does not exist."})
+                if not agent.is_active or not agent.user.is_active:
+                    raise ValidationError(
+                        {"agent": "The selected agent is inactive and cannot be assigned orders."}
+                    )
+            else:
+                # Admin-created customers may be unassigned. Preserve the
+                # customer's agent when there is one, otherwise keep the order
+                # directly under the admin.
+                agent = serializer.validated_data["customer"].agent
             serializer.save(agent=agent, created_by=user)
             return
 

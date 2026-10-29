@@ -163,7 +163,7 @@ export default function BrandDetailPage() {
         );
 
     return (
-        <div className="w-full px-0 py-4 flex flex-col min-h-screen bg-white sm:px-4 sm:py-8">
+        <div className="w-full px-0 py-4 flex flex-col min-h-screen bg-white sm:px-4 sm:py-8 lg:mx-auto lg:max-w-3xl">
             <DeleteWithTransferDialog
                 open={deleteDialogOpen}
                 onClose={() => setDeleteDialogOpen(false)}

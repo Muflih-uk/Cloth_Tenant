@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import StockBadge from "@/components/items/StockBadge";
 import StockMetresRow from "@/components/items/StockMetresRow";
 
@@ -52,7 +52,9 @@ describe("stock figures", () => {
 
       expect(screen.getByText("Available to order")).toBeTruthy();
       expect(screen.getByText("40 m")).toBeTruthy();
-      expect(screen.getByText("Physical stock: 100 m")).toBeTruthy();
+      const physical = screen.getByText("Physical stock").parentElement;
+      expect(physical).not.toBeNull();
+      expect(within(physical as HTMLElement).getByText("100 m")).toBeTruthy();
     });
 
     it("marks an oversold colour as an error", () => {
@@ -64,7 +66,9 @@ describe("stock figures", () => {
     it("falls back to the physical figure when the server sends no availability", () => {
       render(<StockMetresRow stockMeters="100.000" />);
 
-      expect(screen.getByText("100 m")).toBeTruthy();
+      const physical = screen.getByText("Physical stock").parentElement;
+      expect(physical).not.toBeNull();
+      expect(within(physical as HTMLElement).getByText("100 m")).toBeTruthy();
     });
 
     it("keeps showing the physical figure while the colour is out of stock", () => {
@@ -75,7 +79,10 @@ describe("stock figures", () => {
         />,
       );
 
-      expect(screen.getByText("Physical stock: 0 m")).toBeTruthy();
+      expect(screen.getByText("Physical stock")).toBeTruthy();
+      const physical = screen.getByText("Physical stock").parentElement;
+      expect(physical).not.toBeNull();
+      expect(within(physical as HTMLElement).getByText("0 m")).toBeTruthy();
     });
   });
 });

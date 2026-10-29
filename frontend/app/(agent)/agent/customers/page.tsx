@@ -3,7 +3,7 @@
 import { useAuth } from "@/context/AuthContext";
 import { Info, ArrowLeft, Plus, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CustomerAllResponse } from "@/types/customer";
 import { customerApi } from "@/lib/api/customer";
 import { PaginatedResponse } from "@/types/global";
@@ -23,9 +23,14 @@ export default function AgentCustomersPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const router = useRouter();
+  const lastSearchRef = useRef(search);
 
   useEffect(() => {
     const timer = setTimeout(() => {
+      if (lastSearchRef.current !== search) {
+        lastSearchRef.current = search;
+        setLoading(true);
+      }
       setDebouncedSearch(search);
       setCurrentPage(1);
     }, 400);
@@ -34,7 +39,8 @@ export default function AgentCustomersPage() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    setLoading(true);
+
+    let cancelled = false;
     const fetchData = async () => {
       try {
         const response: PaginatedResponse<CustomerAllResponse[number]> =
@@ -43,24 +49,31 @@ export default function AgentCustomersPage() {
             page_size: pageSize,
             search: debouncedSearch,
           });
+        if (cancelled) return;
         setData(response.results);
         setTotalCount(response.count);
         setTotalPages(Math.ceil(response.count / pageSize));
       } catch (error) {
         console.error("Error fetching customers:", error);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
-    fetchData();
+
+    void fetchData();
+    return () => {
+      cancelled = true;
+    };
   }, [isAuthenticated, currentPage, pageSize, debouncedSearch]);
 
   const handlePageChange = (page: number) => {
+    setLoading(true);
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handlePageSizeChange = (size: number) => {
+    setLoading(true);
     setPageSize(size);
     setCurrentPage(1);
   };
@@ -68,7 +81,7 @@ export default function AgentCustomersPage() {
   return (
     <div className="min-h-screen bg-gray-50/50 pb-20">
       {/* Header */}
-      <div className="flex justify-between mx-auto items-center bg-white border-b border-gray-100 sticky top-0 z-10 pb-2">
+      <div className="flex justify-between mx-auto items-center bg-white border-b border-gray-100 sticky top-0 z-10 pb-2 lg:max-w-7xl lg:px-6">
         <div className="flex justify-start items-center gap-4">
           <button
             onClick={() => router.push("/agent/profile")}
@@ -92,7 +105,7 @@ export default function AgentCustomersPage() {
         </div>
       </div>
 
-      <div className="mx-auto pt-3 sm:pt-6">
+      <div className="mx-auto pt-3 sm:pt-6 lg:max-w-7xl lg:px-6">
         <div className="relative mb-4">
           <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-400">
             <Search size={18} />
@@ -124,8 +137,8 @@ export default function AgentCustomersPage() {
             </div>
           </div>
         ) : (
-          <div className="space-y-2 pb-10 sm:space-y-3">
-            <div className="flex justify-end">
+          <div className="space-y-2 pb-10 sm:space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
+            <div className="flex justify-end lg:col-span-2">
               <StockFlowButton
                 text="Add Customer"
                 variant="filled"

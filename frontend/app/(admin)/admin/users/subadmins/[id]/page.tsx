@@ -154,7 +154,7 @@ export default function SubAdminDetailPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto min-h-screen w-full max-w-2xl space-y-3 px-2 pb-32 pt-4">
+      <div className="mx-auto min-h-screen w-full max-w-2xl lg:max-w-7xl lg:px-6 space-y-3 px-2 pb-32 pt-4">
         <SkeletonCard />
         <SkeletonCard />
       </div>
@@ -163,7 +163,7 @@ export default function SubAdminDetailPage() {
 
   if (!account) {
     return (
-      <div className="mx-auto min-h-screen w-full max-w-2xl px-2 pb-32 pt-4">
+      <div className="mx-auto min-h-screen w-full max-w-2xl lg:max-w-7xl lg:px-6 px-2 pb-32 pt-4">
         <EmptyState
           title="Sub admin not found"
           description="This account may have been removed or deactivated."
@@ -178,7 +178,7 @@ export default function SubAdminDetailPage() {
   }
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-2xl px-2 pb-32 pt-2">
+    <div className="mx-auto min-h-screen w-full max-w-2xl lg:max-w-7xl lg:px-6 px-2 pb-32 pt-2">
       {deactivateOpen && (
         <Modal
           icon={<UserX className="size-5 text-brand-red" aria-hidden="true" />}

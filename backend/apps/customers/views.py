@@ -137,14 +137,7 @@ def bulk_import_customers(request):
             gst = str(row.get("gst", "")).strip()
             transport_name = str(row.get("transport", "")).strip()
 
-            missing = [
-                f
-                for f, v in [
-                    ("name", name),
-                    ("agent", agent_username),
-                ]
-                if not v
-            ]
+            missing = [f for f, v in [("name", name)] if not v]
             if missing:
                 errors.append(
                     {"row": i, "name": name, "error": f"Missing: {', '.join(missing)}"}
@@ -161,19 +154,21 @@ def bulk_import_customers(request):
                 )
                 continue
 
-            try:
-                agent = Agent.objects.select_related("user").get(
-                    user__username=agent_username
-                )
-            except Agent.DoesNotExist:
-                errors.append(
-                    {
-                        "row": i,
-                        "name": name,
-                        "error": f"Agent '{agent_username}' not found.",
-                    }
-                )
-                continue
+            agent = None
+            if agent_username:
+                try:
+                    agent = Agent.objects.select_related("user").get(
+                        user__username=agent_username
+                    )
+                except Agent.DoesNotExist:
+                    errors.append(
+                        {
+                            "row": i,
+                            "name": name,
+                            "error": f"Agent '{agent_username}' not found.",
+                        }
+                    )
+                    continue
 
             transport = None
             if transport_name:

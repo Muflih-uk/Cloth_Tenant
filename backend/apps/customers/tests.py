@@ -197,3 +197,31 @@ class CustomerCreateNotifyTests(TestCase):
 
         self.assertFalse(web.apply_async.called)
         self.assertFalse(fcm.apply_async.called)
+
+    def test_admin_can_create_customer_without_agent(self):
+        self.client.credentials(**get_auth_header(self.admin_user))
+        response = self.client.post(
+            LIST_URL,
+            {"name": "Unassigned Shop", "contact": "9999999999"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(response.data["agent"])
+        self.assertIsNone(Customer.objects.get(name="Unassigned Shop").agent)
+
+    def test_admin_can_assign_agent_to_unassigned_customer(self):
+        customer = Customer.objects.create(
+            name="Needs Agent Shop", contact="9999999998", agent=None
+        )
+        self.client.credentials(**get_auth_header(self.admin_user))
+        response = self.client.patch(
+            f"{LIST_URL}{customer.id}/",
+            {"agent": self.agent.id},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["agent"], self.agent.id)
+        customer.refresh_from_db()
+        self.assertEqual(customer.agent_id, self.agent.id)

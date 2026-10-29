@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { fabricApi } from "@/lib/api/item";
@@ -43,43 +43,46 @@ const ListItems: React.FC<ListItemsProps> = ({ initialTab }) => {
   const [outstanding, setOutstanding] = useState<OutstandingDemandRow[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [stockResult, demandResult] = await Promise.all([
-        fabricApi.getStockList(),
-        fabricApi.getOutstandingDemand(),
-      ]);
-      setData(stockResult.map(normalizeAdminItem));
-      setOutstanding(demandResult);
-    } catch (e) {
-      console.error("Error fetching fabrics:", e);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    fetchData();
+    let cancelled = false;
+    const fetchData = async () => {
+      try {
+        const [stockResult, demandResult] = await Promise.all([
+          fabricApi.getStockList(),
+          fabricApi.getOutstandingDemand(),
+        ]);
+        if (cancelled) return;
+        setData(stockResult.map(normalizeAdminItem));
+        setOutstanding(demandResult);
+      } catch (e) {
+        console.error("Error fetching fabrics:", e);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void fetchData();
 
     const handleFocus = () => {
       // Coming back to the tab means something may have been received or packed on
       // another device, so any colour's rolls held in memory are dropped rather
       // than trusted for the rest of their lifetime.
       invalidateRolls();
-      fetchData();
+      void fetchData();
     };
 
     window.addEventListener("focus", handleFocus);
 
-    const interval = setInterval(fetchData, 30000);
+    const interval = setInterval(() => void fetchData(), 30000);
 
     return () => {
+      cancelled = true;
       window.removeEventListener("focus", handleFocus);
       clearInterval(interval);
     };
-  }, [isAuthenticated, fetchData, createdToken]);
+  }, [isAuthenticated, createdToken]);
 
   const handleEdit = (id: number) => {
     router.push(`/admin/items/edit/${id}`);

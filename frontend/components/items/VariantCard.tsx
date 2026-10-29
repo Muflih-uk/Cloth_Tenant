@@ -40,31 +40,35 @@ export default function VariantCard({
   return (
     <div
       className={`rounded-control border p-2.5 sm:p-3 ${
+        context === "admin" ? "lg:relative" : ""
+      } ${
         isOutOfStock && !isReadonly
           ? "border-brand-red/20 bg-brand-red/5"
           : "border-app-line bg-app-card"
       }`}
     >
-      <button
-        type="button"
-        onClick={() => setShowRolls((value) => !value)}
+      <div
+        className="mb-2 flex items-center gap-2"
         onMouseEnter={() => canShowRolls && primeRolls(variant.id)}
         onFocus={() => canShowRolls && primeRolls(variant.id)}
-        disabled={!canShowRolls}
-        aria-expanded={canShowRolls ? showRolls : undefined}
-        className={`app-focus w-full rounded-lg text-left ${
-          canShowRolls ? "cursor-pointer" : "cursor-default"
-        }`}
       >
-        <div className="mb-2 flex items-center gap-2">
-          <div className="relative size-9 shrink-0 overflow-hidden rounded-md border border-app-line bg-app-soft">
-            {variant.image ? (
-              <ImagePreview
-                src={variant.image}
-                alt={`Variant ${index + 1}`}
-              />
-            ) : null}
-          </div>
+        <div className="relative size-9 shrink-0 overflow-hidden rounded-md border border-app-line bg-app-soft">
+          {variant.image ? (
+            <ImagePreview
+              src={variant.image}
+              alt={`Variant ${index + 1}`}
+            />
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowRolls((value) => !value)}
+          disabled={!canShowRolls}
+          aria-expanded={canShowRolls ? showRolls : undefined}
+          className={`app-focus flex min-w-0 flex-1 items-center gap-2 rounded-lg text-left ${
+            context === "admin" && qrCode && !isReadonly ? "lg:pr-16" : ""
+          } ${canShowRolls ? "cursor-pointer" : "cursor-default"}`}
+        >
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-semibold text-app-ink">
               {colorLabel}
@@ -87,25 +91,37 @@ export default function VariantCard({
                 aria-hidden="true"
               />
             ))}
-        </div>
-      </button>
+        </button>
+      </div>
 
-      <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+      <div
+        className={`flex gap-1.5 overflow-x-auto pb-1 scrollbar-none ${
+          context === "admin" ? "lg:block lg:overflow-visible lg:pb-0" : ""
+        }`}
+      >
         <StockMetresRow
           stockMeters={variant.stock_meters}
           availableMeters={variant.available_meters}
           isRollTracked={variant.is_roll_tracked}
           untrackedStockMeters={variant.untracked_stock_meters}
+          desktopLayout={context === "admin"}
         />
       </div>
 
-      <div className="mt-2 flex items-center justify-end gap-2">
+      <div
+        className={`mt-2 flex items-center justify-end gap-2 ${
+          context === "admin"
+            ? "lg:absolute lg:right-3 lg:top-3 lg:mt-0"
+            : ""
+        }`}
+      >
         {context === "admin" && qrCode && !isReadonly && (
           <Button
             variant="secondary"
             size="icon"
             onClick={() => onPrintQR?.(qrCode, variant.id)}
             aria-label={`Print QR code for ${colorLabel}`}
+            className="lg:size-10 lg:min-h-10 lg:w-10"
           >
             <QrCode className="size-4" aria-hidden="true" />
           </Button>

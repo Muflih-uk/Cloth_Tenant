@@ -110,22 +110,11 @@ const OrderList: React.FC<Props> = ({
         setData(results);
         setTotalCount(response.count);
         setTotalPages(Math.ceil(response.count / pageSize));
-        onTotalCountChange?.(
-          showUnreadOnly
-            ? getUnreadIds(
-                results
-                  .filter((order) => order.status !== "DISPATCHED")
-                  .map((order) => order.id),
-                viewedIds,
-              ).length
-            : response.count,
-        );
       } catch (fetchError) {
         setData([]);
         setTotalCount(0);
         setTotalPages(1);
         setError(formatApiError(fetchError));
-        onTotalCountChange?.(0);
       } finally {
         setLoading(false);
       }
@@ -134,18 +123,30 @@ const OrderList: React.FC<Props> = ({
     fetchData();
   }, [
     isAuthenticated,
-    router,
     filters,
     search,
-    viewedIds,
     currentPage,
     pageSize,
     refreshKey,
     retryKey,
-    showUnreadOnly,
-    onTotalCountChange,
     status,
   ]);
+
+  // Reading the order list updates `viewedIds`. That is a presentation change,
+  // not a reason to fetch the orders again: recompute the unread total from the
+  // cards already on screen instead of reloading them.
+  useEffect(() => {
+    onTotalCountChange?.(
+      showUnreadOnly
+        ? getUnreadIds(
+            data
+              .filter((order) => order.status !== "DISPATCHED")
+              .map((order) => order.id),
+            viewedIds,
+          ).length
+        : totalCount,
+    );
+  }, [data, totalCount, showUnreadOnly, viewedIds, onTotalCountChange]);
 
   useEffect(() => {
     const saved = sessionStorage.getItem(`admin_${key}_scrollY`);
@@ -234,18 +235,20 @@ const OrderList: React.FC<Props> = ({
 
   return (
     <div className="space-y-3 pb-24">
-      {filtered.map((order) => (
-        <OrderCard
-          key={`${order.id}-${refreshKey}`}
-          order={order}
-          viewed={
-            order.status === "DISPATCHED" ? true : viewedIds.has(order.id)
-          }
-          onClick={() => {
-            router.push(`/admin/order/status/${order.id}`);
-          }}
-        />
-      ))}
+      <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
+        {filtered.map((order) => (
+          <OrderCard
+            key={`${order.id}-${refreshKey}`}
+            order={order}
+            viewed={
+              order.status === "DISPATCHED" ? true : viewedIds.has(order.id)
+            }
+            onClick={() => {
+              router.push(`/admin/order/status/${order.id}`);
+            }}
+          />
+        ))}
+      </div>
 
       <Pagination
         currentPage={currentPage}

@@ -330,7 +330,7 @@ export const packingApi = {
    * The raw label is sent, not a hand-built roll id, so our parser and the
    * server's lookup agree on what a label is. Nothing moves yet: a bad label, a
    * spent roll, a colour this order never asked for and a sealed bundle are all
-   * refused here, before the metres prompt appears.
+   * refused here, before the roll confirmation appears.
    */
   resolveScan(
     orderId: number,
@@ -370,7 +370,7 @@ export const packingApi = {
   },
 
   /**
-   * Cut the confirmed metres from the roll named by a resolve token.
+   * Add the server-selected ordered quantity from the roll named by a resolve token.
    *
    * The browser cannot swap the roll between resolving and cutting: the server
    * holds the roll, order, bundle and admin in the token and re-checks the cut
@@ -430,8 +430,9 @@ export const packingApi = {
   },
 
   /**
-   * Throw an open bundle away, giving back every roll in it in one go. The bundle is
-   * kept as CANCELLED rather than deleted, so the order still shows what was tried.
+   * Throw an open bundle away, giving back every roll in it in one go. A bundle that
+   * held something is kept as CANCELLED without a number, so the order still shows
+   * what was tried while the number can be reused. An empty bundle is deleted.
    */
   cancelBundle(
     orderId: number,

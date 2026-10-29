@@ -301,7 +301,7 @@ def _resolve_target_line(order, roll):
             f"Order #{order.pk} already has all the {wanted.fabric.name} "
             f"({wanted.display_order or 'unlabelled'}) it is waiting for."
         )
-    return None
+    raise _BundleError("This item is not ordered for this order.")
 
 
 SCAN_TOKEN_MINUTES = 10
@@ -352,7 +352,7 @@ def _issue_scan(bundle, order, roll, line, user):
 
 
 def _scan_payload(scan, roll, line):
-    """What the scanner needs to show the metres prompt."""
+    """What the scanner needs to show the roll confirmation."""
     remaining = Decimal(str(roll.remaining_meters))
     outstanding = Decimal(str(line.outstanding_quantity))
     suggested = min(remaining, outstanding) if outstanding > ZERO else remaining
@@ -429,14 +429,23 @@ def create_bundle(request, order_id):
                 "Seal or cancel it before opening another."
             )
 
-        highest = (
+        # Cancelled bundles release their number, so numbering cannot simply be
+        # "highest ever + 1". Start above the highest live bundle and take the first
+        # number no row currently holds. The order lock makes that choice atomic.
+        highest_live = (
             PackingBundle.objects.filter(order=locked_order)
+            .exclude(status="CANCELLED")
             .aggregate(top=Max("number"))
             .get("top")
+            or 0
         )
+        number = highest_live + 1
+        while PackingBundle.objects.filter(order=locked_order, number=number).exists():
+            number += 1
+
         bundle = PackingBundle.objects.create(
             order=locked_order,
-            number=(highest or 0) + 1,
+            number=number,
             status="OPEN",
             created_by=request.user,
         )
@@ -794,8 +803,9 @@ def cancel_bundle(request, order_id, pk):
     Used when a box is abandoned part-built -- wrong customer, wrong order, or
     just abandoned. Every live roll in the bundle is cancelled in turn, which puts
     each one back on the roll it was cut from and drops the affected lines back
-    down, and the bundle itself is left as ``CANCELLED`` rather than deleted so the
-    order's history still shows what was tried.
+    down. A bundle that held something is left as ``CANCELLED`` without a number,
+    so the order's history still shows what was tried while the number is free for
+    the next box. An empty box has no history worth keeping, so it is deleted.
 
     The whole thing is one transaction: either the bundle is empty because every
     roll went back, or nothing changed.
@@ -810,9 +820,11 @@ def cancel_bundle(request, order_id, pk):
     try:
         with transaction.atomic():
             bundle = _locked_open_bundle(order, pk)
+            code = bundle.code
+            entries = list(_bundle_entries(bundle))
 
             rounds = []
-            for entry in _bundle_entries(bundle):
+            for entry in entries:
                 packing_round = entry["allocation"].round
                 if packing_round is not None and packing_round.status == "CONFIRMED":
                     rounds.append(packing_round)
@@ -820,13 +832,32 @@ def cancel_bundle(request, order_id, pk):
                 cancel_round(packing_round, user=request.user)
 
             bundle.status = "CANCELLED"
-            bundle.save(update_fields=["status"])
+            # The number belongs to the box, not the audit trail. Releasing it
+            # here is what lets the next bundle reuse the one just abandoned.
+            bundle.number = None
+            if entries:
+                bundle.save(update_fields=["status", "number"])
+                deleted = False
+            else:
+                snapshot = _serialise_bundle(bundle, order)
+                bundle.delete()
+                deleted = True
     except _BundleError as exc:
         return _reject(str(exc))
     except ValueError as exc:
         return _reject(str(exc))
 
     order.refresh_from_db()
+    if deleted:
+        return Response(
+            {
+                "message": f"Discarded empty {code}.",
+                "order_status": order.status,
+                "bundle": snapshot,
+                "deleted": True,
+            }
+        )
+
     bundle.refresh_from_db()
     # cancel_round already demotes the order per round it reverses; refreshing is
     # all that is left to do, since a cancelled bundle can leave a fully packed
@@ -835,7 +866,7 @@ def cancel_bundle(request, order_id, pk):
     return Response(
         {
             "message": (
-                f"Cancelled {bundle.code} and returned "
+                f"Cancelled {code} and returned "
                 f"{len(rounds)} roll{'s' if len(rounds) != 1 else ''}."
             ),
             "order_status": order.status,

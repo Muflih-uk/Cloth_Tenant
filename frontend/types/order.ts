@@ -348,8 +348,11 @@ export interface PackingBundleRoll {
  */
 export interface PackingBundle {
   id: number;
-  /** 1-based within the order, so an order shows Bundle 1, Bundle 2, ... */
-  number: number;
+  /**
+   * 1-based within the order, so an order shows Bundle 1, Bundle 2, ...
+   * Null once a non-empty cancelled bundle releases its number.
+   */
+  number: number | null;
   /** The human-readable code: "Order #48 -- Bundle 1". */
   code: string;
   status: PackingBundleStatus;
@@ -402,7 +405,10 @@ export interface ScanIntoBundleResponse {
 export interface BundleMutationResponse {
   message: string;
   order_status?: OrderStatus;
+  /** Snapshot of the closed bundle, including when it was deleted. */
   bundle: PackingBundle;
+  /** True when an empty bundle was discarded rather than kept as CANCELLED. */
+  deleted?: boolean;
 }
 
 /**

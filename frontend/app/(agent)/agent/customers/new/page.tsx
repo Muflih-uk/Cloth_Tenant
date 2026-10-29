@@ -105,7 +105,7 @@ export default function NewCustomerPage() {
       await customerApi.create(payload);
       toastSuccess("Customer created successfully");
       router.push("/agent/customers");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error creating customer:", error);
       toastError("Failed to create customer", error);
     } finally {
@@ -114,7 +114,7 @@ export default function NewCustomerPage() {
   };
 
   return (
-    <div className="w-full px-0 py-4 flex flex-col min-h-screen bg-white sm:px-4 sm:py-8">
+    <div className="w-full px-0 py-4 flex flex-col min-h-screen bg-white sm:px-4 sm:py-8 lg:mx-auto lg:max-w-3xl">
       <div className="mb-4 sm:mb-8">
         <h1 className="text-2xl font-black text-gray-900 tracking-tight">
           New Customer

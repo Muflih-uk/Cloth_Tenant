@@ -74,9 +74,9 @@ const COLUMNS: ColumnDef[] = [
   },
   {
     key: "agent",
-    label: "Agent",
-    required: true,
-    placeholder: "agent username",
+    label: "Agent (optional)",
+    required: false,
+    placeholder: "agent username or leave blank",
   },
   {
     key: "gst",

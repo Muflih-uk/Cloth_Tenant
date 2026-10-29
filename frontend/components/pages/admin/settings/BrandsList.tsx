@@ -50,8 +50,8 @@ export default function BrandsList() {
     }
 
     return (
-        <div className="px-0 space-y-2 pb-20 sm:px-4 sm:space-y-3">
-            <div className="flex w-full justify-end px-0 mb-3 sm:px-4 sm:mb-4">
+        <div className="px-0 space-y-2 pb-20 sm:px-4 sm:space-y-3 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0">
+            <div className="flex w-full justify-end px-0 mb-3 sm:px-4 sm:mb-4 lg:col-span-2">
                 <StockFlowButton
                     text="Add Brand"
                     variant="filled"

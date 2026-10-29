@@ -127,38 +127,46 @@ export default function OrderItemsSection({
         </div>
       </div>
 
-      {canPack && orderId !== undefined && (
-        <div className="mb-4">
-          <PackingBundlePanel
-            orderId={orderId}
-            enabled={canEditPacking}
-            items={liveItems}
-            onChanged={handleBundleChanged}
-            onOrderStatusChange={onOrderStatusChange}
-            onBundlesChange={onBundlesChange}
-            transportCompanyId={transportCompanyId}
-            preferredTransportId={preferredTransportId}
-          />
-        </div>
-      )}
-
-      <Card padded={false} className="overflow-hidden">
-        {bundlesVisible && outstandingLines.length === 0 ? (
-          <p className="px-4 py-8 text-center text-xs font-medium text-app-muted">
-            All items packed — see the bundles above.
-          </p>
-        ) : (
-          <OrderItem
-            items={outstandingLines}
-            isDeletable={isDeletable}
-            isEditable={isEditable}
-            orderId={orderId}
-            showPackingProgress
-            onAllocationChange={onItemsChange}
-            onDeleteItem={onItemsChange}
-          />
+      <div
+        className={
+          canPack && orderId !== undefined
+            ? "lg:grid lg:grid-cols-2 lg:items-start lg:gap-5"
+            : ""
+        }
+      >
+        {canPack && orderId !== undefined && (
+          <div className="mb-4 lg:mb-0">
+            <PackingBundlePanel
+              orderId={orderId}
+              enabled={canEditPacking}
+              items={liveItems}
+              onChanged={handleBundleChanged}
+              onOrderStatusChange={onOrderStatusChange}
+              onBundlesChange={onBundlesChange}
+              transportCompanyId={transportCompanyId}
+              preferredTransportId={preferredTransportId}
+            />
+          </div>
         )}
-      </Card>
+
+        <Card padded={false} className="overflow-hidden">
+          {bundlesVisible && outstandingLines.length === 0 ? (
+            <p className="px-4 py-8 text-center text-xs font-medium text-app-muted">
+              All items packed — see the bundles above.
+            </p>
+          ) : (
+            <OrderItem
+              items={outstandingLines}
+              isDeletable={isDeletable}
+              isEditable={isEditable}
+              orderId={orderId}
+              showPackingProgress
+              onAllocationChange={onItemsChange}
+              onDeleteItem={onItemsChange}
+            />
+          )}
+        </Card>
+      </div>
     </>
   );
 }

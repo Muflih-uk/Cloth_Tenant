@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { fabricApi } from "@/lib/api/item";
@@ -82,23 +82,29 @@ const Summary: React.FC = () => {
   const [sortAsc, setSortAsc] = useState(false);
   const [stockFilter, setStockFilter] = useState<StockFilter>("all");
 
-  const fetchData = useCallback(async () => {
-    try {
-      setData(await fabricApi.getStockList());
-    } catch (e) {
-      console.error("Error fetching fabrics:", e);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   React.useEffect(() => {
     if (!isAuthenticated) {
       router.replace("/login");
       return;
     }
-    fetchData();
-  }, [isAuthenticated, router, fetchData]);
+
+    let cancelled = false;
+    const fetchData = async () => {
+      try {
+        const stock = await fabricApi.getStockList();
+        if (!cancelled) setData(stock);
+      } catch (e) {
+        console.error("Error fetching fabrics:", e);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    void fetchData();
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, router]);
 
   const summary = useMemo(() => computeInventorySummary(data), [data]);
 

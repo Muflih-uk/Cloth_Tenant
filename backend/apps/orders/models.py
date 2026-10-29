@@ -355,7 +355,9 @@ class PackingBundle(models.Model):
 
     ``number`` counts from 1 within the order, so an order shows "Bundle 1",
     "Bundle 2" and so on and the human-readable code on the packing slip is
-    ``Order #<id> -- Bundle <number>``.
+    ``Order #<id> -- Bundle <number>``. A cancelled bundle that still has rolls to
+    give back keeps no number: the number is released for the next box, while the
+    cancelled row remains as an audit record.
 
     Sealing is what makes a bundle final. An ``OPEN`` bundle is still being worked
     on and can be scanned into or removed from; ``SEALED`` is immutable, so the
@@ -380,8 +382,9 @@ class PackingBundle(models.Model):
         Order, related_name="packing_bundles", on_delete=models.CASCADE
     )
     #: 1-based sequence within the order. Assigned under a lock on the order so
-    #: two bundles started at once cannot claim the same number.
-    number = models.PositiveIntegerField()
+    #: two bundles started at once cannot claim the same number. Cancelling a
+    #: non-empty bundle clears it, releasing the number for the next box.
+    number = models.PositiveIntegerField(null=True, blank=True)
     status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="OPEN")
     created_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True
@@ -397,16 +400,23 @@ class PackingBundle(models.Model):
         ordering = ["number"]
         constraints = [
             models.UniqueConstraint(
-                fields=["order", "number"], name="packingbundle_unique_number_per_order"
+                fields=["order", "number"],
+                condition=models.Q(number__isnull=False),
+                name="packingbundle_unique_number_per_order",
             )
         ]
 
     def __str__(self):
-        return f"Order #{self.order_id} - Bundle {self.number} ({self.status})"
+        label = (
+            f"Bundle {self.number}" if self.number is not None else "Cancelled bundle"
+        )
+        return f"Order #{self.order_id} - {label} ({self.status})"
 
     @property
     def code(self):
         """The label a human reads out loud and reads on the slip."""
+        if self.number is None:
+            return f"Order #{self.order_id} -- Cancelled bundle"
         return f"Order #{self.order_id} -- Bundle {self.number}"
 
     @property

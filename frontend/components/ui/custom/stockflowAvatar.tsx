@@ -7,9 +7,11 @@ import { useSyncExternalStore } from "react";
 
 import { cn } from "@/lib/utils";
 
+type AvatarTone = "green" | "purple" | "navy" | "soft" | "blue" | "red";
+
 interface StockflowAvatarProps {
   user?: AuthUser | SimpleAgent | SimpleCustomer | AgentUser | Admin | null;
-  tone?: "green" | "purple" | "navy" | "soft";
+  tone?: AvatarTone;
   size?: "sm" | "md" | "lg";
   className?: string;
 }
@@ -27,6 +29,8 @@ const toneClasses = {
   purple: "bg-brand-purple text-white",
   navy: "bg-brand-navy text-white",
   soft: "bg-app-soft text-app-ink",
+  blue: "bg-brand-blue text-white",
+  red: "bg-brand-red text-white",
 };
 
 const sizeClasses = {
@@ -35,9 +39,17 @@ const sizeClasses = {
   lg: "size-14 text-base",
 };
 
+const customerTones: AvatarTone[] = [
+  "green",
+  "purple",
+  "navy",
+  "blue",
+  "red",
+];
+
 const StockflowAvatar: React.FC<StockflowAvatarProps> = ({
   user,
-  tone = "green",
+  tone,
   size = "md",
   className,
 }) => {
@@ -50,6 +62,13 @@ const StockflowAvatar: React.FC<StockflowAvatarProps> = ({
     "";
 
   const safeUsername = username?.trim() || "";
+  // Customers have no role-coloured avatar of their own, so give each one a
+  // stable colour from their id instead of showing every customer in green.
+  const resolvedTone =
+    tone ??
+    (user && "name" in user && !("username" in user)
+      ? customerTones[Math.abs(user.id) % customerTones.length]
+      : "green");
 
   if (!user || !isClient) {
     return (
@@ -69,7 +88,7 @@ const StockflowAvatar: React.FC<StockflowAvatarProps> = ({
     <div
       className={cn(
         "flex shrink-0 items-center justify-center rounded-full border border-white/60 font-bold shadow-card",
-        toneClasses[tone],
+        toneClasses[resolvedTone],
         sizeClasses[size],
         className,
       )}

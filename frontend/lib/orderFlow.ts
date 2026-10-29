@@ -19,14 +19,19 @@ export function getOrderAfterPlacePath(
 }
 
 /**
- * Admins never pick an agent — the customer's assigned agent is sent through.
- * The server validates that the agent exists and is active.
+ * Admins may create an order for an assigned or unassigned customer. When an
+ * agent is known, it is sent through; otherwise the server keeps the order
+ * directly under the admin.
  */
 export function buildOrderCreatePayload(
   customerId: number,
-  agentId: number,
+  agentId?: number,
 ): OrderRegisterRequest {
-  return { customer: customerId, status: "DRAFT", agent: agentId };
+  return {
+    customer: customerId,
+    status: "DRAFT",
+    ...(agentId === undefined ? {} : { agent: agentId }),
+  };
 }
 
 /**

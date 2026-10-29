@@ -176,7 +176,7 @@ export default function ItemList({
   if (loading) return <PageLoading text="Loading items…" />;
 
   return (
-    <div className="mx-auto min-h-full max-w-5xl bg-app-bg px-4 pb-24 pt-4">
+    <div className="mx-auto min-h-full max-w-5xl bg-app-bg px-4 pb-24 pt-4 lg:max-w-7xl lg:px-6">
       <QRScanModal
         isOpen={showQRScanner}
         onClose={handleCloseScanner}
@@ -325,19 +325,27 @@ export default function ItemList({
           />
         ) : (
           <>
-            {visibleItems.map((item) => (
-              <ItemCard
-                key={item.id}
-                item={item}
-                context={context}
-                isExpanded={expandedItems.has(item.id)}
-                onToggle={() => toggleExpanded(item.id)}
-                onEdit={context === "admin" ? onEdit : undefined}
-                onPrintAll={context === "admin" ? onPrintAll : undefined}
-                onPrintQR={context === "admin" ? onPrintQR : undefined}
-                onOrder={context === "agent" ? onOrder : undefined}
-              />
-            ))}
+            <div
+              className={
+                context === "admin"
+                  ? "space-y-3"
+                  : "space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0"
+              }
+            >
+              {visibleItems.map((item) => (
+                <ItemCard
+                  key={item.id}
+                  item={item}
+                  context={context}
+                  isExpanded={expandedItems.has(item.id)}
+                  onToggle={() => toggleExpanded(item.id)}
+                  onEdit={context === "admin" ? onEdit : undefined}
+                  onPrintAll={context === "admin" ? onPrintAll : undefined}
+                  onPrintQR={context === "admin" ? onPrintQR : undefined}
+                  onOrder={context === "agent" ? onOrder : undefined}
+                />
+              ))}
+            </div>
 
             {visibleCount < filteredItems.length && (
               <Button variant="secondary" fullWidth onClick={handleShowMore}>

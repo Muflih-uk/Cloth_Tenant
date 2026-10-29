@@ -110,7 +110,7 @@ const CustomerList: React.FC = () => {
           </span>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0">
           {customers.map((customer) => (
             <ListRow
               key={customer.id}
@@ -121,7 +121,7 @@ const CustomerList: React.FC = () => {
               meta={
                 <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-app-muted">
                   <span className="rounded-full bg-app-soft px-2 py-0.5">
-                    {customer.agent_name}
+                    {customer.agent_name || "Admin"}
                   </span>
                   <span>Agent</span>
                 </span>
@@ -191,7 +191,7 @@ const CustomerList: React.FC = () => {
         {searchBar}
 
         {loading ? (
-          <div className="space-y-2" aria-busy="true" aria-live="polite">
+          <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0" aria-busy="true" aria-live="polite">
             {Array.from({ length: 5 }).map((_, index) => (
               <SkeletonRow key={index} />
             ))}
@@ -221,7 +221,7 @@ const CustomerList: React.FC = () => {
             description="Try a different name, phone number, or address."
           />
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0">
             {data.map((item) => (
               <ListRow
                 key={item.id}
@@ -232,7 +232,7 @@ const CustomerList: React.FC = () => {
                 meta={
                   <span className="inline-flex items-center gap-1.5 text-[10px] font-medium text-app-muted">
                     <span className="rounded-full bg-app-soft px-2 py-0.5">
-                      {item.agent_name}
+                      {item.agent_name || "Admin"}
                     </span>
                     <span>Agent</span>
                   </span>
@@ -269,7 +269,7 @@ const CustomerList: React.FC = () => {
       {searchBar}
 
       {loading ? (
-        <div className="space-y-2" aria-busy="true" aria-live="polite">
+        <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0" aria-busy="true" aria-live="polite">
           {Array.from({ length: 5 }).map((_, index) => (
             <SkeletonRow key={index} />
           ))}

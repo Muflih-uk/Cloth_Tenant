@@ -177,7 +177,7 @@ export default function AdminDetailPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto min-h-screen w-full max-w-2xl space-y-3 px-2 pb-32 pt-4">
+      <div className="mx-auto min-h-screen w-full max-w-2xl lg:max-w-7xl lg:px-6 space-y-3 px-2 pb-32 pt-4">
         <SkeletonCard />
         <SkeletonCard />
       </div>
@@ -186,7 +186,7 @@ export default function AdminDetailPage() {
 
   if (!admin) {
     return (
-      <div className="mx-auto min-h-screen w-full max-w-2xl px-2 pb-32 pt-4">
+      <div className="mx-auto min-h-screen w-full max-w-2xl lg:max-w-7xl lg:px-6 px-2 pb-32 pt-4">
         <EmptyState
           title="Admin not found"
           description="This administrator may have been deleted or is no longer available."
@@ -210,7 +210,7 @@ export default function AdminDetailPage() {
     pinData.confirmPin.length > 0 && pinData.pin === pinData.confirmPin;
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-2xl px-2 pb-32 pt-2">
+    <div className="mx-auto min-h-screen w-full max-w-2xl lg:max-w-7xl lg:px-6 px-2 pb-32 pt-2">
       {deleteDialogOpen && (
         <Modal
           icon={<Trash2 className="size-5 text-brand-red" aria-hidden="true" />}

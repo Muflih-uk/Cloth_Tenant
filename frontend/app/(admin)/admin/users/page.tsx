@@ -37,7 +37,7 @@ export default function CustomersPage() {
   };
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-2xl px-2 pb-32 pt-2">
+    <div className="mx-auto min-h-screen w-full max-w-2xl px-2 pb-32 pt-2 lg:max-w-7xl lg:px-6">
       <PageHeader
         title="Users"
         subtitle="Manage customers, agents, admins, and sub admins."

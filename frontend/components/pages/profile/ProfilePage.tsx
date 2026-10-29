@@ -131,8 +131,8 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen bg-gray-50/50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-100 px-0 pt-2 pb-3 sm:px-4 sm:pb-4">
-        <div className="max-w-lg mx-auto">
+      <div className="bg-white border-b border-gray-100 px-0 pt-2 pb-3 sm:px-4 sm:pb-4 lg:px-6">
+        <div className="max-w-lg mx-auto lg:max-w-7xl">
           <div className="flex w-full items-center gap-3 min-w-0 py-4">
             <div className="relative shrink-0">
               <StockflowAvatar user={avatarUser} size="lg" />
@@ -180,7 +180,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-0 py-3 sm:px-4 sm:py-4">
+      <div className="max-w-lg mx-auto px-0 py-3 sm:px-4 sm:py-4 lg:max-w-7xl lg:px-6">
         {editOpen && profile && (
           <ProfileEditDialog
             open={editOpen}
@@ -192,7 +192,7 @@ export default function ProfilePage() {
         )}
         {/* ── Profile Tab ── */}
         {tab === "profile" && (
-          <div className="space-y-3">
+          <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
             {/* Info Cards */}
             <div className="rounded-3xl border border-gray-100 shadow-sm divide-y divide-gray-50">
               <InfoRow
@@ -260,7 +260,7 @@ export default function ProfilePage() {
             {/* Sign Out */}
             <button
               onClick={handleLogout}
-              className="flex items-center justify-center gap-2 w-full text-rose-500 font-black py-3.5 rounded-3xl border border-rose-100 bg-white shadow-sm hover:bg-rose-50 transition-all active:scale-95 text-sm"
+              className="flex items-center justify-center gap-2 w-full text-rose-500 font-black py-3.5 rounded-3xl border border-rose-100 bg-white shadow-sm hover:bg-rose-50 transition-all active:scale-95 text-sm lg:col-span-2"
             >
               <LogOut size={16} />
               Sign Out
@@ -270,7 +270,7 @@ export default function ProfilePage() {
 
         {/* ── Archives Tab ── */}
         {tab === "archives" && (
-          <div className="space-y-4">
+          <div className="space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
             {archivesLoading ? (
               <div className="flex justify-center py-10">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />

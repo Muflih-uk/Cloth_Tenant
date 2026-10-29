@@ -71,7 +71,7 @@ export default function TransportForm({ transport }: TransportFormProps) {
 
   return (
     <>
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4 sm:p-6">
+      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4 sm:p-6 lg:mx-auto lg:max-w-2xl">
         <FieldGroup className="space-y-5">
           <Field>
             <div className="flex justify-between items-center mb-1.5">

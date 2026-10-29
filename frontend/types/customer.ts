@@ -1,11 +1,11 @@
 export interface Customer {
   id: number;
   total_orders: string;
-  agent_name: string;
+  agent_name: string | null;
   name: string;
   address: string;
   contact: string;
-  agent: number;
+  agent: number | null;
   gst: string;
   preferred_transport: number | null;
   preferred_transport_name?: string;
@@ -16,7 +16,7 @@ export interface CustomerCreateRequest {
   name: string;
   address: string;
   contact: string;
-  agent: number;
+  agent?: number | null;
   gst: string;
   preferred_transport?: number | null;
 }
@@ -25,7 +25,7 @@ export interface CustomerUpdateRequest {
   name?: string;
   address?: string;
   contact?: string;
-  agent?: number;
+  agent?: number | null;
   gst: string;
   preferred_transport?: number | null;
 }

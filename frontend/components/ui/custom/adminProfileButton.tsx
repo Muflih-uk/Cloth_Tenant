@@ -17,7 +17,7 @@ const AdminProfileButton: React.FC = () => {
 
   if (!mounted) {
     return (
-      <div className="flex w-full justify-between px-4 py-3">
+      <div className="flex w-full justify-between px-4 py-3 lg:mx-auto lg:max-w-7xl lg:px-6">
         <div className="h-5 w-24 animate-pulse rounded-full bg-app-soft" />
         <div className="size-11 animate-pulse rounded-full bg-app-soft" />
       </div>
@@ -29,7 +29,7 @@ const AdminProfileButton: React.FC = () => {
     : "";
 
   return (
-    <div className="relative flex w-full items-center justify-between px-4 py-3">
+    <div className="relative flex w-full items-center justify-between px-4 py-3 lg:mx-auto lg:max-w-7xl lg:px-6">
       <div className="truncate text-sm font-bold tracking-wide text-brand-navy">
         {businessLabel ||
           (role === "SUBADMIN" ? "Sub admin" : role === "ADMIN" ? "Admin" : "")}

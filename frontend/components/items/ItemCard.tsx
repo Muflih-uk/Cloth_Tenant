@@ -48,7 +48,7 @@ export default function ItemCard({
 
   return (
     <article
-      className={`overflow-hidden rounded-card border transition-colors ${
+      className={`min-w-0 overflow-hidden rounded-card border transition-colors ${
         itemStockOut
           ? "border-brand-red/20 bg-brand-red/5"
           : isExpanded
@@ -172,9 +172,17 @@ export default function ItemCard({
       {isExpanded && (
         <div
           id={detailsId}
-          className="border-t border-app-line/70 bg-app-soft/50 px-2 pb-2.5 pt-2 sm:px-3 sm:pb-3"
+          className={`border-t border-app-line/70 bg-app-soft/50 px-2 pb-2.5 pt-2 sm:px-3 sm:pb-3 ${
+            context === "admin" ? "lg:px-4 lg:pb-4 lg:pt-3" : ""
+          }`}
         >
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div
+            className={
+              context === "admin"
+                ? "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[repeat(auto-fill,minmax(280px,1fr))] lg:items-start lg:gap-3"
+                : "grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3"
+            }
+          >
             {[...item.variants]
               .sort(compareByVariantOrder)
               .map((variant, index) => (

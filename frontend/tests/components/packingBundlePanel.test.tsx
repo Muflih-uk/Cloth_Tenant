@@ -177,12 +177,43 @@ function resolved(
   };
 }
 
+/** A normal roll-tracked line with metres still to pack. */
+function orderLine(overrides: Partial<OrderItem> = {}): OrderItem {
+  return {
+    id: 7,
+    fabric: 1,
+    variant: 3,
+    variant_display_order: "Natural",
+    fabric_name: "Cotton Cambric 140 GSM",
+    fabric_name_display: "Cotton Cambric 140 GSM",
+    rate_per_meter: "9.00",
+    original_rate_per_meter: "9.00",
+    is_rate_overridden: false,
+    rate_overridden_by: null,
+    rate_overridden_at: null,
+    variant_image: "/media/variants/natural.jpg",
+    ordered_quantity: "600.000",
+    allocated_quantity: "0.000",
+    outstanding_quantity: "600.000",
+    line_total: "5400.00",
+    allocation_count: 0,
+    is_roll_tracked: true,
+    ...overrides,
+  };
+}
+
 function panel(props: Partial<React.ComponentProps<typeof PackingBundlePanel>> = {}) {
-  const { onChanged = vi.fn(), onOrderStatusChange = vi.fn(), ...rest } = props;
+  const {
+    onChanged = vi.fn(),
+    onOrderStatusChange = vi.fn(),
+    items = [orderLine()],
+    ...rest
+  } = props;
   return render(
     <PackingBundlePanel
       orderId={5}
       enabled
+      items={items}
       {...rest}
       onChanged={onChanged}
       onOrderStatusChange={onOrderStatusChange}
@@ -209,17 +240,15 @@ async function scan(user: ReturnType<typeof userEvent.setup>, value: string) {
   await user.click(screen.getByRole("button", { name: /^scan$/i }));
 }
 
-/** Change the suggested cut and confirm it, as the metres prompt does. */
-async function confirmCut(
+/** Confirm the roll the server has already checked. */
+async function confirmScan(
   user: ReturnType<typeof userEvent.setup>,
-  metres?: string,
+  rollNumber = "NAT-0001",
 ) {
-  const input = await screen.findByLabelText(/metres to cut from this roll/i);
-  if (metres !== undefined) {
-    await user.clear(input);
-    await user.type(input, metres);
-  }
-  await user.click(screen.getByRole("button", { name: /cut and pack/i }));
+  const dialog = await screen.findByRole("dialog", {
+    name: new RegExp(`confirm roll ${rollNumber}`, "i"),
+  });
+  await user.click(within(dialog).getByRole("button", { name: /add roll/i }));
 }
 
 beforeEach(() => {
@@ -263,6 +292,49 @@ describe("PackingBundlePanel", () => {
     ).toBeTruthy();
   });
 
+  it("offers no Create bundle when no roll-tracked line still needs packing", async () => {
+    panel({
+      items: [
+        orderLine({
+          allocated_quantity: "600.000",
+          outstanding_quantity: "0.000",
+        }),
+        orderLine({
+          id: 8,
+          fabric_name: "Linen 200 GSM",
+          is_roll_tracked: false,
+          ordered_quantity: "100.000",
+          allocated_quantity: "0.000",
+          outstanding_quantity: "100.000",
+        }),
+      ],
+    });
+
+    await waitFor(() => expect(listBundles).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: /create bundle/i })).toBeNull();
+  });
+
+  it("brings Create bundle back when the lines update with outstanding metres", async () => {
+    const onChanged = vi.fn();
+    const onOrderStatusChange = vi.fn();
+    const { rerender } = panel({ items: [] });
+
+    await waitFor(() => expect(listBundles).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: /create bundle/i })).toBeNull();
+
+    rerender(
+      <PackingBundlePanel
+        orderId={5}
+        enabled
+        items={[orderLine()]}
+        onChanged={onChanged}
+        onOrderStatusChange={onOrderStatusChange}
+      />,
+    );
+
+    expect(createButton()).toBeTruthy();
+  });
+
   it("offers no bundle controls at all once the order is out of reach", async () => {
     panel({ enabled: false });
 
@@ -289,7 +361,7 @@ describe("PackingBundlePanel", () => {
     ).toBeTruthy();
   });
 
-  it("resolves the scanned roll and asks how many metres to cut", async () => {
+  it("resolves the scanned roll and asks to confirm adding it", async () => {
     const user = userEvent.setup();
     const onChanged = vi.fn();
     const onOrderStatusChange = vi.fn();
@@ -316,21 +388,21 @@ describe("PackingBundlePanel", () => {
     await waitFor(() => expect(resolveScan).toHaveBeenCalledWith(5, 1, "3"));
     expect(scanIntoBundle).not.toHaveBeenCalled();
     const dialog = await screen.findByRole("dialog", {
-      name: /enter cut for nat-0001/i,
+      name: /confirm roll nat-0001/i,
     });
+    expect(within(dialog).getByText("250 m")).toBeTruthy();
     expect(
-      (within(dialog).getByLabelText(/metres to cut from this roll/i) as HTMLInputElement)
-        .value,
-    ).toBe("250.000");
+      within(dialog).getByText(/going into order #5 -- bundle 1/i),
+    ).toBeTruthy();
 
-    await confirmCut(user, "250");
+    await confirmScan(user);
 
     await waitFor(() =>
       expect(scanIntoBundle).toHaveBeenCalledWith(
         5,
         1,
         "11111111-1111-4111-8111-111111111111",
-        "250",
+        "250.000",
       ),
     );
     expect(onChanged).toHaveBeenCalled();
@@ -355,7 +427,7 @@ describe("PackingBundlePanel", () => {
 
     await user.click(createButton());
     await scan(user, "3");
-    await confirmCut(user);
+    await confirmScan(user);
 
     // Filling a box is a run of rolls, so the camera is ready for the next one.
     expect(await screen.findByLabelText("Stub scanner input")).toBeTruthy();
@@ -494,7 +566,11 @@ describe("PackingBundlePanel", () => {
     cancelBundle.mockResolvedValue({
       message: "Cancelled Order #5 -- Bundle 1 and returned 1 roll.",
       order_status: "PENDING",
-      bundle: bundle({ status: "CANCELLED" }),
+      bundle: bundle({
+        status: "CANCELLED",
+        number: null,
+        code: "Order #5 -- Cancelled bundle",
+      }),
     });
     panel();
 
@@ -507,8 +583,42 @@ describe("PackingBundlePanel", () => {
     await user.click(screen.getByRole("button", { name: /give every roll back/i }));
 
     await waitFor(() => expect(cancelBundle).toHaveBeenCalledWith(5, 1));
-    // An empty bundle is discarded rather than left hanging open on the order.
+    // A non-empty cancelled bundle is kept as a number-less audit record, so the
+    // open scanner and its controls are gone.
     expect(screen.queryByRole("button", { name: /scan a roll into this bundle/i })).toBeNull();
+  });
+
+  it("discards an empty bundle in one click", async () => {
+    const user = userEvent.setup();
+    listBundles.mockResolvedValue([bundle()]);
+    cancelBundle.mockResolvedValue({
+      message: "Discarded empty Order #5 -- Bundle 1.",
+      order_status: "PENDING",
+      bundle: bundle({
+        status: "CANCELLED",
+        number: null,
+        code: "Order #5 -- Cancelled bundle",
+      }),
+      deleted: true,
+    });
+    panel();
+
+    await user.click(
+      await screen.findByRole("button", { name: /^cancel bundle$/i }),
+    );
+
+    // There are no rolls to give back, so there is nothing to confirm.
+    await waitFor(() => expect(cancelBundle).toHaveBeenCalledWith(5, 1));
+    expect(
+      screen.queryByRole("button", { name: /give every roll back/i }),
+    ).toBeNull();
+    await waitFor(() =>
+      expect(
+        screen.queryByText(/Order #5 -- Bundle 1 is open/i),
+      ).toBeNull(),
+    );
+    // The empty box was removed, so the next one can be started immediately.
+    expect(createButton()).toBeTruthy();
   });
 
   it("can keep a bundle after being asked to cancel it", async () => {
@@ -626,7 +736,7 @@ describe("PackingBundlePanel packing a second bundle", () => {
     await waitFor(() => expect(createBundle).toHaveBeenCalledWith(5));
 
     await scan(user, "4");
-    await confirmCut(user);
+    await confirmScan(user);
     await waitFor(() =>
       expect(scanIntoBundle).toHaveBeenCalledWith(
         5,
@@ -1022,11 +1132,12 @@ describe("PackingBundlePanel showing the lines a bundle packed", () => {
         roll_count: 1,
         total_metres: "600.000",
       }),
-      // A cancelled box is kept as a record, and this one still lists its roll.
+      // A cancelled box is kept as a number-less record, and this one still
+      // lists its roll.
       bundle({
         id: 3,
-        number: 2,
-        code: "Order #5 -- Bundle 2",
+        number: null,
+        code: "Order #5 -- Cancelled bundle",
         status: "CANCELLED",
         rolls: [roll({ id: 12, roll: 4, metres: "400.000", value: "3600.00" })],
         roll_count: 1,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Printer, QrCode } from "lucide-react";
+import { Loader2, Printer } from "lucide-react";
 import { getRolls, peekRolls } from "@/lib/rollsCache";
 import { toastError } from "@/lib/toast";
 import { formatMeters } from "@/types/item";
@@ -101,33 +101,38 @@ export default function VariantRollsList({ variantId, label }: Props) {
   );
 
   return (
-    <div className="mt-2 border-t border-app-line pt-2">
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-        <p className="text-[9px] uppercase tracking-widest text-app-subtle">
+    <div className="mt-2 border-t border-app-line pt-2 lg:mt-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-x-3 lg:gap-y-2 lg:pt-3">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 lg:col-start-1 lg:row-start-1 lg:min-w-0 lg:flex-col lg:items-start lg:gap-0">
+        <p className="text-[9px] uppercase tracking-widest text-app-subtle lg:text-[10px]">
           Physical Rolls
         </p>
-        <p className="text-[11px] font-bold text-app-muted">
-          {rolls.length === 0
-            ? "none yet"
-            : `${formatMeters(data.roll_stock_meters)} m · ${data.roll_count} roll${
-                data.roll_count === 1 ? "" : "s"
-              }`}
+        <p className="text-[11px] font-bold text-app-muted lg:text-xs">
+          <span className={rolls.length === 0 ? "lg:hidden" : ""}>
+            {rolls.length === 0
+              ? "none yet"
+              : `${formatMeters(data.roll_stock_meters)} m · ${data.roll_count} roll${
+                  data.roll_count === 1 ? "" : "s"
+                }`}
+          </span>
+          {rolls.length === 0 && (
+            <span className="hidden lg:inline">0 m · 0 rolls</span>
+          )}
         </p>
       </div>
 
       {rolls.length === 0 ? (
-        <p className="mt-1.5 text-[11px] leading-relaxed text-app-muted">
+        <p className="mt-1.5 text-[11px] leading-relaxed text-app-muted lg:col-span-2 lg:row-start-2 lg:mt-0 lg:rounded-control lg:bg-app-soft/60 lg:px-3 lg:py-4 lg:text-center">
           This colour has no physical rolls. Receive them from the Edit
           Inventory screen.
         </p>
       ) : (
-        <div className="mt-1.5 space-y-1">
+        <div className="mt-1.5 space-y-1 lg:col-span-2 lg:row-start-2 lg:mt-0 lg:block lg:max-h-[15.5rem] lg:space-y-0 lg:divide-y lg:divide-app-line lg:overflow-y-auto lg:pr-1">
           {rolls.map((roll) => (
             <div
               key={roll.id}
-              className="flex items-center gap-1.5 rounded-control border border-app-line bg-app-card px-2 py-1.5 sm:gap-2 sm:px-2.5"
+              className="flex items-center gap-1.5 rounded-control border border-app-line bg-app-card px-2 py-1.5 sm:gap-2 sm:px-2.5 lg:h-10 lg:flex-nowrap lg:gap-2 lg:rounded-none lg:border-0 lg:bg-transparent lg:px-1 lg:py-0"
             >
-              <RollSummary roll={roll} />
+              <RollSummary roll={roll} desktopInline />
               {/*
                 One roll's label, on request. This is offered on every roll
                 including a used-up one, unlike the print-all button: printing a
@@ -139,7 +144,7 @@ export default function VariantRollsList({ variantId, label }: Props) {
               <button
                 type="button"
                 onClick={() => setPrintingRoll(roll)}
-                className="app-focus flex size-11 shrink-0 items-center justify-center rounded-control text-app-muted transition-colors hover:bg-app-soft hover:text-brand-navy"
+                className="app-focus flex size-11 shrink-0 items-center justify-center rounded-control text-app-muted transition-colors hover:bg-app-soft hover:text-brand-navy lg:ml-auto lg:size-8"
                 aria-label={`Print label for ${roll.roll_number}`}
                 title="View/print label"
               >
@@ -157,11 +162,17 @@ export default function VariantRollsList({ variantId, label }: Props) {
           variant="secondary"
           fullWidth
           onClick={() => setPrinting(true)}
-          className="mt-2"
+          aria-label="Print all QR labels"
+          title="Print all QR labels"
+          className="mt-2 lg:col-start-2 lg:row-start-1 lg:mt-0 lg:h-8 lg:min-h-8 lg:w-auto lg:justify-self-end lg:gap-1 lg:px-2.5 lg:text-[11px]"
         >
-          <QrCode className="size-3.5" aria-hidden="true" />
-          Print all QR labels
-          <span className="font-normal text-app-muted">
+          <Printer className="size-4 lg:size-3.5" aria-hidden="true" />
+          <span className="lg:hidden">Print all QR labels</span>
+          <span className="font-normal text-app-muted lg:hidden">
+            ({activeRolls.length})
+          </span>
+          <span className="hidden lg:inline">Print all</span>
+          <span className="hidden text-[10px] font-normal text-app-muted lg:inline">
             ({activeRolls.length})
           </span>
         </Button>

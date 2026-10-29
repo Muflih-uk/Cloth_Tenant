@@ -125,7 +125,7 @@ export default function PinSettings({ profile, onChanged }: PinSettingsProps) {
   );
 
   return (
-    <section className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4 sm:p-5">
+    <section className="bg-white rounded-3xl border border-gray-100 shadow-sm p-4 sm:p-5 lg:mx-auto lg:max-w-2xl">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">

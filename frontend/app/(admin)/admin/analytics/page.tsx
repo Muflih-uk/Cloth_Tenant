@@ -53,13 +53,13 @@ function AnalyticsSkeleton() {
       aria-busy="true"
       aria-live="polite"
     >
-      <div className="mx-auto w-full max-w-2xl px-4 sm:px-6">
+        <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 lg:max-w-7xl">
         <div className="pb-4 pt-2">
           <div className="app-skeleton h-8 w-36" />
           <div className="app-skeleton mt-2 h-3 w-24" />
         </div>
         <div className="app-skeleton h-[52px] rounded-full" />
-        <div className="mt-3 space-y-3">
+        <div className="mt-3 space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0 xl:grid-cols-3">
           <div className="app-skeleton h-[212px] rounded-card" />
           <div className="grid grid-cols-2 gap-3">
             <div className="app-skeleton h-[126px] rounded-card" />
@@ -133,7 +133,7 @@ export default function AdminAnalyticsPage() {
 
   return (
     <div className="min-h-screen w-full bg-app-bg pb-12">
-      <div className="mx-auto w-full max-w-2xl px-4 sm:px-6">
+        <div className="mx-auto w-full max-w-2xl px-4 sm:px-6 lg:max-w-7xl">
         <PageHeader
           title="Analytics"
           className="pb-4 pt-2"
@@ -152,7 +152,7 @@ export default function AdminAnalyticsPage() {
 
         <RangePresets onRangeChange={fetchData} />
 
-        <div className="mt-3 space-y-3">
+        <div className="mt-3 space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0 xl:grid-cols-3">
           {data ? (
             <>
               <StatusDonutChart kpis={data.kpis} />

@@ -130,7 +130,7 @@ export default function SubAdminsList() {
           description="Try a different name or email."
         />
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-2 lg:space-y-0">
           {filtered.map((row) => (
             <ListRow
               key={row.id}

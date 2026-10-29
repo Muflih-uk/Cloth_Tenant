@@ -214,7 +214,7 @@ function AdminHomePageContent() {
   const orderTabs: Tab[] = ["All", "Pending", "Packed", "Dispatched"];
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-2xl px-2 pb-32 pt-2">
+    <div className="mx-auto min-h-screen w-full max-w-2xl px-2 pb-32 pt-2 lg:max-w-7xl lg:px-6">
       <PageHeader
         title="Orders"
         subtitle="Track packing and dispatch across every order."
@@ -314,7 +314,7 @@ export default function AdminHomePage() {
   return (
     <Suspense
       fallback={
-        <div className="mx-auto min-h-screen w-full max-w-2xl space-y-3 px-2 pb-32 pt-4">
+        <div className="mx-auto min-h-screen w-full max-w-2xl space-y-3 px-2 pb-32 pt-4 lg:max-w-7xl lg:px-6">
           <SkeletonCard />
           <SkeletonCard />
           <SkeletonCard />

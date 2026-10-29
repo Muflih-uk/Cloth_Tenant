@@ -74,7 +74,7 @@ export default function CustomerDetailPage() {
                     name: customerData.name,
                     address: customerData.address,
                     contact: customerData.contact,
-                    agent: customerData.agent.toString(),
+                    agent: customerData.agent?.toString() ?? "",
                     gst: customerData.gst,
                 });
                 setAgents(
@@ -131,7 +131,7 @@ export default function CustomerDetailPage() {
             toastSuccess("Customer updated successfully");
             setIsEditing(false);
             router.refresh();
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error updating customer:", error);
             toastError("Failed to update customer", error);
         } finally {
@@ -180,7 +180,7 @@ export default function CustomerDetailPage() {
         );
 
     return (
-        <div className="w-full px-0 py-4 flex flex-col min-h-screen bg-white sm:px-4 sm:py-8">
+        <div className="w-full px-0 py-4 flex flex-col min-h-screen bg-white sm:px-4 sm:py-8 lg:mx-auto lg:max-w-3xl">
             <DeleteWithTransferDialog
                 open={deleteDialogOpen}
                 onClose={() => setDeleteDialogOpen(false)}

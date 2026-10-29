@@ -141,7 +141,7 @@ export default function Page() {
 
       <OrderDetailHeader orderId={id} backHref="/admin" />
 
-      <main className="mx-auto w-full max-w-4xl px-4 pt-4">
+      <main className="mx-auto w-full max-w-4xl px-4 pt-4 lg:max-w-7xl lg:px-6">
         {isDeletable && canDelete && (
           <div className="mb-3 flex justify-end">
             <Button

@@ -119,7 +119,7 @@ export default function Page() {
         onViewInvoice={handleViewInvoice}
       />
 
-      <main className="mx-auto max-w-4xl space-y-4 px-4 pt-4">
+      <main className="mx-auto max-w-4xl space-y-4 px-4 pt-4 lg:max-w-7xl lg:px-6">
         {data?.customer_details && data?.agent_details && (
           <OrderSummary
             customer={data?.customer_details}

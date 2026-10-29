@@ -88,7 +88,7 @@ export default function AdminCustomerSelect() {
       .catch(console.error);
   }, [presetCustomerId]);
 
-  const handleSelect = async (customerId: number, agentId: number) => {
+  const handleSelect = async (customerId: number, agentId?: number) => {
     if (creatingRef.current) return;
     creatingRef.current = true;
     setCreating(true);
@@ -139,7 +139,7 @@ export default function AdminCustomerSelect() {
           <button
             type="button"
             onClick={() =>
-              handleSelect(presetCustomer.id, presetCustomer.agent)
+              void handleSelect(presetCustomer.id, presetCustomer.agent ?? undefined)
             }
             disabled={creating}
             className="app-focus app-card mb-4 flex w-full items-center gap-3 border-brand-navy/15 bg-brand-navy/5 p-4 text-left transition-all hover:border-brand-navy/30 active:scale-[0.99] disabled:opacity-60"
@@ -190,7 +190,9 @@ export default function AdminCustomerSelect() {
             {customers.map((customer) => (
               <button
                 type="button"
-                onClick={() => handleSelect(customer.id, customer.agent)}
+                onClick={() =>
+                  void handleSelect(customer.id, customer.agent ?? undefined)
+                }
                 key={customer.id}
                 disabled={creating}
                 className="app-focus app-card group flex w-full items-center gap-3 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-brand-navy/20 active:translate-y-0 disabled:opacity-60"
@@ -207,7 +209,9 @@ export default function AdminCustomerSelect() {
                       aria-hidden="true"
                     />
                     <p className="truncate text-xs font-medium leading-tight text-app-muted">
-                      Agent: {customer.agent_name || "—"}
+                      {customer.agent_name
+                        ? `Agent: ${customer.agent_name}`
+                        : "Admin customer"}
                     </p>
                   </div>
                   {customer.address && (
